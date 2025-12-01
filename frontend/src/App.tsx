@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { CartProvider } from './contexts/CartContext'
 import { AuthProvider } from './contexts/AuthContext'
-import ProtectedRoute from './components/ProtectedRoute'
+import ProtectedRoute from './components/routing/ProtectedRoute'
+import MainLayout from './components/layouts/MainLayout'
 import BakeryHomePage from './pages/BakeryHomePage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import CartPage from './pages/CartPage'
@@ -23,25 +24,27 @@ function App() {
             v7_relativeSplatPath: true,
           }}
         >
-          <Routes>
-            <Route path="/" element={<BakeryHomePage />} />
-            <Route path="/products/:id" element={<ProductDetailPage />} />
-            <Route path="/categories/:category" element={<CategoryListingPage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <UserProfilePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
-          </Routes>
+          <MainLayout>
+            <Routes>
+              <Route path="/" element={<BakeryHomePage />} />
+              <Route path="/products/:id" element={<ProductDetailPage />} />
+              <Route path="/categories/:category" element={<CategoryListingPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <UserProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
+            </Routes>
+          </MainLayout>
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>

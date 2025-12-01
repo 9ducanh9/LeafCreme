@@ -76,8 +76,8 @@ export default function OrderSuccessPage() {
           {/* Success Header */}
           <Card className="text-center mb-8">
             <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-12 h-12 text-green-600" />
+              <div className="w-20 h-20 bg-accent-yellow/20 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-12 h-12 text-accent-brown" />
               </div>
             </div>
             <h1 className="font-heading text-4xl font-semibold text-text-primary mb-2">
@@ -131,7 +131,7 @@ export default function OrderSuccessPage() {
               {order.tien_giam_gia > 0 && (
                 <div className="flex justify-between text-text-secondary">
                   <span>Giảm giá:</span>
-                  <span className="font-medium text-green-600">
+                  <span className="font-medium text-accent-brown">
                     -{formatPrice(Number(order.tien_giam_gia))}
                   </span>
                 </div>

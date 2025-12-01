@@ -78,7 +78,6 @@ export default function ProductCategories() {
         
         setCategories(categoriesWithCounts)
       } catch (error) {
-        console.error('Error fetching category counts:', error)
         // Fallback to categories without counts
         setCategories(
           CATEGORY_DEFINITIONS.map((cat) => ({ ...cat, productCount: 0 }))

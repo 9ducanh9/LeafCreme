@@ -16,7 +16,7 @@ export default function Footer() {
 
           {/* Links Section */}
           <div>
-            <h4 className="font-semibold text-text-primary mb-4">Liên kết</h4>
+            <h4 className="font-semibold text-text-primary mb-3">Liên kết</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <a href="#menu" className="text-text-secondary hover:text-text-primary transition-default">
@@ -38,7 +38,7 @@ export default function Footer() {
 
           {/* Contact Section */}
           <div>
-            <h4 className="font-semibold text-text-primary mb-4">Thông tin</h4>
+            <h4 className="font-semibold text-text-primary mb-3">Thông tin</h4>
             <div className="space-y-2 text-sm text-text-secondary">
               <p>123 Đường ABC, Quận 1, TP.HCM</p>
               <p>Giờ mở cửa: 8:00 - 20:00</p>

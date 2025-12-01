@@ -5,8 +5,7 @@ import Button from '../components/ui/Button'
 import { formatPrice } from '../utils/formatPrice'
 import { useCart } from '../contexts/CartContext'
 import { ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react'
-
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80'
+import { FALLBACK_IMAGE } from '../constants/images'
 
 export default function CartPage() {
   const navigate = useNavigate()
@@ -85,12 +84,12 @@ export default function CartPage() {
                   {/* Product Image */}
                   <div className="flex-shrink-0">
                     <img
-                      src={item.productImage || FALLBACK_IMAGE}
+                      src={item.productImage || FALLBACK_IMAGE.cart}
                       alt={item.productName}
                       className="w-24 h-24 object-cover rounded-card"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
-                        target.src = FALLBACK_IMAGE
+                        target.src = FALLBACK_IMAGE.cart
                       }}
                     />
                   </div>

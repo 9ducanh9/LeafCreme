@@ -10,9 +10,9 @@ import { useAuth } from '../contexts/AuthContext'
 import { formatPrice } from '../utils/formatPrice'
 import { createOrder, OrderCreate } from '../services/orderService'
 import { ArrowLeft } from 'lucide-react'
-import ProtectedRoute from '../components/ProtectedRoute'
+import ProtectedRoute from '../components/routing/ProtectedRoute'
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80'
+import { FALLBACK_IMAGE } from '../constants/images'
 
 function CheckoutPageContent() {
   const navigate = useNavigate()
@@ -141,12 +141,12 @@ function CheckoutPageContent() {
                 {cart.items.map((item) => (
                   <div key={`${item.productId}-${item.variantId || 'none'}`} className="flex gap-3">
                     <img
-                      src={item.productImage || FALLBACK_IMAGE}
+                      src={item.productImage || FALLBACK_IMAGE.cart}
                       alt={item.productName}
                       className="w-16 h-16 object-cover rounded-card"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
-                        target.src = FALLBACK_IMAGE
+                        target.src = FALLBACK_IMAGE.cart
                       }}
                     />
                     <div className="flex-1">

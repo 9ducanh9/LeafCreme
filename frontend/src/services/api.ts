@@ -38,23 +38,15 @@ class ApiClient {
     if (token) {
       const trimmedToken = token.trim()
       headers['Authorization'] = `Bearer ${trimmedToken}`
-      // Debug logging (remove in production)
-      if (endpoint.includes('/auth/me')) {
-        console.log('Sending token to /auth/me:', trimmedToken.substring(0, 50) + '...')
-      }
-    } else {
-      // Debug logging
-      if (endpoint.includes('/auth/me')) {
-        console.warn('No token found when calling /auth/me')
-      }
     }
 
-    // Debug logging
-    console.log(`🌐 ${options.method || 'GET'} ${endpoint}`, {
-      url,
-      hasToken: !!token,
-      headers: Object.keys(headers),
-    })
+    // Debug logging (only in development)
+    if (import.meta.env.DEV) {
+      console.log(`🌐 ${options.method || 'GET'} ${endpoint}`, {
+        url,
+        hasToken: !!token,
+      })
+    }
 
     try {
       const response = await fetch(url, {
@@ -62,12 +54,13 @@ class ApiClient {
         headers,
       })
       
-      // Log response
-      console.log(`📥 Response for ${endpoint}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-      })
+      // Log response (only in development)
+      if (import.meta.env.DEV) {
+        console.log(`📥 Response for ${endpoint}:`, {
+          status: response.status,
+          statusText: response.statusText,
+        })
+      }
 
       if (!response.ok) {
         // Handle 401 Unauthorized - clear invalid tokens

@@ -11,7 +11,7 @@ import { getProductById, Product, getProductVariants, ProductVariant } from '../
 import { useCart } from '../contexts/CartContext'
 import { ArrowLeft } from 'lucide-react'
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80'
+import { FALLBACK_IMAGE } from '../constants/images'
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -179,12 +179,12 @@ export default function ProductDetailPage() {
           <div>
             <Card className="p-0 overflow-hidden">
               <img
-                src={product.hinh_anh_url || FALLBACK_IMAGE}
+                src={product.hinh_anh_url || FALLBACK_IMAGE.productDetail}
                 alt={product.ten}
                 className="w-full h-auto object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
-                  target.src = FALLBACK_IMAGE
+                  target.src = FALLBACK_IMAGE.productDetail
                 }}
               />
             </Card>

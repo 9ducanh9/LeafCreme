@@ -1,16 +1,9 @@
 // User service for user profile management
 import { apiClient } from './api'
-import { User } from './authService'
+import type { User, UserUpdateData, ChangePasswordData } from '../types/user'
 
-export interface UserUpdateData {
-  email?: string
-  ho_ten?: string
-  so_dien_thoai?: string
-  dia_chi?: string
-  ngay_sinh?: string // Format: YYYY-MM-DD
-  gioi_tinh?: string
-  avatar_url?: string | null
-}
+// Re-export types for backward compatibility
+export type { UserUpdateData, ChangePasswordData }
 
 export async function uploadAvatar(userId: number, file: File): Promise<string> {
   try {
@@ -46,11 +39,6 @@ export async function uploadAvatar(userId: number, file: File): Promise<string> 
   }
 }
 
-export interface ChangePasswordData {
-  mat_khau_cu: string
-  mat_khau_moi: string
-  xac_nhan_mat_khau_moi: string
-}
 
 export async function updateUserProfile(userId: number, data: UserUpdateData): Promise<User> {
   try {

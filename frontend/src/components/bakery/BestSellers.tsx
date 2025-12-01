@@ -6,9 +6,7 @@ import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { formatPrice } from '../../utils/formatPrice'
 import { getBestSellers, Product } from '../../services/productService'
-
-// Fallback image if product doesn't have image
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&q=80'
+import { FALLBACK_IMAGE } from '../../constants/images'
 
 export default function BestSellers() {
   const navigate = useNavigate()
@@ -84,12 +82,12 @@ export default function BestSellers() {
                   {/* Product Image */}
                   <div className="relative mb-4 -mx-6 -mt-6">
                     <img
-                      src={product.hinh_anh_url || FALLBACK_IMAGE}
+                      src={product.hinh_anh_url || FALLBACK_IMAGE.product}
                       alt={product.ten}
                       className="w-full h-64 object-cover rounded-t-card"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
-                        target.src = FALLBACK_IMAGE
+                        target.src = FALLBACK_IMAGE.product
                       }}
                     />
                     <div className="absolute top-4 left-4">

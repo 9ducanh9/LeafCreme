@@ -1,47 +1,9 @@
 // Authentication service for login, register, token management
 import { apiClient } from './api'
+import type { LoginCredentials, RegisterData, AuthResponse, User } from '../types/user'
 
-export interface LoginCredentials {
-  username?: string
-  email?: string
-  password: string
-}
-
-export interface RegisterData {
-  ten_dang_nhap: string
-  email: string
-  mat_khau: string
-  ho_ten: string
-  vaitro_id: number
-  so_dien_thoai?: string
-  dia_chi?: string
-  ngay_sinh?: string
-  gioi_tinh?: string
-}
-
-export interface AuthResponse {
-  access_token: string
-  refresh_token: string
-  token_type: string
-}
-
-export interface User {
-  nguoidung_id: number
-  ten_dang_nhap: string
-  email: string
-  ho_ten: string
-  so_dien_thoai?: string
-  dia_chi?: string
-  ngay_sinh?: string
-  gioi_tinh?: string
-  avatar_url?: string
-  dang_hoat_dong: boolean
-  vaitro?: {
-    vaitro_id: number
-    ten_vai_tro: string
-    mo_ta?: string
-  }
-}
+// Re-export types for backward compatibility
+export type { LoginCredentials, RegisterData, AuthResponse, User }
 
 export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
   try {
