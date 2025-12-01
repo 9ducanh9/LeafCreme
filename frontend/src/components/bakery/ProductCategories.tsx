@@ -109,7 +109,7 @@ export default function ProductCategories() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((i) => (
               <Card key={i} className="cursor-pointer">
-                <div className="relative mb-4 -mx-6 -mt-6 h-48 bg-border animate-pulse rounded-t-card" />
+                <div className="relative mb-4 -mx-6 -mt-6 h-64 bg-border animate-pulse rounded-t-card" />
                 <div className="h-6 bg-border rounded animate-pulse mb-2" />
                 <div className="h-4 bg-border rounded animate-pulse" />
               </Card>
@@ -128,7 +128,7 @@ export default function ProductCategories() {
                   <img
                     src={category.image}
                     alt={category.name}
-                    className="w-full h-48 object-cover rounded-t-card"
+                    className="w-full h-64 object-cover rounded-t-card"
                   />
                   <div className="absolute top-3 right-3">
                     <Leaf className="w-5 h-5 text-accent-brown opacity-70" />

@@ -1,13 +1,13 @@
 // User Profile page - view and edit user information
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import { useAuth } from '../contexts/AuthContext'
-import { updateUserProfile, UserUpdateData } from '../services/userService'
-import { ArrowLeft, User as UserIcon, Lock } from 'lucide-react'
+import { updateUserProfile, UserUpdateData, uploadAvatar } from '../services/userService'
+import { ArrowLeft, User as UserIcon, Lock, Camera, X } from 'lucide-react'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
@@ -24,7 +24,11 @@ export default function UserProfilePage() {
     dia_chi: '',
     ngay_sinh: '',
     gioi_tinh: '',
+    avatar_url: '',
   })
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [passwordData, setPasswordData] = useState({
     mat_khau_cu: '',
@@ -42,7 +46,9 @@ export default function UserProfilePage() {
         dia_chi: user.dia_chi || '',
         ngay_sinh: user.ngay_sinh ? user.ngay_sinh.split('T')[0] : '',
         gioi_tinh: user.gioi_tinh || '',
+        avatar_url: user.avatar_url || '',
       })
+      setAvatarPreview(user.avatar_url || null)
     }
   }, [user])
 
@@ -58,6 +64,62 @@ export default function UserProfilePage() {
       ...passwordData,
       [e.target.name]: e.target.value,
     })
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Vui lòng chọn file ảnh')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Kích thước ảnh không được vượt quá 5MB')
+      return
+    }
+
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Upload avatar
+    setUploadingAvatar(true)
+    setError(null)
+    try {
+      const avatarUrl = await uploadAvatar(user.nguoidung_id, file)
+      setProfileData({ ...profileData, avatar_url: avatarUrl })
+      await refreshUser()
+      setSuccess('Cập nhật avatar thành công!')
+    } catch (err: any) {
+      setError(err.detail || 'Có lỗi xảy ra khi upload avatar.')
+      setAvatarPreview(user.avatar_url || null)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleRemoveAvatar = async () => {
+    if (!user) return
+    setUploadingAvatar(true)
+    setError(null)
+    try {
+      await updateUserProfile(user.nguoidung_id, { avatar_url: null as any })
+      setProfileData({ ...profileData, avatar_url: '' })
+      setAvatarPreview(null)
+      await refreshUser()
+      setSuccess('Đã xóa avatar!')
+    } catch (err: any) {
+      setError(err.detail || 'Có lỗi xảy ra khi xóa avatar.')
+    } finally {
+      setUploadingAvatar(false)
+    }
   }
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -190,6 +252,90 @@ export default function UserProfilePage() {
                 )}
 
                 <form onSubmit={handleProfileSubmit} className="space-y-6">
+                  {/* Avatar Upload Section - Centered */}
+                  <div className="flex flex-col items-center mb-8">
+                    <div className="relative mb-4">
+                      <div className="w-32 h-32 rounded-full bg-background border-4 border-border flex items-center justify-center overflow-hidden shadow-lg">
+                        {avatarPreview ? (
+                          <img
+                            src={
+                              avatarPreview.startsWith('http') || avatarPreview.startsWith('data:')
+                                ? avatarPreview
+                                : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${avatarPreview}`
+                            }
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                            }}
+                          />
+                        ) : (
+                          <UserIcon className="w-16 h-16 text-text-secondary" />
+                        )}
+                      </div>
+                      
+                      {/* Camera Icon Overlay */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAvatar || loading}
+                        className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-accent-brown text-white flex items-center justify-center shadow-lg hover:bg-accent-brown/90 transition-default disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Đổi ảnh đại diện"
+                      >
+                        {uploadingAvatar ? (
+                          <LoadingSpinner size="sm" />
+                        ) : (
+                          <Camera className="w-5 h-5" />
+                        )}
+                      </button>
+                      
+                      {uploadingAvatar && (
+                        <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center">
+                          <LoadingSpinner size="sm" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                      disabled={uploadingAvatar || loading}
+                    />
+                    
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAvatar || loading}
+                        className="text-sm"
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        {avatarPreview ? 'Đổi ảnh' : 'Chọn ảnh'}
+                      </Button>
+                      {avatarPreview && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleRemoveAvatar}
+                          disabled={uploadingAvatar || loading}
+                          className="text-sm text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Xóa ảnh
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-text-secondary mt-2 text-center">
+                      Định dạng: JPG, PNG, GIF. Kích thước tối đa: 5MB
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="ho_ten" className="block text-sm font-medium text-text-primary mb-2">

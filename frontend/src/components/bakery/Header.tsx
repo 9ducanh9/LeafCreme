@@ -102,7 +102,21 @@ export default function Header() {
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 px-3 py-2 rounded-button border border-border hover:border-accent-brown transition-default"
                 >
-                  <UserIcon className="w-5 h-5 text-text-primary" />
+                  {user.avatar_url ? (
+                    <img
+                      src={user.avatar_url.startsWith('http') 
+                        ? user.avatar_url 
+                        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${user.avatar_url}`}
+                      alt={user.ho_ten}
+                      className="w-6 h-6 rounded-full object-cover border border-border"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <UserIcon className="w-5 h-5 text-text-primary" />
+                  )}
                   <span className="hidden md:inline text-sm text-text-primary">
                     {user.ho_ten}
                   </span>
@@ -114,25 +128,28 @@ export default function Header() {
                       className="fixed inset-0 z-10"
                       onClick={() => setShowUserMenu(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-48 bg-surface border border-border rounded-card shadow-lg z-20">
+                    <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-card shadow-lg z-20 overflow-hidden">
                       <div className="p-4 border-b border-border">
-                        <p className="font-semibold text-text-primary">{user.ho_ten}</p>
+                        <p className="font-semibold text-text-primary mb-1">{user.ho_ten}</p>
+                        {user.ten_dang_nhap && (
+                          <p className="text-xs text-text-secondary mb-1">{user.ten_dang_nhap}</p>
+                        )}
                         <p className="text-sm text-text-secondary">{user.email}</p>
                       </div>
-                      <div className="p-2 space-y-1">
+                      <div className="py-2">
                         <button
                           onClick={() => {
                             navigate('/profile')
                             setShowUserMenu(false)
                           }}
-                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-background rounded-button transition-default"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
                         >
                           <UserIcon className="w-4 h-4" />
                           Thông tin cá nhân
                         </button>
                         <button
                           onClick={handleLogout}
-                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-background rounded-button transition-default"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
                         >
                           <LogOut className="w-4 h-4" />
                           Đăng xuất

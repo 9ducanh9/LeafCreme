@@ -5,10 +5,12 @@ from fastapi import FastAPI, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime
 import os
+from pathlib import Path
 
 from app.db import get_db
 from app.core.config import settings
@@ -17,6 +19,7 @@ from app.routers import (
     suppliers, payments, reports
 )
 from app.middleware.logging_middleware import LoggingMiddleware
+from app.middleware.security_middleware import SecurityMiddleware
 
 # =========================================================
 # FastAPI App Configuration
@@ -31,12 +34,25 @@ app = FastAPI(
 )
 
 # =========================================================
-# CORS Configuration - Environment-based
+# Middleware Configuration
 # =========================================================
+# LƯU Ý: Trong FastAPI, middleware được thực thi theo thứ tự NGƯỢC LẠI
+# (middleware được add cuối cùng sẽ chạy đầu tiên)
+# Vì vậy, CORS phải được add CUỐI CÙNG để chạy ĐẦU TIÊN
+
+# Logging Middleware - Log tất cả requests và responses (chạy cuối cùng)
+app.add_middleware(LoggingMiddleware)
+
+# Security Middleware - Thêm security headers vào responses (chạy giữa)
+app.add_middleware(SecurityMiddleware)
+
+# CORS Middleware - Xử lý CORS headers (chạy đầu tiên - QUAN TRỌNG!)
 # Lấy allowed origins từ environment hoặc default
-allowed_origins_env = os.getenv("CORS_ORIGINS", "*")
+allowed_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 if allowed_origins_env == "*":
-    allowed_origins = ["*"]
+    # Khi dùng allow_credentials=True, không thể dùng "*"
+    # Default cho development: localhost:3000
+    allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
 else:
     # Cho phép nhiều origins, phân cách bởi dấu phẩy
     allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
@@ -45,12 +61,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
-
-# Logging Middleware - Log tất cả requests và responses
-app.add_middleware(LoggingMiddleware)
 
 # =========================================================
 # Global Exception Handlers
@@ -85,6 +100,11 @@ async def global_exception_handler(request: Request, exc: Exception):
 # =========================================================
 # Routers Registration
 # =========================================================
+# Static files for uploads
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(products.router)

@@ -26,7 +26,7 @@ export interface ProductFilters {
 
 export async function getProducts(filters?: ProductFilters): Promise<Product[]> {
   try {
-    return await apiClient.get<Product[]>('/products', filters)
+    return await apiClient.get<Product[]>('/products', filters as Record<string, string | number | boolean | null>)
   } catch (error) {
     console.error('Error fetching products:', error)
     throw error

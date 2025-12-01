@@ -17,7 +17,12 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <Routes>
             <Route path="/" element={<BakeryHomePage />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />

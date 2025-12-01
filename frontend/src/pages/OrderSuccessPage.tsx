@@ -108,7 +108,7 @@ export default function OrderSuccessPage() {
                 >
                   <div>
                     <p className="font-medium text-text-primary">
-                      Sản phẩm #{item.bienthe_id || item.hop_qua_id}
+                      Sản phẩm #{item.lohang_sanpham_id || item.lohang_hopqua_id || item.hop_qua_id || 'N/A'}
                     </p>
                     <p className="text-sm text-text-secondary">
                       Số lượng: {item.so_luong}

@@ -34,6 +34,7 @@ export interface User {
   dia_chi?: string
   ngay_sinh?: string
   gioi_tinh?: string
+  avatar_url?: string
   dang_hoat_dong: boolean
   vaitro?: {
     vaitro_id: number

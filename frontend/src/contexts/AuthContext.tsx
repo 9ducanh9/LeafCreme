@@ -1,6 +1,5 @@
 // Auth Context for user authentication state management
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { login as loginService, register as registerService, getCurrentUser, logout as logoutService, isAuthenticated, User } from '../services/authService'
 
 interface AuthContextType {

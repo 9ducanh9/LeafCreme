@@ -23,8 +23,8 @@ class ApiClient {
     // Get auth token from localStorage if available
     const token = localStorage.getItem('access_token')
     
-    const headers: HeadersInit = {
-      ...(options.headers || {}),
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> || {}),
     }
     
     // Only add Content-Type for non-form-data requests
@@ -49,10 +49,24 @@ class ApiClient {
       }
     }
 
+    // Debug logging
+    console.log(`🌐 ${options.method || 'GET'} ${endpoint}`, {
+      url,
+      hasToken: !!token,
+      headers: Object.keys(headers),
+    })
+
     try {
       const response = await fetch(url, {
         ...options,
         headers,
+      })
+      
+      // Log response
+      console.log(`📥 Response for ${endpoint}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
       })
 
       if (!response.ok) {

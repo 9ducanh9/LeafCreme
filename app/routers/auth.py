@@ -262,6 +262,7 @@ def get_current_user_info(current_user: NguoiDung = Depends(get_current_user)):
         "dia_chi": current_user.dia_chi,
         "ngay_sinh": current_user.ngay_sinh.isoformat() if current_user.ngay_sinh else None,
         "gioi_tinh": current_user.gioi_tinh,
+        "avatar_url": current_user.avatar_url,
         "dang_hoat_dong": current_user.dang_hoat_dong,
         "vaitro": {
             "vaitro_id": current_user.vaitro.vaitro_id,
