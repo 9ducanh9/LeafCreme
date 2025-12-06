@@ -18,7 +18,7 @@ export default function IntroMessage() {
 
             {/* Text Content - Right Side */}
             <div className="p-8 md:p-12 lg:p-16 flex flex-col justify-center max-w-2xl mx-auto md:mx-0">
-              <h2 className="font-heading text-3xl md:text-4xl font-semibold text-text-primary mb-6">
+              <h2 className="font-heading text-2xl md:text-3xl font-medium text-text-primary mb-6 leading-tight">
                 Leaf Creme · A light pause in your day
               </h2>
               <div className="space-y-4 text-text-secondary leading-relaxed">

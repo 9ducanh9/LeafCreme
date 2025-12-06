@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import Button from '../ui/Button'
 import ProductDropdown from './ProductDropdown'
 import CartDrawer from '../cart/CartDrawer'
+import { IMAGE_PATHS } from '../../constants/images'
 
 export default function Header() {
   const navigate = useNavigate()
@@ -27,16 +28,40 @@ export default function Header() {
                   user?.vaitro?.vaitro_id === 1
 
   return (
-    <header className="sticky top-0 z-50 bg-surface border-b border-border">
+    <header className="sticky top-0 z-50 bg-surface-warm border-b border-border-warm backdrop-blur-sm">
       <div className="max-w-[1440px] mx-auto px-6 py-4">
         {/* Cụm trái: logo + nav, cụm phải: cart + user */}
         <div className="flex items-center gap-8">
           {/* Logo */}
           <button
             onClick={() => navigate('/')}
-            className="font-heading text-2xl font-semibold text-text-primary hover:opacity-80 transition-default"
+            className="flex items-center hover:opacity-80 transition-default"
+            aria-label="Leaf Crème - Về trang chủ"
           >
-            Leaf Creme
+            <img
+              src={IMAGE_PATHS.navbar.logo}
+              alt="Leaf Crème"
+              className="h-8 md:h-10 w-auto object-contain"
+              onError={(e) => {
+                // Fallback to main logo or text if image not found
+                const target = e.target as HTMLImageElement
+                const currentSrc = target.src
+                if (currentSrc.includes('navbar')) {
+                  // Try main logo
+                  target.src = IMAGE_PATHS.logo.main
+                } else {
+                  // Fallback to text
+                  target.style.display = 'none'
+                  const fallback = target.nextElementSibling as HTMLElement
+                  if (fallback) {
+                    fallback.style.display = 'block'
+                  }
+                }
+              }}
+            />
+            <span className="font-heading text-xl md:text-2xl font-medium text-text-primary leading-tight hidden">
+              Leaf Crème
+            </span>
           </button>
 
           {/* Navigation Links */}
@@ -108,9 +133,10 @@ export default function Header() {
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 px-4 py-3 rounded-button border border-border hover:border-accent-brown transition-default"
+                  className="relative p-1 hover:opacity-70 transition-default"
+                  aria-label="Tài khoản"
                 >
-                  {user.avatar_url ? (
+                  {user.avatar_url && user.avatar_url.trim() ? (
                     <img
                       src={
                         user.avatar_url.startsWith('http')
@@ -121,18 +147,17 @@ export default function Header() {
                             }${user.avatar_url}`
                       }
                       alt={user.ho_ten}
-                      className="w-6 h-6 rounded-full object-cover border border-border"
+                      className="w-10 h-10 rounded-full object-cover border border-border"
                       onError={(e) => {
+                        // Hide image and show icon instead
                         const target = e.target as HTMLImageElement
                         target.style.display = 'none'
                       }}
                     />
-                  ) : (
-                    <UserIcon className="w-5 h-5 text-text-primary" />
+                  ) : null}
+                  {(!user.avatar_url || !user.avatar_url.trim()) && (
+                    <UserIcon className="w-10 h-10 text-text-primary" />
                   )}
-                  <span className="hidden md:inline text-sm text-text-primary">
-                    {user.ho_ten}
-                  </span>
                 </button>
 
                 {showUserMenu && (

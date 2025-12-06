@@ -67,7 +67,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, compact = f
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
-              <span className="font-semibold text-text-primary w-6 text-center text-sm">
+              <span className="font-medium text-text-primary w-6 text-center text-sm">
                 {item.quantity}
               </span>
               <button

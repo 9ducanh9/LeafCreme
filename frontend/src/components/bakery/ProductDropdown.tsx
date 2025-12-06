@@ -282,10 +282,10 @@ export default function ProductDropdown({ isOpen, onClose }: ProductDropdownProp
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
-                className={`w-8 h-8 rounded-button border transition-default text-sm ${
+                className={`transition-default text-sm ${
                   currentPage === page
-                    ? 'bg-accent-brown text-white border-accent-brown'
-                    : 'border-border hover:border-accent-brown'
+                    ? 'text-text-primary font-medium'
+                    : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
                 {page}

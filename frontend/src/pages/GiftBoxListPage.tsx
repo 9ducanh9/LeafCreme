@@ -11,16 +11,6 @@ export default function GiftBoxListPage() {
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-8 md:py-12">
-      {/* Header */}
-      <div className="mb-8 md:mb-12">
-        <h1 className="font-heading text-4xl md:text-5xl font-semibold text-text-primary mb-3">
-          Hộp quà Leaf Crème
-        </h1>
-        <p className="text-text-secondary text-lg max-w-2xl">
-          Những hộp quà được chọn lọc kỹ lưỡng, mang đến niềm vui và hạnh phúc cho những khoảnh khắc đặc biệt trong cuộc sống.
-        </p>
-      </div>
-
       {/* Filters */}
       <GiftBoxFilters onFiltersChange={setFilters} />
 

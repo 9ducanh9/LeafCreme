@@ -345,25 +345,39 @@ async def upload_user_avatar(
     upload_dir = Path("uploads/avatars")
     upload_dir.mkdir(parents=True, exist_ok=True)
     
+    # Xóa avatar cũ nếu có
+    if user.avatar_url:
+        try:
+            # Lấy tên file từ avatar_url (format: /uploads/avatars/filename)
+            old_avatar_path = user.avatar_url.replace("/uploads/avatars/", "")
+            old_file_path = upload_dir / old_avatar_path
+            
+            # Xóa file cũ nếu tồn tại
+            if old_file_path.exists() and old_file_path.is_file():
+                old_file_path.unlink()
+                print(f"Đã xóa avatar cũ: {old_file_path}")
+        except Exception as e:
+            # Log lỗi nhưng không dừng quá trình upload
+            print(f"Lỗi khi xóa avatar cũ: {e}")
+    
     # Generate unique filename
     file_ext = Path(file.filename).suffix if file.filename else '.jpg'
     unique_filename = f"{user_id}_{uuid.uuid4().hex}{file_ext}"
     file_path = upload_dir / unique_filename
     
-    # Save file
+    # Save file mới
     with open(file_path, "wb") as f:
         f.write(file_content)
     
-    # Generate URL (trong production nên dùng cloud storage)
+    # Generate URL mới (trong production nên dùng cloud storage)
     avatar_url = f"/uploads/avatars/{unique_filename}"
     
-    # Update user (database column name: avatar_url)
+    # Update user với đường dẫn mới (database column name: avatar_url)
     user.avatar_url = avatar_url
     db.commit()
     db.refresh(user)
     
     return JSONResponse({
-        "avatar_url": avatar_url,
         "avatar_url": avatar_url,
         "message": "Upload avatar thành công"
     })

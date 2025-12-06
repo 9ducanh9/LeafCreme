@@ -146,10 +146,10 @@ export default function CategoryListingPage() {
         {/* Category Header */}
         {categoryInfo && (
           <div className="mb-8">
-            <h1 className="font-heading text-4xl font-semibold text-text-primary mb-3">
+            <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight">
               {categoryInfo.name}
             </h1>
-            <p className="text-text-secondary text-lg">
+            <p className="text-text-secondary text-base md:text-lg leading-relaxed">
               {categoryInfo.description}
             </p>
           </div>
@@ -160,13 +160,13 @@ export default function CategoryListingPage() {
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-text-secondary" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none z-10" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm kiếm sản phẩm..."
-                className="w-full pl-12 pr-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default"
+                className="w-full pl-10 pr-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default text-sm"
               />
             </div>
 
@@ -182,7 +182,7 @@ export default function CategoryListingPage() {
                 }
                 className="px-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default"
               >
-                <option value="name">Sắp xếp theo tên</option>
+                <option value="name">Mặc định</option>
                 <option value="price-asc">Giá: Thấp đến cao</option>
                 <option value="price-desc">Giá: Cao đến thấp</option>
               </select>

@@ -26,7 +26,7 @@ export default function SearchPage() {
   const [flavorFilter, setFlavorFilter] = useState<string>('')
   const [sortBy, setSortBy] = useState<'name' | 'price-asc' | 'price-desc'>('name')
   const [currentPage, setCurrentPage] = useState(1)
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimerRef = useRef<number | null>(null)
 
   // Get unique categories and flavors from products
   const categories = Array.from(
@@ -187,14 +187,8 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-background py-8 md:py-12">
       <div className="max-w-[1440px] mx-auto px-4 md:px-6">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="font-heading text-4xl font-semibold text-text-primary mb-8">
-            Tìm kiếm sản phẩm
-          </h1>
-
-          {/* Filters Bar - All in one row */}
-          <Card className="mb-8">
+        {/* Filters Bar - All in one row */}
+        <Card className="mb-8">
             <form onSubmit={handleSearch}>
               <div className="flex flex-wrap items-end gap-4">
                 {/* Search Input */}
@@ -289,7 +283,7 @@ export default function SearchPage() {
                     }}
                     className="w-full px-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default text-sm"
                   >
-                    <option value="name">Sắp xếp theo tên</option>
+                    <option value="name">Mặc định</option>
                     <option value="price-asc">Giá: Thấp đến cao</option>
                     <option value="price-desc">Giá: Cao đến thấp</option>
                   </select>
@@ -315,7 +309,6 @@ export default function SearchPage() {
               </div>
             </form>
           </Card>
-        </div>
 
         {/* Error State */}
         {error && (
@@ -383,15 +376,15 @@ export default function SearchPage() {
                       Trước
                     </button>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                         <button
                           key={page}
                           onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 rounded-button border transition-default text-sm ${
+                          className={`transition-default text-base ${
                             currentPage === page
-                              ? 'border-accent-brown bg-accent-brown/10 text-text-primary'
-                              : 'border-border text-text-secondary hover:border-accent-brown'
+                              ? 'text-text-primary font-medium'
+                              : 'text-text-secondary hover:text-text-primary'
                           }`}
                         >
                           {page}

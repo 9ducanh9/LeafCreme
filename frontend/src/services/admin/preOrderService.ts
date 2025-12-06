@@ -1,6 +1,6 @@
 // Admin Pre-order Service - API calls for pre-order management
 import { PreOrder } from '../../types/admin'
-import apiClient from '../api'
+import { apiClient } from '../api'
 
 // Mock data storage key
 const STORAGE_KEY = 'leaf_creme_mock_preorders'

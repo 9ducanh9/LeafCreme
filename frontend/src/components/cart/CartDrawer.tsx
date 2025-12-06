@@ -13,7 +13,15 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const navigate = useNavigate()
-  const { cartItems, cartSubtotal, updateQuantity, removeFromCart } = useCart()
+  const { cartItems, cartSubtotal, updateQuantity, removeFromCart, applyVoucher, removeVoucher, appliedVoucher } = useCart()
+
+  const handleApplyVoucher = async (voucherCode: string): Promise<{ success: boolean; error?: string; discountAmount?: number }> => {
+    if (!voucherCode.trim()) {
+      removeVoucher()
+      return { success: true }
+    }
+    return await applyVoucher(voucherCode)
+  }
 
   // Prevent body scroll when drawer is open
   useEffect(() => {
@@ -61,13 +69,13 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
       {/* Drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md bg-background z-50 shadow-lg transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-screen w-full max-w-md bg-background z-50 shadow-lg transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-border">
+          <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
             <h2 className="font-heading text-2xl font-semibold text-text-primary">
               Giỏ hàng của bạn
             </h2>
@@ -80,8 +88,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             </button>
           </div>
 
-          {/* Cart Items List */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
+          {/* Cart Items List - Scrollable if needed */}
+          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
             {cartItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-16">
                 <ShoppingBag className="w-16 h-16 text-text-secondary/30 mb-4" />
@@ -107,13 +115,15 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             )}
           </div>
 
-          {/* Footer with Summary */}
+          {/* Footer with Summary - Fixed at bottom */}
           {cartItems.length > 0 && (
-            <div className="border-t border-border bg-surface p-6">
+            <div className="flex-shrink-0 border-t border-border bg-surface p-6">
               <CartSummary
                 subtotal={cartSubtotal}
+                discount={appliedVoucher?.discountAmount || 0}
                 onCheckout={handleCheckout}
                 onContinueShopping={handleViewCart}
+                onApplyVoucher={handleApplyVoucher}
                 checkoutLabel="Thanh toán"
                 continueShoppingLabel="Xem giỏ hàng"
                 compact

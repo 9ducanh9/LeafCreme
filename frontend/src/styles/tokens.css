@@ -1,0 +1,68 @@
+/**
+ * Leaf Crème Design Tokens
+ * Single source of truth for design system values
+ */
+
+:root {
+  /* Colors - Background */
+  --color-bg-main: #FAFAF7;
+  --color-bg-alt: #FDFBF7;
+  
+  /* Colors - Surface */
+  --color-surface: #FFFFFF;
+  --color-surface-warm: #FFFEF9; /* Warmer white for cards */
+  
+  /* Colors - Border */
+  --color-border: #E8E5DD;
+  --color-border-warm: #E5DFD4; /* Warmer border */
+  
+  /* Colors - Text */
+  --color-text-primary: #473C2F;
+  --color-text-secondary: #7A6F63;
+  
+  /* Colors - Accents */
+  --color-accent-yellow: #F5C96A;
+  --color-accent-pink: #F7B4B8;
+  --color-accent-brown: #C59B72;
+  
+  /* Border Radius */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-input: 8px;
+  
+  /* Spacing Tokens */
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-48: 48px;
+  
+  /* Typography */
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Inter', 'Be Vietnam Pro', sans-serif;
+  
+  /* Typography Sizes - Softer, more natural */
+  --text-h1-size: 2rem; /* 32px - was 4xl/5xl */
+  --text-h1-weight: 500; /* medium instead of semibold */
+  --text-h1-line-height: 1.3;
+  
+  --text-h2-size: 1.75rem; /* 28px - was 4xl */
+  --text-h2-weight: 500;
+  --text-h2-line-height: 1.35;
+  
+  --text-h3-size: 1.5rem; /* 24px */
+  --text-h3-weight: 500;
+  --text-h3-line-height: 1.4;
+  
+  --text-body-size: 1rem; /* 16px */
+  --text-body-line-height: 1.6;
+  
+  --text-body-lg-size: 1.125rem; /* 18px */
+  --text-body-lg-line-height: 1.6;
+  
+  /* Transitions */
+  --transition-default: 150ms ease;
+  --transition-slow: 200ms ease;
+}
+

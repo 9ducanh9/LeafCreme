@@ -1,12 +1,20 @@
-// Best Sellers section with 3 product cards - fetches from API
+// Best Sellers section with 4 specific product cards - fetches from API
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../ui/Card'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { formatPrice } from '../../utils/formatPrice'
-import { getBestSellers, Product } from '../../services/productService'
+import { getProducts, Product } from '../../services/productService'
 import { FALLBACK_IMAGE } from '../../constants/images'
+
+// Specific product names to display
+const BEST_SELLER_PRODUCT_NAMES = [
+  'Bánh vanilla trái cây',
+  'Bông lan trứng muối phô mai',
+  'Mousse matcha phô mai',
+  'Tiramisu dâu',
+]
 
 export default function BestSellers() {
   const navigate = useNavigate()
@@ -19,8 +27,43 @@ export default function BestSellers() {
       try {
         setLoading(true)
         setError(null)
-        const data = await getBestSellers(3)
-        setProducts(data)
+        // Fetch all active products
+        const allProducts = await getProducts({ 
+          dang_hoat_dong: true,
+          limit: 1000 
+        })
+        
+        // Filter to get only the specific products by name (fuzzy matching)
+        const bestSellerProducts = BEST_SELLER_PRODUCT_NAMES.map(productName => {
+          const searchTerms = productName.toLowerCase().split(/\s+/)
+          return allProducts.find(p => {
+            const productNameLower = p.ten.toLowerCase()
+            // Try exact match first
+            if (productNameLower.includes(productName.toLowerCase())) {
+              return true
+            }
+            // Try matching all key words
+            return searchTerms.every(term => productNameLower.includes(term))
+          })
+        }).filter((p): p is Product => p !== undefined)
+        
+        // If we don't have enough products, fill with other products
+        if (bestSellerProducts.length < 4 && allProducts.length > 0) {
+          const foundProductIds = new Set(bestSellerProducts.map(p => p.sanpham_id))
+          const additionalProducts = allProducts
+            .filter(p => !foundProductIds.has(p.sanpham_id))
+            .slice(0, 4 - bestSellerProducts.length)
+          
+          bestSellerProducts.push(...additionalProducts)
+        }
+        
+        // Log if any products are missing
+        if (bestSellerProducts.length < BEST_SELLER_PRODUCT_NAMES.length) {
+          console.warn('Best sellers: Some products not found. Expected:', BEST_SELLER_PRODUCT_NAMES.length, 'Found:', bestSellerProducts.length)
+          console.warn('Available products:', allProducts.map(p => p.ten))
+        }
+        
+        setProducts(bestSellerProducts.slice(0, 4))
       } catch (err) {
         console.error('Error fetching best sellers:', err)
         setError('Không thể tải sản phẩm. Vui lòng thử lại sau.')
@@ -37,18 +80,18 @@ export default function BestSellers() {
       <div className="max-w-[1440px] mx-auto px-6">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <h2 className="font-heading text-4xl font-semibold text-text-primary mb-3">
-            Today's Best Sellers
+          <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight">
+            Best Sellers Season
           </h2>
-          <p className="text-text-secondary text-lg">
-            Ba lựa chọn được khách yêu thích nhất hôm nay.
+          <p className="text-text-secondary text-base md:text-lg leading-relaxed">
+            Bốn sản phẩm được yêu thích nhất mùa này, được chọn lọc kỹ lưỡng từ bếp Leaf Crème.
           </p>
         </div>
 
         {/* Loading State */}
         {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[1, 2, 3, 4].map((i) => (
               <Card key={i} className="flex flex-col">
                 <div className="relative mb-4 -mx-6 -mt-6 h-64 bg-border animate-pulse rounded-t-card" />
                 <div className="h-6 bg-border rounded animate-pulse mb-2" />
@@ -71,9 +114,9 @@ export default function BestSellers() {
 
         {/* Product Cards Grid */}
         {!loading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {products.length === 0 ? (
-              <div className="col-span-3 text-center py-12 text-text-secondary">
+              <div className="col-span-4 text-center py-12 text-text-secondary">
                 Chưa có sản phẩm nào
               </div>
             ) : (
@@ -97,7 +140,7 @@ export default function BestSellers() {
 
                   {/* Product Info */}
                   <div className="flex-1 flex flex-col">
-                    <h3 className="font-heading text-2xl font-semibold text-text-primary mb-2">
+                    <h3 className="font-heading text-xl font-medium text-text-primary mb-2 leading-tight">
                       {product.ten}
                     </h3>
                     <p className="text-text-secondary mb-4 flex-1">

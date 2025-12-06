@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { Box, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
 import { ProductVariant } from '../../../types/admin'
 import { getCategories } from '../../../services/admin/categoryService'
+import { getProducts } from '../../../services/productService'
 
 interface ProductFiltersProps {
   category: string
@@ -29,18 +30,48 @@ export default function ProductFilters({
     loadCategories()
   }, [])
 
-  const loadCategories = () => {
-    const cats = getCategories()
-    setCategories(cats)
+  const loadCategories = async () => {
+    try {
+      // Load categories from localStorage first (for backward compatibility)
+      const localCats = getCategories()
+      
+      // Also fetch categories from API to get real-time updates
+      try {
+        const products = await getProducts({ limit: 1000 })
+        const apiCategories = Array.from(
+          new Set(products.map(p => p.danh_muc).filter(Boolean))
+        ).sort() as string[]
+        
+        // Merge both sources, prioritizing API data
+        const allCategories = Array.from(new Set([...apiCategories, ...localCats])).sort()
+        setCategories(allCategories)
+      } catch (error) {
+        // Fallback to localStorage if API fails
+        console.warn('Failed to load categories from API, using localStorage:', error)
+        setCategories(localCats)
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error)
+      setCategories([])
+    }
   }
 
-  // Reload categories when component mounts or when window gets focus (user might have added categories in another tab)
+  // Reload categories when component mounts, window gets focus, or periodically
   useEffect(() => {
     const handleFocus = () => {
       loadCategories()
     }
     window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
+    
+    // Also reload categories periodically (every 30 seconds) to catch real-time updates
+    const interval = setInterval(() => {
+      loadCategories()
+    }, 30000)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      clearInterval(interval)
+    }
   }, [])
 
   return (

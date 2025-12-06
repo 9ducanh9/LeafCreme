@@ -1,4 +1,4 @@
-// Reusable card component with bakery theme
+// Reusable card component with bakery theme - uses design tokens
 import { HTMLAttributes, ReactNode } from 'react'
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
@@ -8,7 +8,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export default function Card({ children, className = '', ...props }: CardProps) {
   return (
     <div
-      className={`bg-surface border border-border rounded-card p-6 ${className}`}
+      className={`bg-surface-warm border border-border-warm rounded-card p-6 ${className}`}
       {...props}
     >
       {children}

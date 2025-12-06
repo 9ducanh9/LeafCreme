@@ -41,10 +41,12 @@ export default function AdminProductPage() {
   const loadVariants = async () => {
     setLoading(true)
     try {
+      // Force fresh data by adding timestamp to prevent caching
       const data = await getProductVariants({ category, size, search })
       setVariants(data)
-    } catch (error) {
-      showError('Không thể tải danh sách sản phẩm')
+    } catch (error: any) {
+      console.error('Error loading variants:', error)
+      showError(error?.message || 'Không thể tải danh sách sản phẩm')
     } finally {
       setLoading(false)
     }
@@ -73,11 +75,13 @@ export default function AdminProductPage() {
         setSize('')
         setSearch('')
       }
+      // Force reload variants to get latest data
       await loadVariants()
       setFormOpen(false)
       setEditingVariant(null)
-    } catch (error) {
-      showError('Không thể lưu sản phẩm')
+    } catch (error: any) {
+      console.error('Error saving product:', error)
+      showError(error?.message || 'Không thể lưu sản phẩm')
     }
   }
 
@@ -147,7 +151,11 @@ export default function AdminProductPage() {
 
       <CategoryManager
         open={categoryManagerOpen}
-        onClose={() => setCategoryManagerOpen(false)}
+        onClose={() => {
+          setCategoryManagerOpen(false)
+          // Reload variants and refresh filters when category manager closes
+          loadVariants()
+        }}
         onCategoriesChange={() => {
           // Reload variants to refresh category filter
           loadVariants()

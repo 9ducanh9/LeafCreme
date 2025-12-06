@@ -51,7 +51,7 @@ export default function GiftBoxCard({ giftBox }: GiftBoxCardProps) {
 
       {/* Gift Box Info */}
       <div className="flex-1 flex flex-col">
-        <h3 className="font-heading text-xl font-semibold text-text-primary mb-1">
+        <h3 className="font-heading text-lg font-medium text-text-primary mb-1 leading-tight">
           {giftBox.name}
         </h3>
         <p className="text-text-secondary text-sm mb-3">{giftBox.subtitle}</p>

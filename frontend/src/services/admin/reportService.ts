@@ -1,6 +1,6 @@
 // Admin Report Service - API calls for dashboard/reporting data
 import { RevenueData, ProductRevenue, BestSeller, DashboardStats } from '../../types/admin'
-import apiClient from '../api'
+import { apiClient } from '../api'
 
 export interface CategoryRevenue {
   category: string

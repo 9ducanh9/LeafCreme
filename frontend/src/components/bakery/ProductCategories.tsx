@@ -91,14 +91,14 @@ export default function ProductCategories() {
   }, [])
 
   return (
-    <section className="py-16 bg-surface">
+    <section className="py-16 bg-bg-alt">
       <div className="max-w-[1440px] mx-auto px-6">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <h2 className="font-heading text-4xl font-semibold text-text-primary mb-3">
+          <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight">
             Explore our main lines
           </h2>
-          <p className="text-text-secondary text-lg">
+          <p className="text-text-secondary text-base md:text-lg leading-relaxed">
             Bốn dòng bánh chính từ bếp Leaf Creme.
           </p>
         </div>
@@ -135,7 +135,7 @@ export default function ProductCategories() {
                 </div>
 
                 {/* Category Info */}
-                <h3 className="font-heading text-xl font-semibold text-text-primary mb-2">
+                <h3 className="font-heading text-lg font-medium text-text-primary mb-2 leading-tight">
                   {category.name}
                 </h3>
                 <p className="text-text-secondary text-sm mb-2">

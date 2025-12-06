@@ -37,7 +37,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
       {/* Product Info */}
       <div className="flex-1 flex flex-col">
-        <h3 className="font-heading text-xl font-semibold text-text-primary mb-2">
+        <h3 className="font-heading text-lg font-medium text-text-primary mb-2 leading-tight">
           {product.ten}
         </h3>
         <p className="text-text-secondary text-sm mb-4 flex-1 line-clamp-2">
