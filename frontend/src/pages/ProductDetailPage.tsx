@@ -9,6 +9,7 @@ import ErrorMessage from '../components/ui/ErrorMessage'
 import { formatPrice } from '../utils/formatPrice'
 import { getProductById, Product, getProductVariants, ProductVariant } from '../services/productService'
 import { useCart } from '../contexts/CartContext'
+import { useToast } from '../contexts/ToastContext'
 import { ArrowLeft } from 'lucide-react'
 
 import { FALLBACK_IMAGE } from '../constants/images'
@@ -17,6 +18,7 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { addToCart } = useCart()
+  const { showSuccess, showError, showWarning } = useToast()
   const [product, setProduct] = useState<Product | null>(null)
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
@@ -70,13 +72,13 @@ export default function ProductDetailPage() {
 
     // Check if variant is required but not selected
     if (variants.length > 0 && !selectedVariant) {
-      alert('Vui lòng chọn biến thể sản phẩm')
+      showWarning('Vui lòng chọn biến thể sản phẩm')
       return
     }
 
     // Check stock
     if (selectedVariant && selectedVariant.muc_gioi_han_ton <= 0) {
-      alert('Sản phẩm đã hết hàng')
+      showError('Sản phẩm đã hết hàng')
       return
     }
 
@@ -102,10 +104,10 @@ export default function ProductDetailPage() {
       })
 
       // Show success feedback
-      alert('Đã thêm vào giỏ hàng!')
+      showSuccess('Đã thêm vào giỏ hàng!')
     } catch (error) {
       console.error('Error adding to cart:', error)
-      alert('Có lỗi xảy ra. Vui lòng thử lại.')
+      showError('Có lỗi xảy ra. Vui lòng thử lại.')
     } finally {
       setAddingToCart(false)
     }

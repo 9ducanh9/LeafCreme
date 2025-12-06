@@ -279,6 +279,19 @@ class CongThucHopQua(Base):
     __table_args__ = (UniqueConstraint("hop_qua_id", "lohang_linhkien_id"),)
 
 
+# BOM đơn giản cho hộp quà - chứa sản phẩm (bánh) thay vì linh kiện
+class HopQuaBOM(Base):
+    __tablename__ = "hopquabom"
+    
+    bom_id: Mapped[int] = mapped_column(primary_key=True)
+    hop_qua_id: Mapped[int] = mapped_column(ForeignKey("hopqua.hop_qua_id", ondelete="CASCADE"))
+    bienthe_id: Mapped[int] = mapped_column(ForeignKey("bienthesanpham.bienthe_id", ondelete="CASCADE"))
+    so_luong: Mapped[int] = mapped_column(nullable=False, comment="Số lượng sản phẩm trong hộp quà")
+    ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    
+    __table_args__ = (UniqueConstraint("hop_qua_id", "bienthe_id"),)
+
+
 # =========================================================
 # 14. PHIẾU GIẢM GIÁ
 # =========================================================

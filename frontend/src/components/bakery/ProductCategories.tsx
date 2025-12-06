@@ -10,37 +10,37 @@ interface Category {
   name: string
   description: string
   image: string
-  danh_muc: string // Backend category name
+  danh_muc: string 
 }
 
 const CATEGORY_DEFINITIONS: Category[] = [
   {
     id: 1,
-    name: 'Mousse Cakes',
-    description: 'Bánh mousse với lớp kem mịn màng, hương vị thanh nhẹ.',
-    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80',
-    danh_muc: 'Mousse Cakes',
+    name: 'Bánh kem',
+    description: 'Cho những khoảnh khắc đáng nhớ, ngọt ngào và ấm áp.',
+    image: 'https://img.freepik.com/premium-photo/cake-with-white-chocolate-icing-whipped-cream-strawberries_538646-12060.jpg',
+    danh_muc: 'Bánh kem',
   },
   {
     id: 2,
-    name: 'Cheesecakes',
-    description: 'Bánh phô mai với vị béo ngậy, kết cấu mịn màng.',
-    image: 'https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=400&q=80',
-    danh_muc: 'Cheesecakes',
+    name: 'Bông lan',
+    description: 'Mềm mại, nhẹ nhàng như một cái ôm ấm áp.',
+    image: 'https://emvaobep.com/wp-content/uploads/2016/03/cach-lam-banh-bong-lan-pho-mai-ngon.jpg',
+    danh_muc: 'Bông lan',
   },
   {
     id: 3,
-    name: 'Crepe Cakes',
-    description: 'Bánh crepe nhiều lớp, nhẹ nhàng và tinh tế.',
-    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80',
-    danh_muc: 'Crepe Cakes',
+    name: 'Mousse',
+    description: 'Mịn màng, thanh nhẹ cho những phút giây thư giãn.',
+    image: 'https://tse3.mm.bing.net/th/id/OIP.ETTQBVy32BL-CCchIwNmpgHaJQ?rs=1&pid=ImgDetMain&o=7&rm=3',
+    danh_muc: 'Mousse',
   },
   {
     id: 4,
-    name: 'Gift Boxes',
-    description: 'Hộp quà tặng với nhiều loại bánh nhỏ xinh.',
-    image: 'https://images.unsplash.com/photo-1603532648955-039310d9ed75?w=400&q=80',
-    danh_muc: 'Gift Boxes',
+    name: 'Tiramisu',
+    description: 'Cổ điển và đậm đà, như một tách cà phê buổi sáng.',
+    image: 'https://th.bing.com/th/id/R.f3e848071ba4d9a47996663b087377f3?rik=Ni5E%2bc4P4TfI5A&pid=ImgRaw&r=0',
+    danh_muc: 'Tiramisu',
   },
 ]
 

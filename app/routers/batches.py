@@ -12,7 +12,7 @@ from ..db import get_db
 from ..models import (
     LoHangSanPham, LoHangLinhKien, LoHangHopQua,
     TonKhoSanPham, TonKhoLinhKien, TonKhoHopQua,
-    BienTheSanPham, LinhKien, HopQua, NhaCungCap
+    BienTheSanPham, SanPham, LinhKien, HopQua, NhaCungCap
 )
 from ..core.dependencies import get_current_active_user, require_role
 from ..models import NguoiDung
@@ -793,10 +793,12 @@ def get_product_inventory(
     current_user: NguoiDung = Depends(get_current_active_user)
 ):
     """Tồn kho sản phẩm"""
-    query = db.query(TonKhoSanPham, LoHangSanPham, BienTheSanPham).join(
+    query = db.query(TonKhoSanPham, LoHangSanPham, BienTheSanPham, SanPham).join(
         LoHangSanPham, LoHangSanPham.lohang_id == TonKhoSanPham.lohang_sanpham_id
     ).join(
         BienTheSanPham, BienTheSanPham.bienthe_id == LoHangSanPham.bienthe_sanpham_id
+    ).join(
+        SanPham, SanPham.sanpham_id == BienTheSanPham.sanpham_id
     ).filter(
         LoHangSanPham.trang_thai == "hoatdong"
     )
@@ -811,12 +813,15 @@ def get_product_inventory(
             "lohang_id": lo.lohang_id,
             "ma_lo": lo.ma_lo,
             "bienthe_id": bv.bienthe_id,
+            "sanpham_id": sp.sanpham_id,
+            "ten_sanpham": sp.ten,
             "huong_vi": bv.huong_vi,
+            "kich_thuoc": bv.kich_thuoc,
             "so_luong_hien_tai": tk.so_luong_hien_tai,
             "so_luong_da_ban": tk.so_luong_da_ban,
             "ngay_het_han": lo.ngay_het_han
         }
-        for tk, lo, bv in results
+        for tk, lo, bv, sp in results
     ]
 
 

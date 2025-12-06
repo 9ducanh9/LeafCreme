@@ -13,7 +13,7 @@ from app.db import get_db
 from app.models import (
     DonHang, ChiTietDonHang, BienTheSanPham, LoHangSanPham,
     PhieuGiamGia, DonHangPhieuGiamGia, TonKhoSanPham,
-    NguoiDung, HopQua, LoHangHopQua
+    NguoiDung, HopQua, LoHangHopQua, HopQuaBOM
 )
 from app.services.fefo import alloc_fefo_by_variant
 from app.core.dependencies import get_current_user
@@ -466,11 +466,47 @@ def create_order(
                         detail=f"Hộp quà {item.hop_qua_id} không tồn tại"
                     )
                 
-                # TODO: Check tồn kho hộp quà nếu cần
+                # Đọc BOM của hộp quà và trừ tồn kho sản phẩm
+                bom_items = db.query(HopQuaBOM).filter(
+                    HopQuaBOM.hop_qua_id == item.hop_qua_id
+                ).all()
+                
+                if bom_items:
+                    # Với mỗi sản phẩm trong BOM, trừ tồn kho
+                    for bom_item in bom_items:
+                        # Tính số lượng cần: số lượng trong BOM × số lượng hộp quà
+                        need_qty = bom_item.so_luong * item.so_luong
+                        
+                        # Trừ tồn kho sản phẩm theo FEFO
+                        alloc, ok = alloc_fefo_by_variant(db, bom_item.bienthe_id, need_qty)
+                        if not ok:
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"Tồn kho không đủ cho sản phẩm trong hộp quà {hopqua.ten_hop_qua}. "
+                                       f"Biến thể {bom_item.bienthe_id} thiếu {need_qty} sản phẩm."
+                            )
+                        
+                        # Tạo chi tiết đơn hàng cho từng lô hàng sản phẩm (để track)
+                        for lohang_id, take_qty in alloc:
+                            bienthe = db.query(BienTheSanPham).filter(
+                                BienTheSanPham.bienthe_id == bom_item.bienthe_id
+                            ).first()
+                            if bienthe:
+                                db.add(ChiTietDonHang(
+                                    donhang_id=order.donhang_id,
+                                    lohang_sanpham_id=lohang_id,
+                                    so_luong=take_qty,
+                                    gia_don_vi=bienthe.gia_bienthe,
+                                    tong_tien_phu=bienthe.gia_bienthe * take_qty,
+                                    ghi_chu=f"Từ hộp quà {hopqua.ten_hop_qua}"
+                                ))
+                
+                # Tính giá hộp quà
                 gia = hopqua.gia_ban
                 line_total = gia * item.so_luong
                 tong_tien += line_total
                 
+                # Tạo chi tiết đơn hàng cho hộp quà (tổng hợp)
                 db.add(ChiTietDonHang(
                     donhang_id=order.donhang_id,
                     hop_qua_id=item.hop_qua_id,

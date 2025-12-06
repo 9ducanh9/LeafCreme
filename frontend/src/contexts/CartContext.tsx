@@ -11,6 +11,9 @@ import {
 
 interface CartContextType {
   cart: Cart
+  cartItems: CartItem[] // Alias for cart.items
+  cartCount: number // Alias for cart.itemCount
+  cartSubtotal: number // Alias for cart.total
   addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
   removeFromCart: (productId: number, variantId?: number) => void
   updateQuantity: (productId: number, quantity: number, variantId?: number) => void
@@ -68,6 +71,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         cart,
+        cartItems: cart.items,
+        cartCount: cart.itemCount,
+        cartSubtotal: cart.total,
         addToCart,
         removeFromCart,
         updateQuantity,

@@ -1,5 +1,5 @@
 // Search results page - displays search results with filters
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -10,6 +10,7 @@ import { getProducts, getProductVariants, Product, ProductVariant } from '../ser
 import { Search, X } from 'lucide-react'
 
 const PAGE_SIZE = 8
+const SEARCH_DEBOUNCE_MS = 500 // Debounce 500ms
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -20,10 +21,12 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null)
   
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchParams.get('q') || '')
   const [categoryFilter, setCategoryFilter] = useState<string>(searchParams.get('category') || '')
   const [flavorFilter, setFlavorFilter] = useState<string>('')
   const [sortBy, setSortBy] = useState<'name' | 'price-asc' | 'price-desc'>('name')
   const [currentPage, setCurrentPage] = useState(1)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Get unique categories and flavors from products
   const categories = Array.from(
@@ -39,7 +42,27 @@ export default function SearchPage() {
     )
   ).sort()
 
-  // Fetch all products and variants
+  // Debounce search query
+  useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    // Set new timer
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, SEARCH_DEBOUNCE_MS)
+
+    // Cleanup
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [searchQuery])
+
+  // Fetch all products and variants (only when debounced query or category changes)
   useEffect(() => {
     async function fetchProducts() {
       try {
@@ -51,8 +74,8 @@ export default function SearchPage() {
           limit: 1000,
         }
         
-        if (searchQuery.trim()) {
-          filters.search = searchQuery.trim()
+        if (debouncedSearchQuery.trim()) {
+          filters.search = debouncedSearchQuery.trim()
         }
         
         if (categoryFilter) {
@@ -86,7 +109,7 @@ export default function SearchPage() {
     }
 
     fetchProducts()
-  }, [searchQuery, categoryFilter])
+  }, [debouncedSearchQuery, categoryFilter])
 
   // Filter and sort products
   useEffect(() => {
@@ -126,6 +149,8 @@ export default function SearchPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    // Update debounced query immediately when form is submitted
+    setDebouncedSearchQuery(searchQuery)
     const params = new URLSearchParams()
     if (searchQuery.trim()) {
       params.set('q', searchQuery.trim())
@@ -171,26 +196,31 @@ export default function SearchPage() {
           {/* Filters Bar - All in one row */}
           <Card className="mb-8">
             <form onSubmit={handleSearch}>
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap items-end gap-4">
                 {/* Search Input */}
-                <div className="flex-1 min-w-[220px] relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm kiếm sản phẩm..."
-                    className="w-full pl-10 pr-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default text-sm"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-default"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+                <div className="flex-1 min-w-[220px]">
+                  <label className="block text-xs font-medium text-text-secondary mb-2">
+                    Tìm kiếm
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Tìm kiếm sản phẩm..."
+                      className="w-full pl-10 pr-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default text-sm"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-default"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Category Filter */}
@@ -268,6 +298,9 @@ export default function SearchPage() {
                 {/* Clear Filters Button */}
                 {hasActiveFilters && (
                   <div className="w-full sm:w-auto">
+                    <label className="block text-xs font-medium text-text-secondary mb-2 opacity-0">
+                      &nbsp;
+                    </label>
                     <Button
                       type="button"
                       variant="outline"

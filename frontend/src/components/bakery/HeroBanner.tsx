@@ -17,25 +17,28 @@ const slides: HeroSlide[] = [
     id: 1,
     imageUrl:
       'https://images.pexels.com/photos/4109990/pexels-photo-4109990.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    title: 'From Saigon, with calm sweetness.',
-    subtitle: 'Từ Sài Gòn, với vị ngọt nhẹ nhàng cho những phút nghỉ ngắn.',
-    ctaLabel: 'Xem bộ sưu tập hôm nay',
+    title: 'Fresh cakes for your everyday moments.',
+    subtitle:
+      'Bánh kem, bông lan, tiramisu & mousse – làm mới mỗi ngày, giao nhanh tại Sài Gòn.',
+    ctaLabel: 'Xem tất cả bánh',
   },
   {
     id: 2,
     imageUrl:
-      'https://images.pexels.com/photos/4109993/pexels-photo-4109993.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    title: 'Mousse & cheesecake for small celebrations.',
-    subtitle: 'Những chiếc bánh nhỏ, đủ để chia sẻ trong một buổi hẹn nhẹ nhàng.',
-    ctaLabel: 'Xem dòng mousse & cheesecake',
+      'https://png.pngtree.com/background/20230518/original/pngtree-bakery-with-two-cases-of-pastries-picture-image_2645230.jpg',
+    title: 'Mousse & tiramisu – light but full of flavor.',
+    subtitle:
+      'Lớp mousse mịn, tiramisu thơm cà phê – hợp cho những buổi hẹn nhẹ nhàng và sinh nhật nhỏ.',
+    ctaLabel: 'Xem dòng mousse & tiramisu',
   },
   {
     id: 3,
     imageUrl:
       'https://images.pexels.com/photos/291528/pexels-photo-291528.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    title: 'Gift boxes for quiet celebrations.',
-    subtitle: 'Hộp quà nhỏ, dành cho những lời chúc nhẹ nhàng mà chân thành.',
-    ctaLabel: 'Xem các set quà tặng',
+    title: 'Gift boxes that speak for you.',
+    subtitle:
+      'Set quà tặng gọn, đẹp, đủ ngọt ngào để thay lời chúc trong mọi dịp nhỏ – từ cảm ơn, sinh nhật đến kỷ niệm.',
+    ctaLabel: 'Chọn set quà tặng',
   },
 ]
 
@@ -53,7 +56,7 @@ export default function HeroBanner() {
   }, [])
 
   return (
-    <section className="relative w-full bg-black">
+    <section className="relative w-full">
       {/* Image + dark overlay */}
       <div className="relative w-full h-[220px] md:h-[260px] lg:h-[300px] overflow-hidden">
         {slides.map((slide, index) => (

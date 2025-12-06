@@ -12,7 +12,7 @@ export default function Button({
   className = '',
   ...props 
 }: ButtonProps) {
-  const baseStyles = 'px-6 py-3 rounded-button font-medium transition-default duration-default'
+  const baseStyles = 'px-6 py-3 rounded-button font-medium transition-default duration-default inline-flex items-center justify-center whitespace-nowrap'
   
   const variantStyles = {
     primary: 'bg-accent-brown text-white hover:opacity-90',

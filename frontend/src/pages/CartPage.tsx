@@ -1,49 +1,72 @@
-// Cart page - displays and manages shopping cart
+// Cart page - full cart page for detailed review and checkout
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import { formatPrice } from '../utils/formatPrice'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
 import { useCart } from '../contexts/CartContext'
-import { ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react'
-import { FALLBACK_IMAGE } from '../constants/images'
+import CartItem from '../components/cart/CartItem'
+import CartSummary from '../components/cart/CartSummary'
+import { ArrowLeft, ShoppingBag } from 'lucide-react'
 
 export default function CartPage() {
   const navigate = useNavigate()
-  const { cart, updateQuantity, removeFromCart, clearCart } = useCart()
-
-  const handleQuantityChange = (productId: number, currentQuantity: number, change: number, variantId?: number) => {
-    const newQuantity = currentQuantity + change
-    updateQuantity(productId, newQuantity, variantId)
-  }
+  const { cartItems, cartSubtotal, cartCount, updateQuantity, removeFromCart, clearCart } = useCart()
+  const [confirmRemove, setConfirmRemove] = useState<{
+    isOpen: boolean
+    productId?: number
+    variantId?: number
+  }>({ isOpen: false })
+  const [confirmClearAll, setConfirmClearAll] = useState(false)
 
   const handleRemoveItem = (productId: number, variantId?: number) => {
-    if (confirm('Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?')) {
-      removeFromCart(productId, variantId)
-    }
+    setConfirmRemove({ isOpen: true, productId, variantId })
   }
 
-  if (cart.items.length === 0) {
+  const handleConfirmRemove = () => {
+    if (confirmRemove.productId !== undefined) {
+      removeFromCart(confirmRemove.productId, confirmRemove.variantId)
+    }
+    setConfirmRemove({ isOpen: false })
+  }
+
+  const handleClearAll = () => {
+    setConfirmClearAll(true)
+  }
+
+  const handleConfirmClearAll = () => {
+    clearCart()
+    setConfirmClearAll(false)
+  }
+
+  const handleContinueShopping = () => {
+    navigate('/search')
+  }
+
+  const handleCheckout = () => {
+    navigate('/checkout')
+  }
+
+  // Empty cart state
+  if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-background py-16">
         <div className="max-w-[1440px] mx-auto px-6">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/')}
-            className="mb-8"
-          >
+          <Button variant="outline" onClick={() => navigate('/')} className="mb-8">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Tiếp tục mua sắm
           </Button>
 
           <Card className="text-center py-16">
+            <ShoppingBag className="w-20 h-20 text-text-secondary/30 mx-auto mb-6" />
             <h2 className="font-heading text-3xl font-semibold text-text-primary mb-4">
-              Giỏ hàng trống
+              Giỏ hàng của bạn đang trống.
             </h2>
             <p className="text-text-secondary mb-8">
-              Bạn chưa có sản phẩm nào trong giỏ hàng.
+              Khám phá các sản phẩm tuyệt vời từ Leaf Crème
             </p>
-            <Button variant="primary" onClick={() => navigate('/')}>
-              Xem sản phẩm
+            <Button variant="primary" onClick={() => navigate('/search')}>
+              Khám phá bánh tại Leaf Crème
             </Button>
           </Card>
         </div>
@@ -55,162 +78,81 @@ export default function CartPage() {
     <div className="min-h-screen bg-background py-16">
       <div className="max-w-[1440px] mx-auto px-6">
         <div className="flex items-center justify-between mb-8">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/')}
-          >
+          <Button variant="outline" onClick={() => navigate('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Tiếp tục mua sắm
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (confirm('Bạn có chắc muốn xóa tất cả sản phẩm khỏi giỏ hàng?')) {
-                clearCart()
-              }
-            }}
-            className="text-sm"
-          >
+          <Button variant="outline" onClick={handleClearAll} className="text-sm">
             Xóa tất cả
           </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
-          <div className="lg:col-span-2 space-y-4">
-            {cart.items.map((item) => (
-              <Card key={`${item.productId}-${item.variantId || 'none'}`}>
-                <div className="flex gap-6">
-                  {/* Product Image */}
-                  <div className="flex-shrink-0">
-                    <img
-                      src={item.productImage || FALLBACK_IMAGE.cart}
-                      alt={item.productName}
-                      className="w-24 h-24 object-cover rounded-card"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = FALLBACK_IMAGE.cart
-                      }}
+          {/* Cart Items List - Left Side */}
+          <div className="lg:col-span-2">
+            <Card className="p-0">
+              <div className="p-6 border-b border-border">
+                <h2 className="font-heading text-2xl font-semibold text-text-primary">
+                  Sản phẩm trong giỏ hàng ({cartCount})
+                </h2>
+              </div>
+              <div className="divide-y divide-border">
+                {cartItems.map((item) => (
+                  <div key={`${item.productId}-${item.variantId || 'none'}`} className="px-6">
+                    <CartItem
+                      item={item}
+                      onQuantityChange={updateQuantity}
+                      onRemove={handleRemoveItem}
+                      compact={false}
                     />
                   </div>
-
-                  {/* Product Info */}
-                  <div className="flex-1 flex flex-col">
-                    <div className="flex-1">
-                      <h3 className="font-heading text-xl font-semibold text-text-primary mb-1">
-                        {item.productName}
-                      </h3>
-                      {item.variantLabel && (
-                        <p className="text-text-secondary text-sm mb-2">
-                          {item.variantLabel}
-                        </p>
-                      )}
-                      <p className="font-semibold text-text-primary">
-                        {formatPrice(item.price)}
-                      </p>
-                    </div>
-
-                    {/* Quantity Controls */}
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() =>
-                            handleQuantityChange(
-                              item.productId,
-                              item.quantity,
-                              -1,
-                              item.variantId
-                            )
-                          }
-                          className="p-1 rounded-button border border-border hover:border-accent-brown transition-default"
-                          aria-label="Giảm số lượng"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span className="font-semibold text-text-primary w-8 text-center">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() =>
-                            handleQuantityChange(
-                              item.productId,
-                              item.quantity,
-                              1,
-                              item.variantId
-                            )
-                          }
-                          className="p-1 rounded-button border border-border hover:border-accent-brown transition-default"
-                          aria-label="Tăng số lượng"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <span className="font-semibold text-lg text-text-primary">
-                          {formatPrice(item.price * item.quantity)}
-                        </span>
-                        <button
-                          onClick={() =>
-                            handleRemoveItem(item.productId, item.variantId)
-                          }
-                          className="p-2 text-text-secondary hover:text-accent-brown transition-default"
-                          aria-label="Xóa sản phẩm"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                ))}
+              </div>
+            </Card>
           </div>
 
-          {/* Order Summary */}
+          {/* Cart Summary - Right Side (Sticky on Desktop) */}
           <div className="lg:col-span-1">
             <Card className="sticky top-24">
               <h2 className="font-heading text-2xl font-semibold text-text-primary mb-6">
                 Tóm tắt đơn hàng
               </h2>
 
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between text-text-secondary">
-                  <span>Số lượng sản phẩm:</span>
-                  <span className="font-medium text-text-primary">
-                    {cart.itemCount}
-                  </span>
-                </div>
-                <div className="flex justify-between text-text-secondary">
-                  <span>Tạm tính:</span>
-                  <span className="font-medium text-text-primary">
-                    {formatPrice(cart.total)}
-                  </span>
-                </div>
-                <div className="border-t border-border pt-4">
-                  <div className="flex justify-between">
-                    <span className="font-heading text-xl font-semibold text-text-primary">
-                      Tổng cộng:
-                    </span>
-                    <span className="font-heading text-xl font-semibold text-text-primary">
-                      {formatPrice(cart.total)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <Button
-                variant="primary"
-                className="w-full py-4 text-lg"
-                onClick={() => navigate('/checkout')}
-              >
-                Thanh toán
-              </Button>
+              <CartSummary
+                subtotal={cartSubtotal}
+                itemCount={cartCount}
+                shipping={0} // Can be calculated or fetched from API
+                showShipping={false} // Set to true if shipping is available
+                onCheckout={handleCheckout}
+                onContinueShopping={handleContinueShopping}
+                checkoutLabel="Tiến hành thanh toán"
+                continueShoppingLabel="Tiếp tục mua sắm"
+                compact={false}
+              />
             </Card>
           </div>
         </div>
       </div>
+
+      {/* Confirm Dialogs */}
+      <ConfirmDialog
+        isOpen={confirmRemove.isOpen}
+        message="Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?"
+        confirmLabel="Xóa"
+        cancelLabel="Hủy"
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setConfirmRemove({ isOpen: false })}
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={confirmClearAll}
+        message="Bạn có chắc muốn xóa tất cả sản phẩm khỏi giỏ hàng?"
+        confirmLabel="Xóa tất cả"
+        cancelLabel="Hủy"
+        onConfirm={handleConfirmClearAll}
+        onCancel={() => setConfirmClearAll(false)}
+        variant="danger"
+      />
     </div>
   )
 }
-

@@ -1,11 +1,12 @@
 // Header/Navbar component - simple, slim header pinned to top
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShoppingCart, User as UserIcon, LogOut } from 'lucide-react'
+import { ShoppingCart, User as UserIcon, LogOut, LayoutDashboard } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
 import { useAuth } from '../../contexts/AuthContext'
 import Button from '../ui/Button'
 import ProductDropdown from './ProductDropdown'
+import CartDrawer from '../cart/CartDrawer'
 
 export default function Header() {
   const navigate = useNavigate()
@@ -13,12 +14,17 @@ export default function Header() {
   const { user, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState(false)
+  const [showCartDrawer, setShowCartDrawer] = useState(false)
 
   const handleLogout = () => {
     logout()
     setShowUserMenu(false)
     navigate('/')
   }
+
+  // Check if user is admin
+  const isAdmin = user?.vaitro?.ten_vai_tro?.toLowerCase() === 'admin' || 
+                  user?.vaitro?.vaitro_id === 1
 
   return (
     <header className="sticky top-0 z-50 bg-surface border-b border-border">
@@ -65,12 +71,13 @@ export default function Header() {
               </div>
             </div>
 
-            <a
-              href="#gift-boxes"
+            <button
+              type="button"
+              onClick={() => navigate('/gift-boxes')}
               className="text-text-secondary hover:text-text-primary transition-default"
             >
-              Gift Boxes
-            </a>
+              Hộp quà
+            </button>
 
             <a
               href="#contact"
@@ -84,7 +91,7 @@ export default function Header() {
           <div className="flex items-center gap-4 ml-auto">
             {/* Cart Icon */}
             <button
-              onClick={() => navigate('/cart')}
+              onClick={() => setShowCartDrawer(true)}
               className="relative p-2 hover:opacity-70 transition-default"
               aria-label="Giỏ hàng"
             >
@@ -159,6 +166,18 @@ export default function Header() {
                           <UserIcon className="w-4 h-4" />
                           Thông tin cá nhân
                         </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              navigate('/admin')
+                              setShowUserMenu(false)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
+                          >
+                            <LayoutDashboard className="w-4 h-4" />
+                            Admin Panel
+                          </button>
+                        )}
                         <button
                           onClick={handleLogout}
                           className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
@@ -192,6 +211,9 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Cart Drawer */}
+      <CartDrawer isOpen={showCartDrawer} onClose={() => setShowCartDrawer(false)} />
     </header>
   )
 }
