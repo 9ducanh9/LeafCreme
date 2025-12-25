@@ -65,8 +65,10 @@ export default function RegisterPage() {
       })
       // Redirect to home page after successful registration
       navigate('/')
-    } catch (err: any) {
-      setError(err.detail || 'Đăng ký thất bại. Vui lòng thử lại.')
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      setError((typeof detail === 'string' && detail) || 'Đăng ký thất bại. Vui lòng thử lại.')
     } finally {
       setLoading(false)
     }

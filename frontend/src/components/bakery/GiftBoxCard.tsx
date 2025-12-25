@@ -24,7 +24,7 @@ export default function GiftBoxCard({ giftBox }: GiftBoxCardProps) {
 
   return (
     <Card
-      className="flex flex-col hover:scale-[1.01] transition-default cursor-pointer"
+      className="flex flex-col hover-lift cursor-pointer"
       onClick={() => navigate(`/gift-boxes/${giftBox.id}`)}
     > 
       {/* Gift Box Image */}

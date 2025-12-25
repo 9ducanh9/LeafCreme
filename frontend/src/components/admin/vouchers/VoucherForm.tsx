@@ -1,5 +1,5 @@
 // Voucher Form component - create/edit voucher
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -59,8 +59,8 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
   // Available categories
   const categories = ['Bánh kem', 'Bông lan', 'Mousse', 'Tiramisu']
 
-  const loadProducts = async () => {
-    if (loadingProducts || products.length > 0) return // Already loading or loaded
+  const loadProducts = useCallback(async () => {
+    if (loadingProducts || products.length > 0) return [] // Already loading or loaded
     setLoadingProducts(true)
     try {
       const data = await getProducts({ dang_hoat_dong: true })
@@ -72,14 +72,14 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
     } finally {
       setLoadingProducts(false)
     }
-  }
+  }, [loadingProducts, products.length])
 
   // Load products when form opens and appliesTo is 'product'
   useEffect(() => {
     if (open && formData.appliesTo === 'product' && products.length === 0) {
       loadProducts()
     }
-  }, [open, formData.appliesTo])
+  }, [open, formData.appliesTo, loadProducts, products.length])
 
 
   // Load selected product when editing
@@ -126,7 +126,7 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
       setSelectedProduct(null)
     }
     setErrors({})
-  }, [voucher, open])
+  }, [voucher, open, loadProducts])
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -147,11 +147,11 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
       newErrors.targetId = 'Cần chọn đối tượng áp dụng khi không áp dụng cho tất cả sản phẩm'
     }
 
-    if (formData.minOrderValue < 0) {
+    if ((formData.minOrderValue ?? 0) < 0) {
       newErrors.minOrderValue = 'Giá trị đơn hàng tối thiểu không được âm'
     }
 
-    if (formData.usageLimit < 0) {
+    if ((formData.usageLimit ?? 0) < 0) {
       newErrors.usageLimit = 'Giới hạn sử dụng không được âm'
     }
 

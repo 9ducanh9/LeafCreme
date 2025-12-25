@@ -1,5 +1,5 @@
 // Revenue by Product chart component
-import { Paper, Typography, Box } from '@mui/material'
+import { Paper, Typography } from '@mui/material'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { ProductRevenue } from '../../../types/admin'
 

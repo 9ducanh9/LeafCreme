@@ -146,7 +146,7 @@ export default function GiftBoxDetailPage() {
                   Sản phẩm bao gồm
                 </h2>
                 <ul className="space-y-2">
-                  {giftBox.includedItems.map((item, index) => (
+                  {(giftBox.includedItems || []).map((item, index) => (
                     <li key={index} className="flex items-center text-sm text-text-secondary">
                       <span className="w-1.5 h-1.5 bg-accent-brown rounded-full mr-2 flex-shrink-0"></span>
                       <span>
@@ -154,6 +154,9 @@ export default function GiftBoxDetailPage() {
                       </span>
                     </li>
                   ))}
+                  {(!giftBox.includedItems || giftBox.includedItems.length === 0) && (
+                    <li className="text-sm text-text-secondary italic">Đang cập nhật thông tin...</li>
+                  )}
                 </ul>
               </Card>
 

@@ -72,8 +72,9 @@ venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Setup database (xem DATABASE_SETUP.md)
-# Tạo file .env với database connection
+# Tạo file .env với database connection:
+# DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+# SECRET_KEY=your-secret-key-here
 ```
 
 ### 2. Frontend Setup
@@ -130,11 +131,8 @@ Leaf Crème/
 
 ## 📝 Documentation
 
-- `PROJECT_OVERVIEW.md` - Tổng quan dự án
-- `DATABASE_SETUP.md` - Hướng dẫn setup database
-- `AUTHENTICATION_GUIDE.md` - Hướng dẫn authentication
-- `TESTING_GUIDE.md` - Hướng dẫn testing
-- `RulesLeafCreme.md` - Design rules và guidelines
+- `RulesLeafCreme.md` - Design rules và guidelines cho frontend
+- API Documentation: http://localhost:8000/docs (Swagger UI)
 
 ## 🐛 Troubleshooting
 

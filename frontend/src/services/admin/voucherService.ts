@@ -1,6 +1,5 @@
 // Admin Voucher Service - API calls for voucher management
 import { Voucher } from '../../types/admin'
-import { apiClient } from '../api'
 
 // Mock data storage key
 const STORAGE_KEY = 'leaf_creme_mock_vouchers'

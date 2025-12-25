@@ -1,6 +1,10 @@
 """
 BakeryOnl API - Main application entry point
 """
+# Load environment variables FIRST, before any other imports
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,15 +12,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 
 from app.db import get_db
-from app.core.config import settings
 from app.routers import (
     products, batches, orders, auth, users, 
-    suppliers, payments, reports
+    suppliers, payments, reports, analytics, gift_boxes, lookup, components, leafie
 )
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.security_middleware import SecurityMiddleware
@@ -48,11 +51,11 @@ app.add_middleware(SecurityMiddleware)
 
 # CORS Middleware - Xử lý CORS headers (chạy đầu tiên - QUAN TRỌNG!)
 # Lấy allowed origins từ environment hoặc default
-allowed_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+allowed_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173")
 if allowed_origins_env == "*":
     # Khi dùng allow_credentials=True, không thể dùng "*"
-    # Default cho development: localhost:3000
-    allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # Default cho development: localhost:3000 và localhost:5173 (Vite default)
+    allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"]
 else:
     # Cho phép nhiều origins, phân cách bởi dấu phẩy
     allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
@@ -113,6 +116,12 @@ app.include_router(orders.router)
 app.include_router(suppliers.router)
 app.include_router(payments.router)
 app.include_router(reports.router)
+app.include_router(analytics.router)
+app.include_router(gift_boxes.router)
+app.include_router(gift_boxes.public_router)
+app.include_router(lookup.router)
+app.include_router(components.router)
+app.include_router(leafie.router)
 
 # =========================================================
 # Root Endpoint
@@ -138,7 +147,7 @@ def health_check():
     """Health check endpoint - kiểm tra server status"""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "service": "BakeryOnl API"
     }
 
@@ -157,7 +166,7 @@ def health_check_db(db: Session = Depends(get_db)):
     
     return {
         "status": "healthy" if db_status == "connected" else "unhealthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "database": {
             "status": db_status,
             "error": db_error

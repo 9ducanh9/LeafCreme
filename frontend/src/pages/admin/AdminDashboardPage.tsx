@@ -1,12 +1,11 @@
 // Admin Dashboard Page - Business Intelligence with charts and analytics
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Box,
   Grid,
   Card,
   CardContent,
   Typography,
-  Paper,
   Select,
   MenuItem,
   FormControl,
@@ -14,8 +13,6 @@ import {
   CircularProgress,
 } from '@mui/material'
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -58,11 +55,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadDashboardData()
-  }, [timeRange])
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     setLoading(true)
     try {
       const [revenue, products, sellers, categories, dashboardStats] = await Promise.all([
@@ -83,7 +76,11 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [timeRange])
+
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -132,7 +129,7 @@ export default function AdminDashboardPage() {
 
       {/* Stats Cards */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -161,7 +158,7 @@ export default function AdminDashboardPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -190,7 +187,7 @@ export default function AdminDashboardPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -221,7 +218,7 @@ export default function AdminDashboardPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -253,7 +250,7 @@ export default function AdminDashboardPage() {
 
       {/* Charts Row 1: Revenue Trend */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Typography variant="h6" sx={{ color: '#473C2F', mb: 3, fontFamily: 'Playfair Display, serif' }}>
@@ -304,7 +301,7 @@ export default function AdminDashboardPage() {
 
       {/* Charts Row 2: Product Performance & Best Sellers */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Typography variant="h6" sx={{ color: '#473C2F', mb: 3, fontFamily: 'Playfair Display, serif' }}>
@@ -349,7 +346,7 @@ export default function AdminDashboardPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Typography variant="h6" sx={{ color: '#473C2F', mb: 3, fontFamily: 'Playfair Display, serif' }}>
@@ -398,7 +395,7 @@ export default function AdminDashboardPage() {
 
       {/* Charts Row 3: Category Distribution */}
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Typography variant="h6" sx={{ color: '#473C2F', mb: 3, fontFamily: 'Playfair Display, serif' }}>
@@ -408,16 +405,20 @@ export default function AdminDashboardPage() {
                 <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={categoryRevenue}
+                    data={categoryRevenue as unknown as Array<Record<string, unknown>>}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
+                    label={(entry: { category?: string; name?: string; percent?: number }) => {
+                      const category = entry.category || entry.name || 'Unknown'
+                      const percent = entry.percent ?? 0
+                      return `${category}: ${(percent * 100).toFixed(0)}%`
+                    }}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="revenue"
                   >
-                    {categoryRevenue.map((entry, index) => (
+                    {categoryRevenue.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -442,7 +443,7 @@ export default function AdminDashboardPage() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ bgcolor: 'white', border: '1px solid #E8E5DD' }}>
             <CardContent>
               <Typography variant="h6" sx={{ color: '#473C2F', mb: 3, fontFamily: 'Playfair Display, serif' }}>
@@ -488,7 +489,7 @@ export default function AdminDashboardPage() {
       </Grid>
 
       {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.DEV && (
         <Box mt={3} p={2} bgcolor="#f5f5f5" borderRadius={1}>
           <Typography variant="caption" color="text.secondary">
             Debug: Revenue Data: {revenueData.length} | Products: {productRevenue.length} | 

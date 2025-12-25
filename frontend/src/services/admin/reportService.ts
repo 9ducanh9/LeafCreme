@@ -1,6 +1,5 @@
 // Admin Report Service - API calls for dashboard/reporting data
 import { RevenueData, ProductRevenue, BestSeller, DashboardStats } from '../../types/admin'
-import { apiClient } from '../api'
 
 export interface CategoryRevenue {
   category: string
@@ -25,7 +24,7 @@ const generateDailyRevenue = (): RevenueData[] => {
 
 const generateMonthlyRevenue = (): RevenueData[] => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  return months.map((month, index) => ({
+  return months.map((month) => ({
     date: month,
     revenue: Math.floor(Math.random() * 50000000) + 30000000, // 30M - 80M VND
   }))

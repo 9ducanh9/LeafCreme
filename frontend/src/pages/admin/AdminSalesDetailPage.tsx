@@ -1,5 +1,5 @@
 // Admin Sales Detail Page
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Button, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -16,13 +16,7 @@ export default function AdminSalesDetailPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (id) {
-      loadOrder()
-    }
-  }, [id])
-
-  const loadOrder = async () => {
+  const loadOrder = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
@@ -33,7 +27,13 @@ export default function AdminSalesDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, showError])
+
+  useEffect(() => {
+    if (id) {
+      loadOrder()
+    }
+  }, [id, loadOrder])
 
   const handleStatusChange = async (status: Order['status']) => {
     if (!id || !order) return

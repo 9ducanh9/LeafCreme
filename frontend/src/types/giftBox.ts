@@ -8,6 +8,21 @@ export interface GiftBoxItem {
   quantity: number
 }
 
+// Backend Gift Box structure (from API)
+export interface BackendGiftBox {
+  hop_qua_id: number
+  ten_hop_qua: string
+  sku: string | null
+  gia_ban: number
+  mo_ta: string | null
+  hinh_anh_url: string | null
+  kich_thuoc: string | null
+  trong_luong: number | null
+  dang_hoat_dong: boolean
+  ngay_tao: string
+}
+
+// Frontend Gift Box (with computed fields for display)
 export interface GiftBox {
   id: string
   name: string
@@ -21,6 +36,21 @@ export interface GiftBox {
   status: GiftBoxStatus
   imageKey?: string
   imageUrl?: string
+  sku?: string // SKU from backend for synchronization
+}
+
+// BOM Item structure
+export interface BomItem {
+  bom_id: number
+  hop_qua_id: number
+  bienthe_id: number
+  so_luong: number
+  ngay_tao: string
+  variant_name?: string | null
+  variant_price?: number | null
+  product_name?: string | null
+  product_category?: string | null
+  variant_active?: boolean | null
 }
 
 export interface GiftBoxFilters {

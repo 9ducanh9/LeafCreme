@@ -24,11 +24,15 @@ class ProductCreate(BaseModel):
     ten: str = Field(..., min_length=1, max_length=200)
     sku: str = Field(..., min_length=1, max_length=50)
     loai: str = Field(default="don", pattern="^(don|bien_the|hop_qua)$")
-    gia_co_ban: Decimal = Field(..., gt=0, decimal_places=2)
+    gia_co_ban: Decimal = Field(..., gt=0)
     mo_ta: Optional[str] = None
     hinh_anh_url: Optional[str] = Field(None, max_length=500)
     danh_muc: Optional[str] = Field(None, max_length=100)
     don_vi_tinh: Optional[str] = Field(default="chiếc", max_length=20)
+    phu_hop_dip: Optional[List[str]] = Field(
+        None,
+        description="Danh sách dịp phù hợp (đồng bộ với GiftBoxOccasion): birthday, thanks, love, holiday, self_care"
+    )
     dang_hoat_dong: bool = Field(default=True)
 
 
@@ -36,11 +40,15 @@ class ProductUpdate(BaseModel):
     ten: Optional[str] = Field(None, min_length=1, max_length=200)
     sku: Optional[str] = Field(None, min_length=1, max_length=50)
     loai: Optional[str] = Field(None, pattern="^(don|bien_the|hop_qua)$")
-    gia_co_ban: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    gia_co_ban: Optional[Decimal] = Field(None, gt=0)
     mo_ta: Optional[str] = None
     hinh_anh_url: Optional[str] = Field(None, max_length=500)
     danh_muc: Optional[str] = Field(None, max_length=100)
     don_vi_tinh: Optional[str] = Field(None, max_length=20)
+    phu_hop_dip: Optional[List[str]] = Field(
+        None,
+        description="Danh sách dịp phù hợp (đồng bộ với GiftBoxOccasion): birthday, thanks, love, holiday, self_care"
+    )
     dang_hoat_dong: Optional[bool] = None
 
 
@@ -54,6 +62,7 @@ class ProductResponse(BaseModel):
     hinh_anh_url: Optional[str]
     danh_muc: Optional[str]
     don_vi_tinh: Optional[str]
+    phu_hop_dip: Optional[List[str]]
     dang_hoat_dong: bool
     ngay_tao: datetime
     ngay_cap_nhat: datetime
@@ -69,7 +78,7 @@ class VariantCreate(BaseModel):
     sanpham_id: int = Field(..., gt=0)
     huong_vi: str = Field(..., min_length=1, max_length=100)
     kich_thuoc: Optional[str] = Field(None, max_length=50)
-    gia_bienthe: Decimal = Field(..., gt=0, decimal_places=2)
+    gia_bienthe: Decimal = Field(..., gt=0)
     sku_bienthe: Optional[str] = Field(None, max_length=50)
     muc_gioi_han_ton: int = Field(default=10, ge=0)
     dang_hoat_dong: bool = Field(default=True)
@@ -78,7 +87,7 @@ class VariantCreate(BaseModel):
 class VariantUpdate(BaseModel):
     huong_vi: Optional[str] = Field(None, min_length=1, max_length=100)
     kich_thuoc: Optional[str] = Field(None, max_length=50)
-    gia_bienthe: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    gia_bienthe: Optional[Decimal] = Field(None, gt=0)
     sku_bienthe: Optional[str] = Field(None, max_length=50)
     muc_gioi_han_ton: Optional[int] = Field(None, ge=0)
     dang_hoat_dong: Optional[bool] = None
@@ -132,6 +141,32 @@ def list_products(
     
     if dang_hoat_dong is not None:
         query = query.filter(SanPham.dang_hoat_dong == dang_hoat_dong)
+    
+    # #region agent log
+    import json
+    from datetime import datetime
+    try:
+        log_data = {
+            "function": "list_products",
+            "query_filters": {"dang_hoat_dong": dang_hoat_dong, "search": search, "danh_muc": danh_muc, "loai": loai},
+            "skip": skip,
+            "limit": limit,
+            "model_has_phu_hop_dip": hasattr(SanPham, 'phu_hop_dip')
+        }
+        with open(r"c:\Leaf Crème\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "id": f"log_{int(datetime.now().timestamp() * 1000)}",
+                "timestamp": int(datetime.now().timestamp() * 1000),
+                "location": "products.py:before_query",
+                "message": "About to execute query with phu_hop_dip field",
+                "data": log_data,
+                "sessionId": "debug-session",
+                "runId": "pre-fix",
+                "hypothesisId": "A"
+            }) + "\n")
+    except Exception:
+        pass
+    # #endregion
     
     products = query.order_by(SanPham.sanpham_id.desc()).offset(skip).limit(limit).all()
     return products

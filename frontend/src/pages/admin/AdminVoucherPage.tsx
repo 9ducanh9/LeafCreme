@@ -1,5 +1,5 @@
 // Admin Voucher Management Page
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Box, Button, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import VoucherTable from '../../components/admin/vouchers/VoucherTable'
@@ -18,7 +18,6 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 export default function AdminVoucherPage() {
   const { showSuccess, showError } = useToast()
   const [vouchers, setVouchers] = useState<Voucher[]>([])
-  const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
@@ -31,21 +30,18 @@ export default function AdminVoucherPage() {
   const [type, setType] = useState('')
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    loadVouchers()
-  }, [status, type, search])
-
-  const loadVouchers = async () => {
-    setLoading(true)
+  const loadVouchers = useCallback(async () => {
     try {
       const data = await getVouchers({ status, type, search })
       setVouchers(data)
     } catch (error) {
       showError('Không thể tải danh sách mã giảm giá')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [search, showError, status, type])
+
+  useEffect(() => {
+    loadVouchers()
+  }, [loadVouchers])
 
   const handleCreate = () => {
     setEditingVoucher(null)

@@ -23,8 +23,10 @@ export default function LoginPage() {
       await login(username, password)
       // Redirect to home page after successful login
       navigate('/')
-    } catch (err: any) {
-      setError(err.detail || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.')
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      setError((typeof detail === 'string' && detail) || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.')
     } finally {
       setLoading(false)
     }

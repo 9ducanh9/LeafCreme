@@ -17,6 +17,7 @@ import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { formatPrice } from '../utils/formatPrice'
 import { createOrder, OrderCreate } from '../services/orderService'
+import { createVnpayPayment } from '../services/paymentService'
 import { ArrowLeft } from 'lucide-react'
 import ProtectedRoute from '../components/routing/ProtectedRoute'
 import GiftBoxInfo from '../components/cart/GiftBoxInfo'
@@ -47,6 +48,7 @@ function CheckoutPageContent() {
   const [deliveryTimeError, setDeliveryTimeError] = useState<string>('')
 
   const [voucherCode, setVoucherCode] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'pay_later' | 'vnpay'>('pay_later')
 
   useEffect(() => {
     if (cart.items.length === 0) {
@@ -145,21 +147,33 @@ function CheckoutPageContent() {
       // Clear cart after successful order
       clearCart()
 
-      // Redirect to order confirmation
+      if (paymentMethod === 'vnpay') {
+        const { payment_url } = await createVnpayPayment(order.donhang_id)
+        window.location.href = payment_url
+        return
+      }
+
       navigate(`/orders/${order.donhang_id}/success`)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating order:', err)
       
       // Handle specific error cases
       let errorMessage = 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại.'
+
+      const status =
+        err && typeof err === 'object' && 'status' in err ? (err as { status?: unknown }).status : undefined
+      const detail =
+        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      const errorText =
+        err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : undefined
       
-      if (err.status === 404 && err.detail?.includes('Hộp quà')) {
+      if (status === 404 && typeof detail === 'string' && detail.includes('Hộp quà')) {
         // Gift box not found in database
         errorMessage = 'Hộp quà này hiện chưa có sẵn trong hệ thống. Vui lòng liên hệ cửa hàng để đặt hàng hoặc chọn sản phẩm khác.'
-      } else if (err.detail) {
-        errorMessage = err.detail
-      } else if (err.error) {
-        errorMessage = err.error
+      } else if (typeof detail === 'string' && detail) {
+        errorMessage = detail
+      } else if (typeof errorText === 'string' && errorText) {
+        errorMessage = errorText
       }
       
       setError(errorMessage)
@@ -493,6 +507,36 @@ function CheckoutPageContent() {
                     disabled={loading}
                     placeholder="Ghi chú thêm cho đơn hàng (tùy chọn)"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    Phương thức thanh toán
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-text-secondary">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="pay_later"
+                        checked={paymentMethod === 'pay_later'}
+                        onChange={() => setPaymentMethod('pay_later')}
+                        disabled={loading}
+                      />
+                      Thanh toán khi nhận hàng
+                    </label>
+                    <label className="flex items-center gap-2 text-text-secondary">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="vnpay"
+                        checked={paymentMethod === 'vnpay'}
+                        onChange={() => setPaymentMethod('vnpay')}
+                        disabled={loading}
+                      />
+                      Thanh toán VNPay
+                    </label>
+                  </div>
                 </div>
 
                 <div className="pt-4">

@@ -1,5 +1,5 @@
 // Admin Inventory Page - Quản lý tồn kho
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Box,
   Typography,
@@ -27,9 +27,7 @@ import {
   ComponentInventoryItem,
   GiftBoxInventoryItem,
 } from '../../services/admin/inventoryService'
-import { formatPrice } from '../../utils/formatPrice'
-
-type TabValue = 'products' | 'components' | 'gift-boxes'
+import { normalizeSize, getSizeDisplayLabel } from '../../utils/sizeNormalizer'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -62,11 +60,7 @@ export default function AdminInventoryPage() {
   const [componentInventory, setComponentInventory] = useState<ComponentInventoryItem[]>([])
   const [giftBoxInventory, setGiftBoxInventory] = useState<GiftBoxInventoryItem[]>([])
 
-  useEffect(() => {
-    loadInventory()
-  }, [activeTab])
-
-  const loadInventory = async () => {
+  const loadInventory = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -80,20 +74,30 @@ export default function AdminInventoryPage() {
         const data = await getGiftBoxInventory()
         setGiftBoxInventory(data)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading inventory:', err)
       // Kiểm tra nếu là lỗi CORS hoặc network
-      if (err.detail?.includes('CORS') || err.detail?.includes('fetch') || err.error === 'Network error') {
+      const detail =
+        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      const errorText =
+        err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : undefined
+      const status =
+        err && typeof err === 'object' && 'status' in err ? (err as { status?: unknown }).status : undefined
+      if (typeof detail === 'string' && (detail.includes('CORS') || detail.includes('fetch')) || errorText === 'Network error') {
         setError('Lỗi kết nối: Vui lòng kiểm tra backend server đang chạy và CORS đã được cấu hình đúng')
-      } else if (err.status === 401) {
+      } else if (status === 401) {
         setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
       } else {
-        setError(err.error || err.detail || 'Không thể tải dữ liệu tồn kho')
+        setError((typeof errorText === 'string' && errorText) || (typeof detail === 'string' && detail) || 'Không thể tải dữ liệu tồn kho')
       }
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab])
+
+  useEffect(() => {
+    loadInventory()
+  }, [loadInventory])
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A'
@@ -251,7 +255,7 @@ export default function AdminInventoryPage() {
                         <TableCell>{item.ma_lo}</TableCell>
                         <TableCell>{item.ten_sanpham || 'N/A'}</TableCell>
                         <TableCell>{item.huong_vi}</TableCell>
-                        <TableCell>{item.kich_thuoc || 'N/A'}</TableCell>
+                        <TableCell>{item.kich_thuoc ? getSizeDisplayLabel(normalizeSize(item.kich_thuoc)) : 'N/A'}</TableCell>
                         <TableCell align="right">
                           <Chip
                             label={item.so_luong_hien_tai.toLocaleString()}

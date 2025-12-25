@@ -1,5 +1,4 @@
 // EmptyState - consistent empty state component using design tokens
-import { ReactNode } from 'react'
 import { LucideIcon } from 'lucide-react'
 import Button from '../ui/Button'
 

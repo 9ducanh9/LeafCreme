@@ -78,7 +78,14 @@ export async function getCurrentUser(): Promise<User> {
   try {
     return await apiClient.get<User>('/auth/me')
   } catch (error) {
-    console.error('Error fetching current user:', error)
+    // Don't log 401 errors - this is expected when user is not authenticated
+    const status = error && typeof error === 'object' && 'status' in error 
+      ? (error as { status?: number }).status 
+      : undefined
+    
+    if (status !== 401) {
+      console.error('Error fetching current user:', error)
+    }
     throw error
   }
 }

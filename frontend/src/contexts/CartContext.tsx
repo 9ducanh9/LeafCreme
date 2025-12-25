@@ -116,15 +116,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (!result.valid) {
           setAppliedVoucher(null)
         } else if (result.voucher) {
+          const voucherCode = result.voucher.code
+          const discountAmount = result.discountAmount
           // Update discount amount if cart total changed
-          setAppliedVoucher({
-            code: result.voucher.code,
-            discountAmount: result.discountAmount,
+          setAppliedVoucher((prev) => {
+            if (!prev) return null
+            const next = {
+              code: voucherCode,
+              discountAmount,
+            }
+            if (prev.code === next.code && prev.discountAmount === next.discountAmount) {
+              return prev
+            }
+            return next
           })
         }
       })
     }
-  }, [cart.total, cart.items.length])
+  }, [appliedVoucher, cart.total, cart.items])
 
   return (
     <CartContext.Provider

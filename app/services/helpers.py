@@ -232,10 +232,9 @@ def get_status_color(status: str) -> str:
         "hoatdong": "green",
         "hethan": "red",
         # Cảnh báo
+        "thap": "yellow",
         "binh_thuong": "gray",
-        "canh_bao": "yellow",
-        "nghiem_trong": "orange",
-        "khan_cap": "red",
+        "cao": "red",
     }
     return status_colors.get(status.lower(), "gray")
 
@@ -257,10 +256,9 @@ def format_status_vietnam(status: str) -> str:
         "hoan_thanh": "Hoàn thành",
         "hoatdong": "Hoạt động",
         "hethan": "Hết hạn",
+        "thap": "Thấp",
         "binh_thuong": "Bình thường",
-        "canh_bao": "Cảnh báo",
-        "nghiem_trong": "Nghiêm trọng",
-        "khan_cap": "Khẩn cấp",
+        "cao": "Cao",
     }
     return status_map.get(status.lower(), status)
 

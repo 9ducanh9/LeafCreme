@@ -1,6 +1,6 @@
 // Voucher service for validating and applying vouchers
 import { getVouchers } from './admin/voucherService'
-import { Voucher } from '../types/admin'
+import type { Voucher } from '../types/admin'
 import { CartItem } from '../types/cart'
 
 export interface VoucherValidationResult {
@@ -67,9 +67,7 @@ export async function validateVoucher(
     // Check if voucher applies to cart items
     if (voucher.appliesTo !== 'all') {
       const cartProductIds = cartItems.map((item) => item.productId)
-      const cartCategories = cartItems
-        .map((item) => item.productCategory)
-        .filter(Boolean) as string[]
+      const cartCategories: string[] = []
 
       if (voucher.appliesTo === 'product') {
         if (!voucher.targetId || !cartProductIds.includes(Number(voucher.targetId))) {

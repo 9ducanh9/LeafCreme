@@ -105,8 +105,10 @@ export default function UserProfilePage() {
       setProfileData({ ...profileData, avatar_url: avatarUrl })
       await refreshUser()
       setSuccess('Cập nhật avatar thành công!')
-    } catch (err: any) {
-      setError(err.detail || 'Có lỗi xảy ra khi upload avatar.')
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      setError((typeof detail === 'string' && detail) || 'Có lỗi xảy ra khi upload avatar.')
       setAvatarPreview(user.avatar_url || null)
     } finally {
       setUploadingAvatar(false)
@@ -131,8 +133,10 @@ export default function UserProfilePage() {
       await updateUserProfile(user.nguoidung_id, updateData)
       await refreshUser()
       setSuccess('Cập nhật thông tin thành công!')
-    } catch (err: any) {
-      setError(err.detail || 'Có lỗi xảy ra khi cập nhật thông tin.')
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      setError((typeof detail === 'string' && detail) || 'Có lỗi xảy ra khi cập nhật thông tin.')
     } finally {
       setLoading(false)
     }
@@ -159,8 +163,10 @@ export default function UserProfilePage() {
     try {
       // TODO: Implement when backend endpoint is available
       setError('Tính năng đổi mật khẩu đang được phát triển')
-    } catch (err: any) {
-      setError(err.detail || 'Có lỗi xảy ra khi đổi mật khẩu.')
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      setError((typeof detail === 'string' && detail) || 'Có lỗi xảy ra khi đổi mật khẩu.')
     } finally {
       setLoading(false)
     }

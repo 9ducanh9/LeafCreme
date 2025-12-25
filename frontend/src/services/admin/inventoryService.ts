@@ -86,7 +86,7 @@ export async function getProductInventory(bienthe_id?: number): Promise<ProductI
       localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(data))
     }
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.warn('Failed to fetch product inventory from API, using cached data:', error)
     // Fallback to mock/cached data
     const cached = getMockProductInventory()
@@ -107,7 +107,7 @@ export async function getComponentInventory(linh_kien_id?: number): Promise<Comp
       localStorage.setItem(STORAGE_KEY_COMPONENTS, JSON.stringify(data))
     }
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.warn('Failed to fetch component inventory from API, using cached data:', error)
     // Fallback to mock/cached data
     const cached = getMockComponentInventory()
@@ -128,7 +128,7 @@ export async function getGiftBoxInventory(hop_qua_id?: number): Promise<GiftBoxI
       localStorage.setItem(STORAGE_KEY_GIFTBOXES, JSON.stringify(data))
     }
     return data
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.warn('Failed to fetch gift box inventory from API, using cached data:', error)
     // Fallback to mock/cached data
     const cached = getMockGiftBoxInventory()

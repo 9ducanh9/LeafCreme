@@ -1,9 +1,10 @@
 // Header/Navbar component - simple, slim header pinned to top
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShoppingCart, User as UserIcon, LogOut, LayoutDashboard } from 'lucide-react'
+import { ShoppingCart, User as UserIcon, LogOut, LayoutDashboard, Leaf } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
 import { useAuth } from '../../contexts/AuthContext'
+import { useLeafieContext } from '../../contexts/LeafieContext'
 import Button from '../ui/Button'
 import ProductDropdown from './ProductDropdown'
 import CartDrawer from '../cart/CartDrawer'
@@ -13,9 +14,16 @@ export default function Header() {
   const navigate = useNavigate()
   const { cart } = useCart()
   const { user, logout } = useAuth()
+  const { openChat } = useLeafieContext()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState(false)
   const [showCartDrawer, setShowCartDrawer] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
+
+  // Reset avatar error when user or avatar_url changes
+  useEffect(() => {
+    setAvatarError(false)
+  }, [user?.avatar_url])
 
   const handleLogout = () => {
     logout()
@@ -112,8 +120,17 @@ export default function Header() {
             </a>
           </nav>
 
-          {/* Right side: Cart and User (được đẩy sang phải) */}
+          {/* Right side: Chatbot, Cart and User (được đẩy sang phải) */}
           <div className="flex items-center gap-4 ml-auto">
+            {/* Leafie Chatbot Icon */}
+            <button
+              onClick={() => openChat()}
+              className="relative p-2 hover:opacity-70 transition-default group"
+              aria-label="Trò chuyện với Leafie"
+            >
+              <Leaf className="w-6 h-6 text-text-primary group-hover:text-accent-brown transition-default" />
+            </button>
+
             {/* Cart Icon */}
             <button
               onClick={() => setShowCartDrawer(true)}
@@ -136,7 +153,7 @@ export default function Header() {
                   className="relative p-1 hover:opacity-70 transition-default"
                   aria-label="Tài khoản"
                 >
-                  {user.avatar_url && user.avatar_url.trim() ? (
+                  {user.avatar_url && user.avatar_url.trim() && !avatarError ? (
                     <img
                       src={
                         user.avatar_url.startsWith('http')
@@ -148,14 +165,11 @@ export default function Header() {
                       }
                       alt={user.ho_ten}
                       className="w-10 h-10 rounded-full object-cover border border-border"
-                      onError={(e) => {
-                        // Hide image and show icon instead
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
+                      onError={() => {
+                        setAvatarError(true)
                       }}
                     />
-                  ) : null}
-                  {(!user.avatar_url || !user.avatar_url.trim()) && (
+                  ) : (
                     <UserIcon className="w-10 h-10 text-text-primary" />
                   )}
                 </button>

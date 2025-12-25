@@ -16,7 +16,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const navigate = useNavigate()
 
   return (
-    <Card className="flex flex-col hover:scale-[1.01] transition-default cursor-pointer" onClick={() => navigate(`/products/${product.sanpham_id}`)}>
+    <Card className="flex flex-col hover-lift cursor-pointer" onClick={() => navigate(`/products/${product.sanpham_id}`)}>
       {/* Product Image */}
       <div className="relative mb-4 -mx-6 -mt-6">
         <img

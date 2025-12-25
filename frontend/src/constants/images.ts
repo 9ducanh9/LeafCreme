@@ -77,8 +77,9 @@ export function getImagePath(
   fallback?: string
 ): string {
   const categoryPaths = IMAGE_PATHS[category]
-  if (categoryPaths && type in categoryPaths) {
-    return (categoryPaths as any)[type]
+  const record = categoryPaths as unknown as Record<string, string>
+  if (record && Object.prototype.hasOwnProperty.call(record, type)) {
+    return record[type]
   }
   
   // Map category to fallback image

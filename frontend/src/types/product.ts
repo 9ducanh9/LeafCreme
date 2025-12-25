@@ -9,6 +9,7 @@ export interface Product {
   hinh_anh_url?: string
   danh_muc?: string
   don_vi_tinh?: string
+  phu_hop_dip?: string[] // Danh sách dịp phù hợp (đồng bộ với GiftBoxOccasion): birthday, thanks, love, holiday, self_care
   dang_hoat_dong: boolean
   ngay_tao: string
 }

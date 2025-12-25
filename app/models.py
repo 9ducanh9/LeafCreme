@@ -27,7 +27,7 @@ trang_thai_thanh_toan = ENUM("dang_xu_ly", "thanh_cong", "that_bai", "huy", name
 trang_thai_doi_tra = ENUM("yeu_cau", "dong_y", "tu_choi", "hoan_thanh", name="trang_thai_doi_tra", create_type=False)
 loai_giao_dich_kho = ENUM("nhap", "xuat", "dieu_chuyen", "kiem_ke", "huy", name="loai_giao_dich_kho", create_type=False)
 loai_canh_bao = ENUM("het_han", "sap_het_han", "ton_kho_thap", "qua_han", name="loai_canh_bao", create_type=False)
-muc_do_nghiem_trong = ENUM("binh_thuong", "canh_bao", "nghiem_trong", "khan_cap", name="muc_do_nghiem_trong", create_type=False)
+muc_do_nghiem_trong = ENUM("thap", "binh_thuong", "cao", name="muc_do_nghiem_trong", create_type=False)
 
 
 # =========================================================
@@ -90,6 +90,7 @@ class SanPham(Base):
     hinh_anh_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     danh_muc: Mapped[str | None] = mapped_column(String(100), nullable=True)
     don_vi_tinh: Mapped[str | None] = mapped_column(String(20), nullable=True, server_default="chiếc")
+    phu_hop_dip: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True, comment="Danh sách dịp phù hợp (đồng bộ với GiftBoxOccasion): birthday, thanks, love, holiday, self_care")
     dang_hoat_dong: Mapped[bool] = mapped_column(Boolean, default=True)
     ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     ngay_cap_nhat: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -376,6 +377,10 @@ class ChiTietDonHang(Base):
     ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     
     donhang: Mapped[DonHang] = relationship(back_populates="items")
+
+    @property
+    def trang_thai(self) -> str:
+        return self.trang_thai_don_hang
 
 
 # =========================================================

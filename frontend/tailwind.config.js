@@ -38,8 +38,15 @@ export default {
         '48': 'var(--spacing-48)',
       },
       transitionDuration: {
-        'default': '150ms',
-        'slow': '200ms',
+        'fast': '200ms',
+        'default': '300ms',
+        'smooth': '400ms',
+        'slow': '500ms',
+      },
+      transitionTimingFunction: {
+        'soft': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'smooth': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        'bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       },
     },
   },

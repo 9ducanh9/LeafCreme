@@ -48,9 +48,10 @@ export default function HeroBanner() {
         {slides.map((slide, index) => (
           <div
             key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-200 ${
+            className={`absolute inset-0 transition-opacity duration-500 ${
               index === activeIndex ? 'opacity-100' : 'opacity-0'
             }`}
+            style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
           >
             <img
               src={slide.imageUrl}
@@ -93,9 +94,10 @@ export default function HeroBanner() {
               key={slide.id}
               type="button"
               onClick={() => setActiveIndex(index)}
-              className={`h-2 w-2 rounded-full border border-accent-brown transition-opacity duration-150 ${
-                index === activeIndex ? 'bg-accent-brown opacity-100' : 'opacity-60'
+              className={`h-2 w-2 rounded-full border border-accent-brown transition-all duration-300 ${
+                index === activeIndex ? 'bg-accent-brown opacity-100 scale-110' : 'opacity-60'
               }`}
+              style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
               aria-label={`Chuyển đến slide ${index + 1}`}
             />
           ))}

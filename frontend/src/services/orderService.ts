@@ -50,7 +50,7 @@ export interface OrderResponse {
   ngay_tao: string
   ngay_cap_nhat: string
   items: OrderItemResponse[]
-  vouchers: any[]
+  vouchers: unknown[]
 }
 
 export async function createOrder(

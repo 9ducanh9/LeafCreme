@@ -2,6 +2,7 @@
 import { ProductVariant } from '../../types/admin'
 import { Product, ProductVariant as BackendVariant } from '../../types/product'
 import { apiClient } from '../api'
+import { normalizeSize, getSizeCode } from '../../utils/sizeNormalizer'
 
 /**
  * Map backend Product + Variant to admin ProductVariant format
@@ -19,7 +20,7 @@ function mapToAdminVariant(
       description: product.mo_ta || '',
       category: product.danh_muc || '',
       price: variant.gia_bienthe,
-      size: (variant.kich_thuoc as 'S' | 'M' | 'L' | 'XL') || 'M',
+      size: getSizeCode(normalizeSize(variant.kich_thuoc)) || 'M',
       status: variant.dang_hoat_dong ? 'active' : 'hidden',
       image: product.hinh_anh_url || '',
       sku: variant.sku_bienthe || product.sku,
@@ -53,7 +54,7 @@ export async function getProductVariants(filters?: {
   try {
     // Fetch all products (including inactive for admin)
     // Don't filter by dang_hoat_dong to show all products in admin panel
-    const params: Record<string, any> = {
+    const params: Record<string, string | number | boolean | null> = {
       limit: 1000, // Get all products
     }
     

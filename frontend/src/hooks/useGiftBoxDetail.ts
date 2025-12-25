@@ -20,8 +20,9 @@ export function useGiftBoxDetail(id: string) {
       try {
         const data = await getGiftBoxById(id)
         setGiftBox(data)
-      } catch (err: any) {
-        setError(err.message || 'Không thể tải thông tin hộp quà')
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : null
+        setError(message || 'Không thể tải thông tin hộp quà')
       } finally {
         setLoading(false)
       }

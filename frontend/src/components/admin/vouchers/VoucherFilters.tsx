@@ -1,6 +1,5 @@
 // Voucher Filters component - filter by status, type, search
 import { Box, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
-import { Voucher } from '../../../types/admin'
 
 interface VoucherFiltersProps {
   status: string

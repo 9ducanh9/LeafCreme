@@ -1,6 +1,5 @@
 // Pre-order Filters component - filter by status, date range, search
 import { Box, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
-import { PreOrder } from '../../../types/admin'
 
 interface PreOrderFiltersProps {
   status: string

@@ -10,7 +10,6 @@ import {
   DialogActions,
   Paper,
   Typography,
-  IconButton,
   Chip,
   Alert,
 } from '@mui/material'
@@ -55,9 +54,10 @@ export default function CategoryManager({ open, onClose, onCategoriesChange }: C
       setNewCategory('')
       showSuccess('Thêm danh mục thành công')
       onCategoriesChange?.()
-    } catch (err: any) {
-      setError(err.message || 'Không thể thêm danh mục')
-      showError(err.message || 'Không thể thêm danh mục')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : ''
+      setError(message || 'Không thể thêm danh mục')
+      showError(message || 'Không thể thêm danh mục')
     }
   }
 
@@ -72,7 +72,8 @@ export default function CategoryManager({ open, onClose, onCategoriesChange }: C
       loadCategories()
       showSuccess('Xóa danh mục thành công')
       onCategoriesChange?.()
-    } catch (err: any) {
+    } catch (err: unknown) {
+      void err
       showError('Không thể xóa danh mục')
     }
   }

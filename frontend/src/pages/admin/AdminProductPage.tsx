@@ -1,6 +1,6 @@
 // Admin Product Management Page
-import { useState, useEffect } from 'react'
-import { Box, Button, Typography, Paper } from '@mui/material'
+import { useState, useEffect, useCallback } from 'react'
+import { Box, Button, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import CategoryIcon from '@mui/icons-material/Category'
 import ProductTable from '../../components/admin/products/ProductTable'
@@ -20,7 +20,6 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 export default function AdminProductPage() {
   const { showSuccess, showError } = useToast()
   const [variants, setVariants] = useState<ProductVariant[]>([])
-  const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null)
@@ -34,23 +33,21 @@ export default function AdminProductPage() {
   const [size, setSize] = useState('')
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    loadVariants()
-  }, [category, size, search])
-
-  const loadVariants = async () => {
-    setLoading(true)
+  const loadVariants = useCallback(async () => {
     try {
       // Force fresh data by adding timestamp to prevent caching
       const data = await getProductVariants({ category, size, search })
       setVariants(data)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading variants:', error)
-      showError(error?.message || 'Không thể tải danh sách sản phẩm')
-    } finally {
-      setLoading(false)
+      const message = error instanceof Error ? error.message : ''
+      showError(message || 'Không thể tải danh sách sản phẩm')
     }
-  }
+  }, [category, search, showError, size])
+
+  useEffect(() => {
+    loadVariants()
+  }, [loadVariants])
 
   const handleCreate = () => {
     setEditingVariant(null)
@@ -79,9 +76,10 @@ export default function AdminProductPage() {
       await loadVariants()
       setFormOpen(false)
       setEditingVariant(null)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving product:', error)
-      showError(error?.message || 'Không thể lưu sản phẩm')
+      const message = error instanceof Error ? error.message : ''
+      showError(message || 'Không thể lưu sản phẩm')
     }
   }
 

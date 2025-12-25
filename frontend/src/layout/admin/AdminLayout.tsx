@@ -20,11 +20,13 @@ import {
 import MenuIcon from '@mui/icons-material/Menu'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import InventoryIcon from '@mui/icons-material/Inventory'
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard'
 import LocalOfferIcon from '@mui/icons-material/LocalOffer'
 import EventNoteIcon from '@mui/icons-material/EventNote'
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale'
 import HomeIcon from '@mui/icons-material/Home'
 import WarehouseIcon from '@mui/icons-material/Warehouse'
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner'
 import { useAuth } from '../../contexts/AuthContext'
 
 const DRAWER_WIDTH = 280
@@ -32,7 +34,9 @@ const DRAWER_WIDTH = 280
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
   { text: 'Sản phẩm', icon: <InventoryIcon />, path: '/admin/products' },
+  { text: 'Hộp quà', icon: <CardGiftcardIcon />, path: '/admin/gift-boxes' },
   { text: 'Tồn kho', icon: <WarehouseIcon />, path: '/admin/inventory' },
+  { text: 'Nhập lô', icon: <QrCodeScannerIcon />, path: '/admin/batches' },
   { text: 'Mã giảm giá', icon: <LocalOfferIcon />, path: '/admin/vouchers' },
   { text: 'Đặt trước', icon: <EventNoteIcon />, path: '/admin/preorders' },
   { text: 'Bán hàng', icon: <PointOfSaleIcon />, path: '/admin/sales' },

@@ -29,12 +29,12 @@ export default function ConfirmDialog({
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center p-4 transition-opacity duration-300"
         onClick={onCancel}
       >
         {/* Dialog */}
         <div
-          className="bg-surface border border-border rounded-card shadow-lg max-w-md w-full p-6"
+          className="bg-surface border border-border rounded-card shadow-lg max-w-md w-full p-6 transform transition-all duration-300 scale-100"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

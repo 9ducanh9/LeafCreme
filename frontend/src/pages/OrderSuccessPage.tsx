@@ -1,6 +1,6 @@
 // Order success/confirmation page
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -12,9 +12,25 @@ import { CheckCircle, Home, Package } from 'lucide-react'
 export default function OrderSuccessPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [order, setOrder] = useState<OrderResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const paymentStatus = new URLSearchParams(location.search).get('payment_status')
+
+  const paymentStatusText =
+    paymentStatus === 'success'
+      ? 'Thanh toán VNPay thành công.'
+      : paymentStatus === 'failed'
+      ? 'Thanh toán VNPay thất bại hoặc bị hủy.'
+      : paymentStatus === 'invalid_signature'
+      ? 'Thanh toán VNPay không hợp lệ (sai chữ ký).' 
+      : paymentStatus === 'config_error'
+      ? 'Hệ thống thiếu cấu hình VNPay.'
+      : paymentStatus
+      ? `Trạng thái thanh toán: ${paymentStatus}`
+      : null
 
   useEffect(() => {
     async function fetchOrder() {
@@ -32,9 +48,11 @@ export default function OrderSuccessPage() {
 
         const orderData = await getOrder(orderId)
         setOrder(orderData)
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching order:', err)
-        setError(err.detail || 'Không thể tải thông tin đơn hàng')
+        const detail =
+          err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+        setError((typeof detail === 'string' && detail) || 'Không thể tải thông tin đơn hàng')
       } finally {
         setLoading(false)
       }
@@ -86,6 +104,11 @@ export default function OrderSuccessPage() {
             <p className="text-text-secondary text-lg">
               Cảm ơn bạn đã đặt hàng tại Leaf Creme
             </p>
+            {paymentStatusText && (
+              <div className="mt-4 p-3 bg-background rounded-card">
+                <p className="text-sm text-text-secondary">{paymentStatusText}</p>
+              </div>
+            )}
             <div className="mt-6 p-4 bg-accent-yellow/20 rounded-card">
               <p className="text-sm text-text-secondary mb-1">Mã đơn hàng</p>
               <p className="font-heading text-2xl font-semibold text-text-primary">

@@ -6,7 +6,8 @@ import Button from '../components/ui/Button'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import ProductCard from '../components/bakery/ProductCard'
-import { getProducts, getProductVariants, Product, ProductVariant } from '../services/productService'
+import { getProducts, getProductVariants } from '../services/productService'
+import type { Product, ProductFilters, ProductVariant } from '../types/product'
 import { Search, X } from 'lucide-react'
 
 const PAGE_SIZE = 8
@@ -69,7 +70,7 @@ export default function SearchPage() {
         setLoading(true)
         setError(null)
         
-        const filters: any = {
+        const filters: ProductFilters = {
           dang_hoat_dong: true,
           limit: 1000,
         }
@@ -188,7 +189,7 @@ export default function SearchPage() {
     <div className="min-h-screen bg-background py-8 md:py-12">
       <div className="max-w-[1440px] mx-auto px-4 md:px-6">
         {/* Filters Bar - All in one row */}
-        <Card className="mb-8">
+        <Card className="mb-8 mt-8">
             <form onSubmit={handleSearch}>
               <div className="flex flex-wrap items-end gap-4">
                 {/* Search Input */}

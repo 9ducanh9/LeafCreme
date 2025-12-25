@@ -1,9 +1,10 @@
 """
 Payments router: Quản lý thanh toán
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
@@ -12,7 +13,9 @@ from pydantic import BaseModel, Field
 from app.db import get_db
 from app.models import ThanhToan, DonHang
 from app.core.dependencies import get_current_user, require_role
+from app.core.config import settings
 from app.schemas import ThongTinGiaoDich, validate_thong_tin_giao_dich
+from app.services.vnpay import build_payment_url, verify_params, parse_vnpay_date
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -64,6 +67,15 @@ class PaymentResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class VnpayCreateRequest(BaseModel):
+    donhang_id: int = Field(..., description="ID đơn hàng")
+
+
+class VnpayCreateResponse(BaseModel):
+    payment_id: int
+    payment_url: str
 
 
 # =========================================================
@@ -153,6 +165,223 @@ def get_payment(
     return PaymentResponse(**payment_dict)
 
 
+@router.post("/vnpay/create", response_model=VnpayCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_vnpay_payment(
+    payload: VnpayCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    if not settings.VNPAY_TMN_CODE or not settings.VNPAY_HASH_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Thiếu cấu hình VNPay (VNPAY_TMN_CODE/VNPAY_HASH_SECRET)"
+        )
+
+    order = db.query(DonHang).filter(DonHang.donhang_id == payload.donhang_id).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Đơn hàng không tồn tại"
+        )
+
+    vaitro_ten = current_user.vaitro.ten_vai_tro if current_user.vaitro else None
+    if vaitro_ten not in ["admin", "manager"]:
+        if order.nguoidung_id != current_user.nguoidung_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn chỉ có thể thanh toán đơn hàng của mình"
+            )
+
+    total_paid = db.query(ThanhToan).filter(
+        ThanhToan.donhang_id == order.donhang_id,
+        ThanhToan.trang_thai == "thanh_cong"
+    ).with_entities(
+        func.sum(ThanhToan.so_tien)
+    ).scalar() or Decimal("0")
+
+    remaining = (order.tien_thanh_toan or Decimal("0")) - total_paid
+    if remaining <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Đơn hàng đã được thanh toán đủ"
+        )
+
+    payment = ThanhToan(
+        donhang_id=order.donhang_id,
+        phuong_thuc="vi_dien_tu",
+        so_tien=remaining,
+        trang_thai="dang_xu_ly",
+        thong_tin_giao_dich=validate_thong_tin_giao_dich({
+            "ma_giao_dich_ben_thu_3": None,
+            "thoi_gian_giao_dich": None,
+            "chi_tiet_raw": {"provider": "vnpay"}
+        })
+    )
+    db.add(payment)
+    db.flush()
+
+    ip_addr = request.client.host if request.client else "127.0.0.1"
+    now = datetime.utcnow()
+
+    vnp_amount = int((payment.so_tien or Decimal("0")) * Decimal("100"))
+
+    return_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/payments/vnpay/return"
+    ipn_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/payments/vnpay/ipn"
+
+    vnp_params = {
+        "vnp_Version": settings.VNPAY_VERSION,
+        "vnp_Command": settings.VNPAY_COMMAND,
+        "vnp_TmnCode": settings.VNPAY_TMN_CODE,
+        "vnp_Amount": str(vnp_amount),
+        "vnp_CurrCode": settings.VNPAY_CURR_CODE,
+        "vnp_TxnRef": str(payment.thanhtoan_id),
+        "vnp_OrderInfo": f"Thanh toan don hang {order.ma_don_hang}",
+        "vnp_OrderType": settings.VNPAY_ORDER_TYPE,
+        "vnp_Locale": settings.VNPAY_LOCALE,
+        "vnp_ReturnUrl": return_url,
+        "vnp_IpAddr": ip_addr,
+        "vnp_CreateDate": now.strftime("%Y%m%d%H%M%S"),
+        "vnp_IpnUrl": ipn_url,
+    }
+
+    payment_url = build_payment_url(settings.VNPAY_PAYMENT_URL, vnp_params, settings.VNPAY_HASH_SECRET)
+
+    db.commit()
+    db.refresh(payment)
+
+    return VnpayCreateResponse(payment_id=payment.thanhtoan_id, payment_url=payment_url)
+
+
+@router.api_route("/vnpay/ipn", methods=["GET", "POST"])
+async def vnpay_ipn(request: Request, db: Session = Depends(get_db)):
+    if request.method == "POST":
+        body = await request.body()
+        try:
+            raw = body.decode("utf-8")
+        except Exception:
+            raw = ""
+        params = dict(request.query_params)
+        if not params and raw:
+            return JSONResponse(status_code=400, content={"RspCode": "99", "Message": "Invalid request"})
+    else:
+        params = dict(request.query_params)
+
+    if not params:
+        return JSONResponse(status_code=400, content={"RspCode": "99", "Message": "No params"})
+
+    if not settings.VNPAY_HASH_SECRET:
+        return JSONResponse(status_code=500, content={"RspCode": "99", "Message": "Missing VNPay config"})
+
+    ok, _ = verify_params(params, settings.VNPAY_HASH_SECRET)
+    if not ok:
+        return JSONResponse(status_code=200, content={"RspCode": "97", "Message": "Invalid signature"})
+
+    txn_ref = params.get("vnp_TxnRef")
+    if not txn_ref:
+        return JSONResponse(status_code=200, content={"RspCode": "01", "Message": "Order not found"})
+
+    try:
+        payment_id = int(str(txn_ref))
+    except Exception:
+        return JSONResponse(status_code=200, content={"RspCode": "01", "Message": "Order not found"})
+
+    payment = db.query(ThanhToan).filter(ThanhToan.thanhtoan_id == payment_id).first()
+    if not payment:
+        return JSONResponse(status_code=200, content={"RspCode": "01", "Message": "Order not found"})
+
+    order = db.query(DonHang).filter(DonHang.donhang_id == payment.donhang_id).first()
+    if not order:
+        return JSONResponse(status_code=200, content={"RspCode": "01", "Message": "Order not found"})
+
+    vnp_amount = params.get("vnp_Amount")
+    if vnp_amount is None:
+        return JSONResponse(status_code=200, content={"RspCode": "04", "Message": "Invalid amount"})
+
+    try:
+        expected_amount = int((payment.so_tien or Decimal("0")) * Decimal("100"))
+        received_amount = int(str(vnp_amount))
+    except Exception:
+        return JSONResponse(status_code=200, content={"RspCode": "04", "Message": "Invalid amount"})
+
+    if received_amount != expected_amount:
+        return JSONResponse(status_code=200, content={"RspCode": "04", "Message": "Invalid amount"})
+
+    resp_code = str(params.get("vnp_ResponseCode") or "")
+    trans_status = str(params.get("vnp_TransactionStatus") or "")
+
+    if payment.trang_thai == "thanh_cong":
+        return JSONResponse(status_code=200, content={"RspCode": "02", "Message": "Order already confirmed"})
+
+    if resp_code == "00" and (trans_status == "00" or trans_status == ""):
+        payment.trang_thai = "thanh_cong"
+        payment.ngay_thanh_toan = parse_vnpay_date(str(params.get("vnp_PayDate") or "")) or datetime.utcnow()
+    else:
+        payment.trang_thai = "that_bai"
+
+    vnp_transaction_no = params.get("vnp_TransactionNo")
+    if vnp_transaction_no:
+        payment.ma_giao_dich = str(vnp_transaction_no)
+
+    payment.thong_tin_giao_dich = {
+        "ma_giao_dich_ben_thu_3": str(vnp_transaction_no) if vnp_transaction_no else None,
+        "thoi_gian_giao_dich": str(params.get("vnp_PayDate")) if params.get("vnp_PayDate") else None,
+        "chi_tiet_raw": params
+    }
+
+    if payment.trang_thai == "thanh_cong":
+        total_paid = db.query(ThanhToan).filter(
+            ThanhToan.donhang_id == order.donhang_id,
+            ThanhToan.trang_thai == "thanh_cong"
+        ).with_entities(
+            func.sum(ThanhToan.so_tien)
+        ).scalar() or Decimal("0")
+
+        if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
+            order.trang_thai = "thanh_toan"
+
+    db.commit()
+
+    return JSONResponse(status_code=200, content={"RspCode": "00", "Message": "Confirm Success"})
+
+
+@router.get("/vnpay/return")
+def vnpay_return(request: Request, db: Session = Depends(get_db)):
+    params = dict(request.query_params)
+
+    payment_status = "unknown"
+    if not settings.VNPAY_HASH_SECRET:
+        payment_status = "config_error"
+    else:
+        ok, _ = verify_params(params, settings.VNPAY_HASH_SECRET)
+        if not ok:
+            payment_status = "invalid_signature"
+        else:
+            resp_code = str(params.get("vnp_ResponseCode") or "")
+            trans_status = str(params.get("vnp_TransactionStatus") or "")
+            if resp_code == "00" and (trans_status == "00" or trans_status == ""):
+                payment_status = "success"
+            else:
+                payment_status = "failed"
+
+    order_id = None
+    txn_ref = params.get("vnp_TxnRef")
+    if txn_ref:
+        try:
+            payment_id = int(str(txn_ref))
+            payment = db.query(ThanhToan).filter(ThanhToan.thanhtoan_id == payment_id).first()
+            if payment:
+                order_id = payment.donhang_id
+        except Exception:
+            order_id = None
+
+    if not order_id:
+        return RedirectResponse(url=f"{settings.FRONTEND_BASE_URL.rstrip('/')}/")
+
+    target = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/orders/{order_id}/success?payment_status={payment_status}"
+    return RedirectResponse(url=target)
+
+
 @router.get("/orders/{order_id}", response_model=List[PaymentResponse])
 def get_order_payments(
     order_id: int,
@@ -231,7 +460,7 @@ def create_payment(
         ThanhToan.donhang_id == payload.donhang_id,
         ThanhToan.trang_thai == "thanh_cong"
     ).with_entities(
-        db.func.sum(ThanhToan.so_tien)
+        func.sum(ThanhToan.so_tien)
     ).scalar() or Decimal("0")
     
     remaining = order.tien_thanh_toan - total_paid
@@ -332,7 +561,7 @@ def update_payment_status(
                 ThanhToan.donhang_id == order.donhang_id,
                 ThanhToan.trang_thai == "thanh_cong"
             ).with_entities(
-                db.func.sum(ThanhToan.so_tien)
+                func.sum(ThanhToan.so_tien)
             ).scalar() or Decimal("0")
             
             if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
@@ -344,7 +573,7 @@ def update_payment_status(
                 ThanhToan.donhang_id == order.donhang_id,
                 ThanhToan.trang_thai == "thanh_cong"
             ).with_entities(
-                db.func.sum(ThanhToan.so_tien)
+                func.sum(ThanhToan.so_tien)
             ).scalar() or Decimal("0")
             
             if total_paid < order.tien_thanh_toan and order.trang_thai == "thanh_toan":
@@ -445,7 +674,7 @@ def verify_payment(
             ThanhToan.donhang_id == order.donhang_id,
             ThanhToan.trang_thai == "thanh_cong"
         ).with_entities(
-            db.func.sum(ThanhToan.so_tien)
+            func.sum(ThanhToan.so_tien)
         ).scalar() or Decimal("0")
         
         if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":

@@ -1,6 +1,5 @@
 // Sales Filters component - filter by type, status, date range, amount range, search
 import { Box, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
-import { Order } from '../../../types/admin'
 
 interface SalesFiltersProps {
   orderType: string

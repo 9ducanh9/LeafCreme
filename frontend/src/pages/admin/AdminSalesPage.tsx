@@ -1,5 +1,5 @@
 // Admin Sales Management Page
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Box, Typography } from '@mui/material'
 import SalesTable from '../../components/admin/sales/SalesTable'
 import SalesFilters from '../../components/admin/sales/SalesFilters'
@@ -11,7 +11,6 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 export default function AdminSalesPage() {
   const { showSuccess, showError } = useToast()
   const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -26,12 +25,7 @@ export default function AdminSalesPage() {
   const [amountTo, setAmountTo] = useState('')
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    loadOrders()
-  }, [orderType, status, dateFrom, dateTo, amountFrom, amountTo, search])
-
-  const loadOrders = async () => {
-    setLoading(true)
+  const loadOrders = useCallback(async () => {
     try {
       const data = await getOrders({
         orderType: orderType || undefined,
@@ -45,10 +39,12 @@ export default function AdminSalesPage() {
       setOrders(data)
     } catch (error) {
       showError('Không thể tải danh sách đơn hàng')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [amountFrom, amountTo, dateFrom, dateTo, orderType, search, showError, status])
+
+  useEffect(() => {
+    loadOrders()
+  }, [loadOrders])
 
   const handleDelete = (id: string) => {
     setDeleteConfirm({ open: true, id })

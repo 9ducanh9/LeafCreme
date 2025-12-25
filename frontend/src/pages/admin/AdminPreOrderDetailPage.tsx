@@ -1,5 +1,5 @@
 // Admin Pre-order Detail Page
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Button, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -22,13 +22,7 @@ export default function AdminPreOrderDetailPage() {
   const [notesEditing, setNotesEditing] = useState(false)
   const [notesValue, setNotesValue] = useState('')
 
-  useEffect(() => {
-    if (id) {
-      loadPreOrder()
-    }
-  }, [id])
-
-  const loadPreOrder = async () => {
+  const loadPreOrder = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
@@ -40,7 +34,13 @@ export default function AdminPreOrderDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, showError])
+
+  useEffect(() => {
+    if (id) {
+      loadPreOrder()
+    }
+  }, [id, loadPreOrder])
 
   const handleStatusChange = async (status: PreOrder['status']) => {
     if (!id || !preOrder) return

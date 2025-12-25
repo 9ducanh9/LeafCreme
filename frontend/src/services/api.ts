@@ -74,6 +74,21 @@ class ApiClient {
           detail: response.statusText,
         }))
         
+        // Don't log 401 errors for /auth/me - this is expected when not authenticated
+        const isAuthMeEndpoint = endpoint === '/auth/me'
+        const is401 = response.status === 401
+        
+        if (!(isAuthMeEndpoint && is401)) {
+          // Only log non-401 errors or non-/auth/me endpoints
+          if (import.meta.env.DEV) {
+            console.error(`❌ ${options.method || 'GET'} ${endpoint} failed:`, {
+              status: response.status,
+              error: errorData.error || 'Request failed',
+              detail: errorData.detail,
+            })
+          }
+        }
+        
         throw {
           error: errorData.error || 'Request failed',
           detail: errorData.detail,
@@ -103,7 +118,7 @@ class ApiClient {
     const queryString = params
       ? '?' + new URLSearchParams(
           Object.entries(params)
-            .filter(([_, value]) => value !== null && value !== undefined)
+            .filter(([, value]) => value !== null && value !== undefined)
             .map(([key, value]) => [key, String(value)])
         ).toString()
       : ''

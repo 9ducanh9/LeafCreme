@@ -44,12 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: userData.vaitro?.ten_vai_tro
           })
           setUser(userData)
-        } catch (error: any) {
-          console.error('Error loading user:', error)
+        } catch (error: unknown) {
           // Token might be invalid or expired, clear it silently
-          if (error?.status === 401) {
+          const status =
+            error && typeof error === 'object' && 'status' in error ? (error as { status?: unknown }).status : undefined
+          if (status === 401) {
+            // 401 is expected when user is not authenticated - don't log error
             logoutService()
             setUser(null)
+          } else {
+            // Only log non-401 errors
+            console.error('Error loading user:', error)
           }
         }
       }

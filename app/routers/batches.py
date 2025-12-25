@@ -30,7 +30,7 @@ class ProductBatchCreate(BaseModel):
     ma_lo: str = Field(..., min_length=1, max_length=50)
     ngay_het_han: datetime
     so_luong: int = Field(..., gt=0)
-    gia_don_vi: Decimal = Field(..., gt=0, decimal_places=2)
+    gia_don_vi: Decimal = Field(..., gt=0)
     trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|hethan|huy)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
@@ -40,7 +40,7 @@ class ProductBatchUpdate(BaseModel):
     ncc_id: Optional[int] = Field(None, gt=0)
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
-    gia_don_vi: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    gia_don_vi: Optional[Decimal] = Field(None, gt=0)
     trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|hethan|huy)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
@@ -75,7 +75,7 @@ class ComponentBatchCreate(BaseModel):
     ma_lo: str = Field(..., min_length=1, max_length=50)
     ngay_het_han: datetime
     so_luong: int = Field(..., gt=0)
-    gia_don_vi: Decimal = Field(..., gt=0, decimal_places=2)
+    gia_don_vi: Decimal = Field(..., gt=0)
     trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|hethan|huy)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
@@ -85,7 +85,7 @@ class ComponentBatchUpdate(BaseModel):
     ncc_id: Optional[int] = Field(None, gt=0)
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
-    gia_don_vi: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    gia_don_vi: Optional[Decimal] = Field(None, gt=0)
     trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|hethan|huy)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
@@ -120,7 +120,7 @@ class GiftBoxBatchCreate(BaseModel):
     ma_lo: str = Field(..., min_length=1, max_length=50)
     ngay_het_han: datetime
     so_luong: int = Field(..., gt=0)
-    gia_don_vi: Decimal = Field(..., gt=0, decimal_places=2)
+    gia_don_vi: Decimal = Field(..., gt=0)
     trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|hethan|huy)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
@@ -130,7 +130,7 @@ class GiftBoxBatchUpdate(BaseModel):
     ncc_id: Optional[int] = Field(None, gt=0)
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
-    gia_don_vi: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    gia_don_vi: Optional[Decimal] = Field(None, gt=0)
     trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|hethan|huy)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None

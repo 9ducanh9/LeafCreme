@@ -78,7 +78,7 @@
     backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);
   }
   
-  /* Toast animation */
+  /* Soft animations */
   @keyframes slide-in-right {
     from {
       transform: translateX(100%);
@@ -90,8 +90,123 @@
     }
   }
   
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes scale-in {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slide-up {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  /* Animation utility classes */
   .animate-slide-in-right {
-    animation: slide-in-right 0.3s ease-out;
+    animation: slide-in-right 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .animate-slide-in-left {
+    animation: slide-in-left 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .animate-slide-up {
+    animation: slide-up 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes dot-bounce {
+    0%, 80%, 100% {
+      transform: translateY(0) scale(1);
+      opacity: 0.7;
+    }
+    40% {
+      transform: translateY(-8px) scale(1.1);
+      opacity: 1;
+    }
+  }
+
+  .animate-dot-bounce {
+    animation: dot-bounce 1.4s ease-in-out infinite;
+  }
+  
+  /* Soft transition utilities - Use these throughout the app */
+  .transition-default {
+    transition: all var(--transition-default);
+    transition-timing-function: var(--ease-soft);
+  }
+  
+  .transition-soft {
+    transition: all var(--transition-smooth);
+    transition-timing-function: var(--ease-soft);
+  }
+  
+  .transition-smooth {
+    transition: all var(--transition-smooth);
+    transition-timing-function: var(--ease-smooth);
+  }
+  
+  .transition-all-soft {
+    transition: all var(--transition-smooth);
+    transition-timing-function: var(--ease-soft);
+  }
+  
+  /* Hover effects - Soft and subtle */
+  .hover-lift {
+    transition: transform var(--transition-default), box-shadow var(--transition-default);
+    transition-timing-function: var(--ease-soft);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  
+  .hover-scale {
+    transition: transform var(--transition-default);
+    transition-timing-function: var(--ease-soft);
+  }
+  
+  .hover-scale:hover {
+    transform: scale(1.02);
   }
 
   /* Hide scrollbar but keep functionality */

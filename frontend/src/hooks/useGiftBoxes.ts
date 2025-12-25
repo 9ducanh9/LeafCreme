@@ -15,15 +15,16 @@ export function useGiftBoxes(filters?: GiftBoxFilters) {
       try {
         const data = await getGiftBoxes(filters)
         setGiftBoxes(data)
-      } catch (err: any) {
-        setError(err.message || 'Không thể tải danh sách hộp quà')
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : null
+        setError(message || 'Không thể tải danh sách hộp quà')
       } finally {
         setLoading(false)
       }
     }
 
     fetchGiftBoxes()
-  }, [filters?.occasion, filters?.tag, filters?.minPrice, filters?.maxPrice, filters?.search])
+  }, [filters])
 
   return { giftBoxes, loading, error }
 }

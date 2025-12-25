@@ -243,8 +243,8 @@ def generate_order_code(loai_don: str) -> str:
         "online": "ONL",
         "dattruoc": "PRE"
     }.get(loai_don, "ORD")
-    
-    timestamp = int(datetime.utcnow().timestamp())
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
     return f"{prefix}-{timestamp}"
 
 
@@ -325,6 +325,22 @@ def get_order(
     items = db.query(ChiTietDonHang).filter(
         ChiTietDonHang.donhang_id == order_id
     ).all()
+
+    items_payload = []
+    for item in items:
+        items_payload.append({
+            "chitiet_id": item.chitiet_id,
+            "lohang_sanpham_id": item.lohang_sanpham_id,
+            "lohang_hopqua_id": item.lohang_hopqua_id,
+            "hop_qua_id": item.hop_qua_id,
+            "so_luong": item.so_luong,
+            "gia_don_vi": item.gia_don_vi,
+            "tong_tien_phu": item.tong_tien_phu,
+            "ghi_chu": item.ghi_chu,
+            "trang_thai": getattr(item, "trang_thai_don_hang", None)
+            or getattr(item, "trang_thai", None)
+            or "dang_xu_ly",
+        })
     
     # Lấy vouchers đã áp dụng
     voucher_links = db.query(DonHangPhieuGiamGia).filter(
@@ -347,7 +363,7 @@ def get_order(
     # Tạo response
     order_dict = {
         **{c.name: getattr(order, c.name) for c in order.__table__.columns},
-        "items": items,
+        "items": items_payload,
         "vouchers": vouchers
     }
     

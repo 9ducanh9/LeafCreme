@@ -54,8 +54,9 @@ export function deleteCategory(category: string): void {
 // Check if category is in use (has products)
 export function isCategoryInUse(category: string): boolean {
   try {
-    const products = JSON.parse(localStorage.getItem('leaf_creme_mock_products') || '[]')
-    return products.some((p: any) => p.category === category)
+    const products = JSON.parse(localStorage.getItem('leaf_creme_mock_products') || '[]') as unknown
+    if (!Array.isArray(products)) return false
+    return (products as Array<{ category?: string }>).some((p) => p.category === category)
   } catch {
     return false
   }

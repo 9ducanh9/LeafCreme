@@ -53,6 +53,7 @@ export async function updateUserProfile(userId: number, data: UserUpdateData): P
 // For now, this is a placeholder
 export async function changePassword(_data: ChangePasswordData): Promise<void> {
   try {
+    void _data
     // TODO: Implement when backend endpoint is available
     // await apiClient.post('/auth/change-password', _data)
     throw new Error('Change password endpoint not yet implemented')

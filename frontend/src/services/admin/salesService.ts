@@ -1,6 +1,5 @@
 // Admin Sales Service - API calls for sales/order management
 import { Order } from '../../types/admin'
-import { apiClient } from '../api'
 
 // Mock data storage key
 const STORAGE_KEY = 'leaf_creme_mock_orders'
