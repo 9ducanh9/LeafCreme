@@ -20,6 +20,8 @@ import CategoryListingPage from './pages/CategoryListingPage'
 import SearchPage from './pages/SearchPage'
 import GiftBoxListPage from './pages/GiftBoxListPage'
 import GiftBoxDetailPage from './pages/GiftBoxDetailPage'
+import ContactPage from './pages/ContactPage'
+import PolicyPage from './pages/PolicyPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminProductPage from './pages/admin/AdminProductPage'
 import AdminGiftBoxPage from './pages/admin/AdminGiftBoxPage'
@@ -52,6 +54,8 @@ function App() {
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/gift-boxes" element={<GiftBoxListPage />} />
                 <Route path="/gift-boxes/:id" element={<GiftBoxDetailPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/policies" element={<PolicyPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />

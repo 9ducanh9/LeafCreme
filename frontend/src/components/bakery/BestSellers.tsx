@@ -86,7 +86,7 @@ export default function BestSellers() {
             Best Sellers Season <span className="text-[#C59B72] text-2xl">🎁</span>
           </h2>
           <p className="text-text-secondary text-base md:text-lg leading-relaxed">
-            Bốn sản phẩm được yêu thích nhất mùa này, được chọn lọc kỹ lưỡng từ bếp Leaf Crème. <span className="text-[#D4A574]">❄</span>
+            Bốn sản phẩm được yêu thích nhất mùa này, được chọn lọc kỹ lưỡng từ bếp Leaf Creme. <span className="text-[#D4A574]">❄</span>
           </p>
         </div>
 

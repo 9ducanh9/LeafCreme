@@ -17,11 +17,12 @@ export default function GiftBoxGallery({ giftBox }: GiftBoxGalleryProps) {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       <img
         src={getImageUrlForGiftBox()}
         alt={giftBox.name}
-        className="w-full h-[280px] sm:h-[320px] md:h-[450px] object-cover rounded-xl border border-border"
+        className="w-full h-full object-cover rounded-xl border border-border"
+        style={{ maxHeight: '75vh' }}
         onError={(e) => {
           const target = e.target as HTMLImageElement
           target.src = FALLBACK_IMAGE.giftBoxDetail

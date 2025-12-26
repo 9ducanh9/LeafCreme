@@ -94,7 +94,7 @@ export const FALLBACK_GIFT_BOXES: GiftBox[] = [
     id: '6',
     name: 'Hộp Quà Cao Cấp',
     subtitle: 'Sự lựa chọn hoàn hảo',
-    description: 'Bộ sưu tập cao cấp với những chiếc bánh được chọn lọc kỹ lưỡng nhất. Mỗi sản phẩm đều thể hiện sự tinh tế và chất lượng đỉnh cao của Leaf Crème.',
+    description: 'Bộ sưu tập cao cấp với những chiếc bánh được chọn lọc kỹ lưỡng nhất. Mỗi sản phẩm đều thể hiện sự tinh tế và chất lượng đỉnh cao của Leaf Creme.',
     story: 'Được tạo ra cho những dịp đặc biệt nhất, hộp quà này là biểu tượng của sự hoàn hảo và tinh tế. Mỗi chiếc bánh đều là một tác phẩm nghệ thuật.',
     price: 750000,
     tags: ['best_gift', 'limited'],

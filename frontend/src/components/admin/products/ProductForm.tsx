@@ -206,20 +206,54 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
     }
   }
 
+  const inputStyles = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '12px',
+      transition: 'all 0.2s ease',
+      '& fieldset': {
+        borderColor: 'rgba(122, 111, 99, 0.2)',
+        transition: 'border-color 0.2s ease',
+      },
+      '&:hover fieldset': {
+        borderColor: 'rgba(122, 111, 99, 0.4)',
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: '#C59B72',
+        borderWidth: '2px',
+      },
+      '&:hover': {
+        backgroundColor: 'rgba(250, 250, 249, 0.5)',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      fontSize: '0.9375rem',
+      fontWeight: 500,
+      '&.Mui-focused': {
+        color: '#C59B72',
+      },
+    },
+    '& .MuiFormHelperText-root': {
+      fontSize: '0.75rem',
+      marginTop: '6px',
+      color: '#9B948B',
+    },
+  }
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F' }}>
+        <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F', pb: 1 }}>
           {variant ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
         </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <TextField
               label="Tên sản phẩm"
               required
               fullWidth
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              sx={inputStyles}
             />
 
             <TextField
@@ -230,9 +264,11 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              sx={inputStyles}
+              helperText="Mô tả chi tiết về sản phẩm"
             />
 
-            <FormControl fullWidth required>
+            <FormControl fullWidth required sx={inputStyles}>
               <InputLabel>Danh mục</InputLabel>
               <Select
                 value={formData.category}
@@ -247,54 +283,60 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
               </Select>
             </FormControl>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControl fullWidth required>
-                <InputLabel>Kích thước</InputLabel>
-                <Select
-                  value={formData.size}
-                  label="Kích thước"
-                  onChange={(e) =>
-                    setFormData({ ...formData, size: e.target.value as ProductVariant['size'] })
-                  }
-                >
-                  {SIZES.map((size) => (
-                    <MenuItem key={size} value={size}>
-                      {size}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
+                <FormControl fullWidth required sx={inputStyles}>
+                  <InputLabel>Kích thước</InputLabel>
+                  <Select
+                    value={formData.size}
+                    label="Kích thước"
+                    onChange={(e) =>
+                      setFormData({ ...formData, size: e.target.value as ProductVariant['size'] })
+                    }
+                  >
+                    {SIZES.map((size) => (
+                      <MenuItem key={size} value={size}>
+                        {size}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Giá (VND)"
-                type="number"
-                required
-                fullWidth
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                inputProps={{ min: 0 }}
-              />
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
+                <TextField
+                  label="Giá (VND)"
+                  type="number"
+                  required
+                  fullWidth
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                  inputProps={{ min: 0, step: 1000 }}
+                  sx={inputStyles}
+                  helperText="Giá bán cho khách"
+                />
+              </Box>
 
-              <FormControl fullWidth required>
-                <InputLabel>Trạng thái</InputLabel>
-                <Select
-                  value={formData.status}
-                  label="Trạng thái"
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as ProductVariant['status'] })
-                  }
-                >
-                  <MenuItem value="active">Hoạt động</MenuItem>
-                  <MenuItem value="hidden">Ẩn</MenuItem>
-                </Select>
-              </FormControl>
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
+                <FormControl fullWidth required sx={inputStyles}>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select
+                    value={formData.status}
+                    label="Trạng thái"
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value as ProductVariant['status'] })
+                    }
+                  >
+                    <MenuItem value="active">Hoạt động</MenuItem>
+                    <MenuItem value="hidden">Ẩn</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
             </Box>
 
             {/* Image Input Section */}
             <Box>
-              <Typography variant="body2" sx={{ mb: 1, color: '#7A6F63' }}>
+              <Typography variant="body2" sx={{ mb: 2, color: '#7A6F63', fontWeight: 600, fontSize: '0.9375rem' }}>
                 Hình ảnh sản phẩm
               </Typography>
               <Tabs
@@ -309,7 +351,21 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                     setImagePreview('')
                   }
                 }}
-                sx={{ mb: 2 }}
+                sx={{ 
+                  mb: 2.5,
+                  '& .MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.875rem',
+                    minHeight: '40px',
+                    '&.Mui-selected': {
+                      color: '#C59B72',
+                    },
+                  },
+                  '& .MuiTabs-indicator': {
+                    backgroundColor: '#C59B72',
+                  },
+                }}
               >
                 <Tab label="Nhập URL" value="url" />
                 <Tab label="Chọn file" value="file" />
@@ -328,6 +384,8 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                     setImagePreview(previewUrl)
                   }}
                   placeholder="https://example.com/image.jpg"
+                  sx={inputStyles}
+                  helperText="Nhập đường dẫn URL hoặc đường dẫn tương đối (product/xxx.jpg)"
                 />
               ) : (
                 <Box>
@@ -342,16 +400,35 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                     variant="outlined"
                     onClick={() => fileInputRef.current?.click()}
                     fullWidth
-                    sx={{ mb: 2 }}
+                    sx={{
+                      borderRadius: '12px',
+                      borderColor: 'rgba(122, 111, 99, 0.2)',
+                      color: '#7A6F63',
+                      textTransform: 'none',
+                      fontWeight: 500,
+                      py: 1.5,
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        borderColor: '#C59B72',
+                        bgcolor: 'rgba(197, 155, 114, 0.05)',
+                        borderWidth: '2px',
+                      },
+                    }}
                   >
                     Chọn ảnh từ máy
                   </Button>
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#9B948B', fontSize: '0.75rem' }}>
+                    Kích thước tối đa 5MB, định dạng JPG/PNG/WEBP
+                  </Typography>
                 </Box>
               )}
 
               {/* Image Preview */}
               {imagePreview && (
-                <Box sx={{ mt: 2 }}>
+                <Box sx={{ mt: 3, p: 2, bgcolor: '#FAFAF9', borderRadius: '12px', border: '1px solid rgba(122, 111, 99, 0.1)' }}>
+                  <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: '#7A6F63', fontWeight: 600 }}>
+                    Xem trước
+                  </Typography>
                   <img
                     src={imagePreview}
                     alt="Preview"
@@ -360,7 +437,6 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                       maxHeight: '200px',
                       objectFit: 'contain',
                       borderRadius: '8px',
-                      border: '1px solid #E8E5DD',
                     }}
                     onError={() => setImagePreview('')}
                   />
@@ -369,11 +445,51 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={onClose} disabled={loading}>
+        <DialogActions sx={{ p: 3, gap: 1.5, borderTop: '1px solid rgba(122, 111, 99, 0.08)' }}>
+          <Button 
+            onClick={onClose} 
+            disabled={loading}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+              color: '#7A6F63',
+              borderRadius: '10px',
+              px: 3,
+              py: 1,
+              '&:hover': {
+                bgcolor: 'rgba(122, 111, 99, 0.08)',
+              },
+            }}
+          >
             Hủy
           </Button>
-          <Button type="submit" variant="contained" disabled={loading} sx={{ bgcolor: '#C59B72' }}>
+          <Button 
+            type="submit" 
+            variant="contained" 
+            disabled={loading}
+            sx={{ 
+              bgcolor: '#C59B72',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '10px',
+              px: 4,
+              py: 1,
+              boxShadow: '0 2px 8px rgba(197, 155, 114, 0.25)',
+              transition: 'all 0.2s ease',
+              '&:hover': { 
+                bgcolor: '#B0895F',
+                boxShadow: '0 4px 12px rgba(197, 155, 114, 0.35)',
+                transform: 'translateY(-1px)',
+              },
+              '&:active': {
+                transform: 'translateY(0)',
+              },
+              '&:disabled': {
+                bgcolor: '#E8E5DD',
+                color: '#9B948B',
+              },
+            }}
+          >
             {loading ? 'Đang lưu...' : variant ? 'Cập nhật' : 'Tạo mới'}
           </Button>
         </DialogActions>

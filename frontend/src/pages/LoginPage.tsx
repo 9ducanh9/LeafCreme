@@ -39,7 +39,7 @@ export default function LoginPage() {
           <h1 className="font-heading text-4xl font-semibold text-text-primary mb-2">
             Leaf Creme
           </h1>
-          <p className="text-text-secondary">Đăng nhập vào tài khoản của bạn</p>
+          <p className="text-text-secondary text-sm">Chào mừng bạn trở lại</p>
         </div>
 
         <Card>

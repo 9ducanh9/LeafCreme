@@ -22,17 +22,42 @@ export default function PreOrderFilters({
   onDateToChange,
   onSearchChange,
 }: PreOrderFiltersProps) {
+  const filterStyles = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '12px',
+      transition: 'all 0.2s ease',
+      bgcolor: 'white',
+      '& fieldset': {
+        borderColor: 'rgba(122, 111, 99, 0.15)',
+      },
+      '&:hover fieldset': {
+        borderColor: 'rgba(122, 111, 99, 0.3)',
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: '#C59B72',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      fontSize: '0.875rem',
+      fontWeight: 500,
+      '&.Mui-focused': {
+        color: '#C59B72',
+      },
+    },
+  }
+
   return (
     <Box
       sx={{
         display: 'flex',
-        gap: 2,
+        gap: 2.5,
         mb: 3,
         flexWrap: 'wrap',
-        bgcolor: 'white',
-        p: 2,
-        borderRadius: 2,
-        border: '1px solid #EFEDE6',
+        bgcolor: '#FAFAF9',
+        p: 2.5,
+        borderRadius: '16px',
+        border: 'none',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
       }}
     >
       <TextField
@@ -41,10 +66,11 @@ export default function PreOrderFilters({
         size="small"
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
-        sx={{ flexGrow: 1, minWidth: 200 }}
+        placeholder="Tên khách hoặc số điện thoại..."
+        sx={{ ...filterStyles, flexGrow: 1, minWidth: 240 }}
       />
 
-      <FormControl size="small" sx={{ minWidth: 150 }}>
+      <FormControl size="small" sx={{ ...filterStyles, minWidth: 160 }}>
         <InputLabel>Trạng thái</InputLabel>
         <Select value={status} label="Trạng thái" onChange={(e) => onStatusChange(e.target.value)}>
           <MenuItem value="">Tất cả trạng thái</MenuItem>
@@ -62,8 +88,9 @@ export default function PreOrderFilters({
         size="small"
         value={dateFrom}
         onChange={(e) => onDateFromChange(e.target.value)}
-        InputLabelProps={{ shrink: true }}
-        sx={{ minWidth: 150 }}
+        slotProps={{ inputLabel: { shrink: true } }}
+        placeholder="dd/mm/yyyy"
+        sx={{ ...filterStyles, minWidth: 160 }}
       />
 
       <TextField
@@ -72,8 +99,9 @@ export default function PreOrderFilters({
         size="small"
         value={dateTo}
         onChange={(e) => onDateToChange(e.target.value)}
-        InputLabelProps={{ shrink: true }}
-        sx={{ minWidth: 150 }}
+        slotProps={{ inputLabel: { shrink: true } }}
+        placeholder="dd/mm/yyyy"
+        sx={{ ...filterStyles, minWidth: 160 }}
       />
     </Box>
   )

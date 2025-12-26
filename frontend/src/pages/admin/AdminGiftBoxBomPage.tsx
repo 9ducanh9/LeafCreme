@@ -151,19 +151,48 @@ export default function AdminGiftBoxBomPage() {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
         {/* Left: Variant Selection */}
-        <Paper sx={{ p: 3, border: '1px solid #E8E5DD' }}>
-          <Typography variant="h6" sx={{ mb: 2, color: '#473C2F' }}>
+        <Paper sx={{ 
+          p: 3, 
+          border: 'none',
+          borderRadius: '16px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        }}>
+          <Typography variant="h6" sx={{ mb: 3, color: '#473C2F', fontWeight: 600 }}>
             Chọn biến thể sản phẩm
           </Typography>
 
           {/* Filters */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mb: 3 }}>
             <TextField
               label="Danh mục"
               select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               size="small"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  transition: 'all 0.2s ease',
+                  '& fieldset': {
+                    borderColor: 'rgba(122, 111, 99, 0.2)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(122, 111, 99, 0.35)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#C59B72',
+                    borderWidth: '2px',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: 'rgba(71, 60, 47, 0.75)',
+                  '&.Mui-focused': {
+                    color: '#C59B72',
+                  },
+                },
+              }}
             >
               <MenuItem value="">Tất cả</MenuItem>
               {Array.from(new Set(variants.map((v) => v.category))).map((cat) => (
@@ -178,6 +207,30 @@ export default function AdminGiftBoxBomPage() {
               value={sizeFilter}
               onChange={(e) => setSizeFilter(e.target.value)}
               size="small"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  transition: 'all 0.2s ease',
+                  '& fieldset': {
+                    borderColor: 'rgba(122, 111, 99, 0.2)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(122, 111, 99, 0.35)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#C59B72',
+                    borderWidth: '2px',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: 'rgba(71, 60, 47, 0.75)',
+                  '&.Mui-focused': {
+                    color: '#C59B72',
+                  },
+                },
+              }}
             >
               <MenuItem value="">Tất cả</MenuItem>
               {['S', 'M', 'L', 'XL'].map((size) => (
@@ -191,6 +244,31 @@ export default function AdminGiftBoxBomPage() {
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               size="small"
+              placeholder="Tên sản phẩm..."
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  transition: 'all 0.2s ease',
+                  '& fieldset': {
+                    borderColor: 'rgba(122, 111, 99, 0.2)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(122, 111, 99, 0.35)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#C59B72',
+                    borderWidth: '2px',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: 'rgba(71, 60, 47, 0.75)',
+                  '&.Mui-focused': {
+                    color: '#C59B72',
+                  },
+                },
+              }}
             />
             <Button variant="outline" onClick={loadData} className="w-full">
               Áp dụng bộ lọc
@@ -209,18 +287,23 @@ export default function AdminGiftBoxBomPage() {
                   key={variant.id}
                   sx={{
                     p: 2,
-                    mb: 1,
-                    border: '1px solid #E8E5DD',
+                    mb: 1.5,
+                    border: selectedVariantId === variant.id ? '2px solid #C59B72' : '1px solid rgba(122, 111, 99, 0.15)',
+                    borderRadius: '12px',
                     cursor: 'pointer',
-                    '&:hover': { bgcolor: '#FAFAF7' },
-                    ...(selectedVariantId === variant.id && { bgcolor: '#FAFAF7', borderColor: '#C59B72' }),
+                    transition: 'all 0.2s ease',
+                    bgcolor: selectedVariantId === variant.id ? 'rgba(197, 155, 114, 0.04)' : 'white',
+                    '&:hover': { 
+                      bgcolor: selectedVariantId === variant.id ? 'rgba(197, 155, 114, 0.06)' : 'rgba(122, 111, 99, 0.02)',
+                      borderColor: selectedVariantId === variant.id ? '#C59B72' : 'rgba(122, 111, 99, 0.25)',
+                    },
                   }}
                   onClick={() => setSelectedVariantId(variant.id)}
                 >
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 500, color: '#473C2F', mb: 0.5 }}>
                     {variant.name} - {variant.size}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
                     {variant.category} • {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(variant.price)}
                   </Typography>
                 </Paper>
@@ -229,7 +312,7 @@ export default function AdminGiftBoxBomPage() {
           </Box>
 
           {/* Add to BOM */}
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
             <TextField
               label="Số lượng"
               type="number"
@@ -237,7 +320,31 @@ export default function AdminGiftBoxBomPage() {
               onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
               size="small"
               inputProps={{ min: 1 }}
-              sx={{ width: 100 }}
+              sx={{ 
+                width: 120,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  transition: 'all 0.2s ease',
+                  '& fieldset': {
+                    borderColor: 'rgba(122, 111, 99, 0.2)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(122, 111, 99, 0.35)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#C59B72',
+                    borderWidth: '2px',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: 'rgba(71, 60, 47, 0.75)',
+                  '&.Mui-focused': {
+                    color: '#C59B72',
+                  },
+                },
+              }}
             />
             <Button variant="primary" onClick={handleAddBomItem} className="flex-1">
               <AddIcon /> Thêm vào BOM
@@ -246,8 +353,13 @@ export default function AdminGiftBoxBomPage() {
         </Paper>
 
         {/* Right: Current BOM */}
-        <Paper sx={{ p: 3, border: '1px solid #E8E5DD' }}>
-          <Typography variant="h6" sx={{ mb: 2, color: '#473C2F' }}>
+        <Paper sx={{ 
+          p: 3, 
+          border: 'none',
+          borderRadius: '16px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        }}>
+          <Typography variant="h6" sx={{ mb: 3, color: '#473C2F', fontWeight: 600 }}>
             BOM hiện tại ({bomItems.length} items)
           </Typography>
 
@@ -263,37 +375,69 @@ export default function AdminGiftBoxBomPage() {
                     key={item.bom_id}
                     sx={{
                       p: 2,
-                      mb: 1,
-                      border: '1px solid #E8E5DD',
+                      mb: 1.5,
+                      border: '1px solid rgba(122, 111, 99, 0.15)',
+                      borderRadius: '12px',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        bgcolor: 'rgba(122, 111, 99, 0.02)',
+                        borderColor: 'rgba(122, 111, 99, 0.25)',
+                      },
                     }}
                   >
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 500, color: '#473C2F', mb: 0.5 }}>
                         {item.variant_name || `Biến thể #${item.bienthe_id}`}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
                         {item.product_name} • {item.product_category}
                       </Typography>
                       {item.variant_price && (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
                           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(item.variant_price))} × {item.so_luong}
                         </Typography>
                       )}
                       {item.variant_active === false && (
-                        <Chip label="Biến thể không hoạt động" color="warning" size="small" sx={{ mt: 0.5 }} />
+                        <Chip 
+                          label="Biến thể không hoạt động" 
+                          color="warning" 
+                          size="small" 
+                          sx={{ 
+                            mt: 1, 
+                            height: '24px',
+                            fontSize: '0.75rem',
+                            borderRadius: '12px',
+                          }} 
+                        />
                       )}
                     </Box>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
                       <TextField
                         type="number"
                         value={item.so_luong}
                         onChange={(e) => handleUpdateQuantity(item.bom_id, parseInt(e.target.value) || 1)}
                         size="small"
                         inputProps={{ min: 1 }}
-                        sx={{ width: 80 }}
+                        sx={{ 
+                          width: 80,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '10px',
+                            transition: 'all 0.2s ease',
+                            '& fieldset': {
+                              borderColor: 'rgba(122, 111, 99, 0.2)',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: 'rgba(122, 111, 99, 0.35)',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#C59B72',
+                              borderWidth: '2px',
+                            },
+                          },
+                        }}
                       />
                       <Button
                         variant="ghost"
@@ -308,14 +452,19 @@ export default function AdminGiftBoxBomPage() {
               </Box>
 
               {/* Suggested Price */}
-              <Paper sx={{ p: 2, bgcolor: '#FAFAF7', border: '1px solid #E8E5DD' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <Paper sx={{ 
+                p: 2.5, 
+                bgcolor: 'rgba(197, 155, 114, 0.04)', 
+                border: '1px solid rgba(197, 155, 114, 0.2)',
+                borderRadius: '12px',
+              }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.875rem', fontWeight: 500 }}>
                   Giá đề xuất (tổng giá biến thể):
                 </Typography>
-                <Typography variant="h6" sx={{ color: '#C59B72', mb: 2 }}>
+                <Typography variant="h6" sx={{ color: '#C59B72', mb: 2, fontWeight: 600 }}>
                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(suggestedPrice)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
                   Giá hộp quà hiện tại: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(giftBox?.gia_ban || 0))}
                 </Typography>
               </Paper>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/ui/Card'
+import DateInput from '../components/ui/DateInput'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import { useAuth } from '../contexts/AuthContext'
@@ -218,51 +219,39 @@ export default function UserProfilePage() {
           <div className="lg:col-span-1">
             <Card className="p-4 md:p-6">
               <div className="mb-6">
-                <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">
+                <h3 className="text-xs font-normal text-text-secondary/70 mb-5">
                   Cài đặt tài khoản
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <button
                     onClick={() => setActiveTab('profile')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-default ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default ${
                       activeTab === 'profile'
-                        ? 'bg-accent-yellow/20 border-l-4 border-accent-brown text-text-primary font-medium'
-                        : 'text-text-secondary hover:bg-background'
+                        ? 'bg-accent-brown/8 text-text-primary font-medium'
+                        : 'text-text-secondary hover:bg-background-secondary/30 hover:text-text-primary'
                     }`}
                   >
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        activeTab === 'profile' ? 'bg-accent-yellow/30' : 'bg-transparent'
+                    <UserIcon
+                      className={`w-[18px] h-[18px] ${
+                        activeTab === 'profile' ? 'text-accent-brown' : 'text-text-secondary/70'
                       }`}
-                    >
-                      <UserIcon
-                        className={`w-4 h-4 ${
-                          activeTab === 'profile' ? 'text-accent-brown' : 'text-text-secondary'
-                        }`}
-                      />
-                    </div>
-                    <span>Thông tin cá nhân</span>
+                    />
+                    <span className="text-[15px]">Thông tin cá nhân</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('password')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-default ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default ${
                       activeTab === 'password'
-                        ? 'bg-accent-yellow/20 border-l-4 border-accent-brown text-text-primary font-medium'
-                        : 'text-text-secondary hover:bg-background'
+                        ? 'bg-accent-brown/8 text-text-primary font-medium'
+                        : 'text-text-secondary hover:bg-background-secondary/30 hover:text-text-primary'
                     }`}
                   >
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        activeTab === 'password' ? 'bg-accent-yellow/30' : 'bg-transparent'
+                    <Lock
+                      className={`w-[18px] h-[18px] ${
+                        activeTab === 'password' ? 'text-accent-brown' : 'text-text-secondary/70'
                       }`}
-                    >
-                      <Lock
-                        className={`w-4 h-4 ${
-                          activeTab === 'password' ? 'text-accent-brown' : 'text-text-secondary'
-                        }`}
-                      />
-                    </div>
-                    <span>Đổi mật khẩu</span>
+                    />
+                    <span className="text-[15px]">Đổi mật khẩu</span>
                   </button>
                 </div>
               </div>
@@ -274,11 +263,14 @@ export default function UserProfilePage() {
             {activeTab === 'profile' ? (
               <Card className="p-8 md:p-10">
                 {/* Header */}
-                <div className="mb-10">
-                  <h1 className="font-heading text-4xl md:text-5xl font-semibold text-text-primary mb-4 leading-tight">
+                <div className="mb-8">
+                  <p className="text-xs font-normal text-text-secondary/70 mb-2">
+                    Cài đặt tài khoản
+                  </p>
+                  <h1 className="font-heading text-2xl md:text-3xl font-semibold text-text-primary mb-3 leading-tight">
                     Thông tin cá nhân
                   </h1>
-                  <p className="text-base text-text-secondary/80 leading-relaxed max-w-2xl">
+                  <p className="text-sm text-text-secondary leading-relaxed max-w-2xl">
                     Cập nhật thông tin tài khoản và cách chúng tôi liên hệ với bạn.
                   </p>
                 </div>
@@ -297,7 +289,7 @@ export default function UserProfilePage() {
 
                 <form onSubmit={handleProfileSubmit}>
                   {/* Avatar & Form Layout */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
                     {/* Avatar Section */}
                     <div className="md:col-span-1 flex flex-col items-center">
                       <div className="relative mb-6">
@@ -417,20 +409,15 @@ export default function UserProfilePage() {
                         </div>
 
                         <div className="space-y-2">
-                          <label
-                            htmlFor="ngay_sinh"
-                            className="block text-sm font-semibold text-text-primary mb-2"
-                          >
-                            Ngày sinh
-                          </label>
-                          <input
+                          <DateInput
                             id="ngay_sinh"
                             name="ngay_sinh"
-                            type="date"
                             value={profileData.ngay_sinh}
-                            onChange={handleProfileChange}
-                            className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+                            onChange={(value) => setProfileData({ ...profileData, ngay_sinh: value })}
+                            label="Ngày sinh"
+                            placeholder="dd/mm/yyyy"
                             disabled={loading}
+                            className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50"
                           />
                         </div>
 
@@ -500,11 +487,14 @@ export default function UserProfilePage() {
             ) : (
               <Card className="p-8 md:p-10">
                 {/* Header */}
-                <div className="mb-10">
-                  <h1 className="font-heading text-4xl md:text-5xl font-semibold text-text-primary mb-4 leading-tight">
+                <div className="mb-8">
+                  <p className="text-xs font-normal text-text-secondary/70 mb-2">
+                    Bảo mật
+                  </p>
+                  <h1 className="font-heading text-2xl md:text-3xl font-semibold text-text-primary mb-3 leading-tight">
                     Đổi mật khẩu
                   </h1>
-                  <p className="text-base text-text-secondary/80 leading-relaxed max-w-2xl">
+                  <p className="text-sm text-text-secondary leading-relaxed max-w-2xl">
                     Cập nhật mật khẩu của bạn để bảo vệ tài khoản.
                   </p>
                 </div>

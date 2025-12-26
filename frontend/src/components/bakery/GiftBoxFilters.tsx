@@ -49,8 +49,14 @@ export default function GiftBoxFilters({ onFiltersChange }: GiftBoxFiltersProps)
   }
 
   return (
-    <div className="bg-surface border border-border rounded-card p-6 mb-8">
-      <div className="flex flex-wrap items-end gap-4">
+    <div 
+      className="mb-8 rounded-2xl p-2.5"
+      style={{ 
+        backgroundColor: '#FAFAF9',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+      }}
+    >
+      <div className="flex flex-wrap items-end gap-2.5">
         {/* Occasion Filter */}
         <div className="flex-1 min-w-[200px]">
           <label className="block text-sm font-medium text-text-secondary mb-2">Dịp</label>
@@ -60,7 +66,22 @@ export default function GiftBoxFilters({ onFiltersChange }: GiftBoxFiltersProps)
               setOccasion(e.target.value as GiftBoxOccasion | '')
               setTimeout(handleFilterChange, 0)
             }}
-            className="w-full px-4 py-2 border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-accent-brown transition-default"
+            className="w-full px-4 py-2.5 rounded-xl bg-white text-text-primary text-sm focus:outline-none transition-all duration-200"
+            style={{
+              border: '1px solid rgba(122, 111, 99, 0.15)',
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#C59B72'}
+            onBlur={(e) => e.target.style.borderColor = 'rgba(122, 111, 99, 0.15)'}
+            onMouseEnter={(e) => {
+              if (document.activeElement !== e.target) {
+                e.currentTarget.style.borderColor = 'rgba(122, 111, 99, 0.3)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (document.activeElement !== e.target) {
+                e.currentTarget.style.borderColor = 'rgba(122, 111, 99, 0.15)'
+              }
+            }}
           >
             <option value="">Tất cả dịp</option>
             {OCCASIONS.map((occ) => (
@@ -80,7 +101,22 @@ export default function GiftBoxFilters({ onFiltersChange }: GiftBoxFiltersProps)
               setTag(e.target.value as GiftBoxTag | '')
               setTimeout(handleFilterChange, 0)
             }}
-            className="w-full px-4 py-2 border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-accent-brown transition-default"
+            className="w-full px-4 py-2.5 rounded-xl bg-white text-text-primary text-sm focus:outline-none transition-all duration-200"
+            style={{
+              border: '1px solid rgba(122, 111, 99, 0.15)',
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#C59B72'}
+            onBlur={(e) => e.target.style.borderColor = 'rgba(122, 111, 99, 0.15)'}
+            onMouseEnter={(e) => {
+              if (document.activeElement !== e.target) {
+                e.currentTarget.style.borderColor = 'rgba(122, 111, 99, 0.3)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (document.activeElement !== e.target) {
+                e.currentTarget.style.borderColor = 'rgba(122, 111, 99, 0.15)'
+              }
+            }}
           >
             <option value="">Tất cả nhãn</option>
             {TAGS.map((t) => (
@@ -103,7 +139,22 @@ export default function GiftBoxFilters({ onFiltersChange }: GiftBoxFiltersProps)
                 setTimeout(handleFilterChange, 0)
               }}
               placeholder="0"
-              className="w-full px-4 py-2 border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-accent-brown transition-default"
+              className="w-full px-4 py-2.5 rounded-xl bg-white text-text-primary text-sm focus:outline-none transition-all duration-200"
+              style={{
+                border: '1px solid rgba(122, 111, 99, 0.15)',
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#C59B72'}
+              onBlur={(e) => e.target.style.borderColor = 'rgba(122, 111, 99, 0.15)'}
+              onMouseEnter={(e) => {
+                if (document.activeElement !== e.target) {
+                  e.currentTarget.style.borderColor = 'rgba(122, 111, 99, 0.3)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (document.activeElement !== e.target) {
+                  e.currentTarget.style.borderColor = 'rgba(122, 111, 99, 0.15)'
+                }
+              }}
             />
           </div>
           <div className="min-w-[120px]">
@@ -116,7 +167,22 @@ export default function GiftBoxFilters({ onFiltersChange }: GiftBoxFiltersProps)
                 setTimeout(handleFilterChange, 0)
               }}
               placeholder="Không giới hạn"
-              className="w-full px-4 py-2 border border-border rounded-md bg-white text-text-primary focus:outline-none focus:border-accent-brown transition-default"
+              className="w-full px-4 py-2.5 rounded-xl bg-white text-text-primary text-sm focus:outline-none transition-all duration-200"
+              style={{
+                border: '1px solid rgba(122, 111, 99, 0.15)',
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#C59B72'}
+              onBlur={(e) => e.target.style.borderColor = 'rgba(122, 111, 99, 0.15)'}
+              onMouseEnter={(e) => {
+                if (document.activeElement !== e.target) {
+                  e.currentTarget.style.borderColor = 'rgba(122, 111, 99, 0.3)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (document.activeElement !== e.target) {
+                  e.currentTarget.style.borderColor = 'rgba(122, 111, 99, 0.15)'
+                }
+              }}
             />
           </div>
         </div>
@@ -125,7 +191,7 @@ export default function GiftBoxFilters({ onFiltersChange }: GiftBoxFiltersProps)
         {(occasion || tag || minPrice || maxPrice) && (
           <button
             onClick={handleReset}
-            className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-default"
+            className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-accent-brown transition-all duration-200"
           >
             Xóa bộ lọc
           </button>

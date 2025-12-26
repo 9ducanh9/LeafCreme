@@ -220,27 +220,34 @@ export default function AdminInventoryPage() {
                 />
               )}
             </Box>
-            <TableContainer component={Paper}>
+            <TableContainer 
+              component={Paper}
+              sx={{ 
+                borderRadius: '16px',
+                border: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+              }}
+            >
               <Table>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#FAFAF7' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Mã lô</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Sản phẩm</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Hương vị</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Size</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+                  <TableRow sx={{ bgcolor: '#F7F6F3' }}>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã lô</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Sản phẩm</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hương vị</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Size</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
                       Tồn kho
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
                       Đã bán
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Hết hạn</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hết hạn</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {getFilteredProducts().length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4, color: '#7A6F63' }}>
+                      <TableCell colSpan={7} align="center" sx={{ py: 8, color: '#9B948B' }}>
                         {search ? 'Không tìm thấy kết quả' : 'Không có dữ liệu tồn kho'}
                       </TableCell>
                     </TableRow>
@@ -249,22 +256,44 @@ export default function AdminInventoryPage() {
                       <TableRow
                         key={item.lohang_id}
                         sx={{
-                          '&:hover': { bgcolor: '#FAFAF7' },
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease',
+                          '&:hover': { bgcolor: '#FAFAF9' },
                         }}
                       >
-                        <TableCell>{item.ma_lo}</TableCell>
-                        <TableCell>{item.ten_sanpham || 'N/A'}</TableCell>
-                        <TableCell>{item.huong_vi}</TableCell>
-                        <TableCell>{item.kich_thuoc ? getSizeDisplayLabel(normalizeSize(item.kich_thuoc)) : 'N/A'}</TableCell>
-                        <TableCell align="right">
+                        <TableCell sx={{ color: '#9B948B', fontWeight: 600, py: 2, fontSize: '0.8125rem', fontFamily: 'monospace' }}>{item.ma_lo}</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>{item.ten_sanpham || 'N/A'}</TableCell>
+                        <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{item.huong_vi}</TableCell>
+                        <TableCell sx={{ py: 2 }} align="center">
+                          <Chip
+                            label={item.kich_thuoc ? getSizeDisplayLabel(normalizeSize(item.kich_thuoc)) : 'N/A'}
+                            size="small"
+                            sx={{
+                              bgcolor: 'rgba(232, 229, 221, 0.5)',
+                              color: '#7A6F63',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              height: '24px',
+                              borderRadius: '12px',
+                              border: 'none'
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="right" sx={{ py: 2 }}>
                           <Chip
                             label={item.so_luong_hien_tai.toLocaleString()}
                             size="small"
                             color={item.so_luong_hien_tai < 10 ? 'warning' : 'default'}
+                            sx={{
+                              fontSize: '0.75rem',
+                              height: '24px',
+                              borderRadius: '12px',
+                              fontWeight: 700
+                            }}
                           />
                         </TableCell>
-                        <TableCell align="right">{item.so_luong_da_ban.toLocaleString()}</TableCell>
-                        <TableCell>{formatDate(item.ngay_het_han)}</TableCell>
+                        <TableCell align="right" sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem', fontWeight: 600 }}>{item.so_luong_da_ban.toLocaleString()}</TableCell>
+                        <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{formatDate(item.ngay_het_han)}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -288,25 +317,32 @@ export default function AdminInventoryPage() {
                 />
               )}
             </Box>
-            <TableContainer component={Paper}>
+            <TableContainer 
+              component={Paper}
+              sx={{ 
+                borderRadius: '16px',
+                border: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+              }}
+            >
               <Table>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#FAFAF7' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Mã lô</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Tên linh kiện</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+                  <TableRow sx={{ bgcolor: '#F7F6F3' }}>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã lô</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Tên linh kiện</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
                       Tồn kho
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
                       Đã sử dụng
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Hết hạn</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hết hạn</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {getFilteredComponents().length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 4, color: '#7A6F63' }}>
+                      <TableCell colSpan={5} align="center" sx={{ py: 8, color: '#9B948B' }}>
                         {search ? 'Không tìm thấy kết quả' : 'Không có dữ liệu tồn kho'}
                       </TableCell>
                     </TableRow>
@@ -315,20 +351,28 @@ export default function AdminInventoryPage() {
                       <TableRow
                         key={item.lohang_id}
                         sx={{
-                          '&:hover': { bgcolor: '#FAFAF7' },
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease',
+                          '&:hover': { bgcolor: '#FAFAF9' },
                         }}
                       >
-                        <TableCell>{item.ma_lo}</TableCell>
-                        <TableCell>{item.ten_linh_kien}</TableCell>
-                        <TableCell align="right">
+                        <TableCell sx={{ color: '#9B948B', fontWeight: 600, py: 2, fontSize: '0.8125rem', fontFamily: 'monospace' }}>{item.ma_lo}</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>{item.ten_linh_kien}</TableCell>
+                        <TableCell align="right" sx={{ py: 2 }}>
                           <Chip
                             label={item.so_luong_hien_tai.toLocaleString()}
                             size="small"
                             color={item.so_luong_hien_tai < 10 ? 'warning' : 'default'}
+                            sx={{
+                              fontSize: '0.75rem',
+                              height: '24px',
+                              borderRadius: '12px',
+                              fontWeight: 700
+                            }}
                           />
                         </TableCell>
-                        <TableCell align="right">{item.so_luong_da_su_dung.toLocaleString()}</TableCell>
-                        <TableCell>{formatDate(item.ngay_het_han)}</TableCell>
+                        <TableCell align="right" sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem', fontWeight: 600 }}>{item.so_luong_da_su_dung.toLocaleString()}</TableCell>
+                        <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{formatDate(item.ngay_het_han)}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -352,25 +396,32 @@ export default function AdminInventoryPage() {
                 />
               )}
             </Box>
-            <TableContainer component={Paper}>
+            <TableContainer 
+              component={Paper}
+              sx={{ 
+                borderRadius: '16px',
+                border: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+              }}
+            >
               <Table>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#FAFAF7' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Mã lô</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Tên hộp quà</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+                  <TableRow sx={{ bgcolor: '#F7F6F3' }}>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã lô</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Tên hộp quà</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
                       Tồn kho
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
                       Đã bán
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Hết hạn</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hết hạn</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {getFilteredGiftBoxes().length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 4, color: '#7A6F63' }}>
+                      <TableCell colSpan={5} align="center" sx={{ py: 8, color: '#9B948B' }}>
                         {search ? 'Không tìm thấy kết quả' : 'Không có dữ liệu tồn kho'}
                       </TableCell>
                     </TableRow>
@@ -379,20 +430,28 @@ export default function AdminInventoryPage() {
                       <TableRow
                         key={item.lohang_id}
                         sx={{
-                          '&:hover': { bgcolor: '#FAFAF7' },
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease',
+                          '&:hover': { bgcolor: '#FAFAF9' },
                         }}
                       >
-                        <TableCell>{item.ma_lo}</TableCell>
-                        <TableCell>{item.ten_hop_qua}</TableCell>
-                        <TableCell align="right">
+                        <TableCell sx={{ color: '#9B948B', fontWeight: 600, py: 2, fontSize: '0.8125rem', fontFamily: 'monospace' }}>{item.ma_lo}</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>{item.ten_hop_qua}</TableCell>
+                        <TableCell align="right" sx={{ py: 2 }}>
                           <Chip
                             label={item.so_luong_hien_tai.toLocaleString()}
                             size="small"
                             color={item.so_luong_hien_tai < 10 ? 'warning' : 'default'}
+                            sx={{
+                              fontSize: '0.75rem',
+                              height: '24px',
+                              borderRadius: '12px',
+                              fontWeight: 700
+                            }}
                           />
                         </TableCell>
-                        <TableCell align="right">{item.so_luong_da_ban.toLocaleString()}</TableCell>
-                        <TableCell>{formatDate(item.ngay_het_han)}</TableCell>
+                        <TableCell align="right" sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem', fontWeight: 600 }}>{item.so_luong_da_ban.toLocaleString()}</TableCell>
+                        <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{formatDate(item.ngay_het_han)}</TableCell>
                       </TableRow>
                     ))
                   )}

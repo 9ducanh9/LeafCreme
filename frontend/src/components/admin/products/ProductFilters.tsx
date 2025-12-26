@@ -74,17 +74,42 @@ export default function ProductFilters({
     }
   }, [])
 
+  const filterStyles = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '12px',
+      transition: 'all 0.2s ease',
+      bgcolor: 'white',
+      '& fieldset': {
+        borderColor: 'rgba(122, 111, 99, 0.15)',
+      },
+      '&:hover fieldset': {
+        borderColor: 'rgba(122, 111, 99, 0.3)',
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: '#C59B72',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      fontSize: '0.875rem',
+      fontWeight: 500,
+      '&.Mui-focused': {
+        color: '#C59B72',
+      },
+    },
+  }
+
   return (
     <Box
       sx={{
         display: 'flex',
-        gap: 2,
+        gap: 2.5,
         mb: 3,
         flexWrap: 'wrap',
-        bgcolor: 'white',
-        p: 2,
-        borderRadius: 2,
-        border: '1px solid #EFEDE6',
+        bgcolor: '#FAFAF9',
+        p: 2.5,
+        borderRadius: '16px',
+        border: 'none',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
       }}
     >
       <TextField
@@ -93,10 +118,11 @@ export default function ProductFilters({
         size="small"
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
-        sx={{ flexGrow: 1, minWidth: 200 }}
+        placeholder="Nhập tên sản phẩm..."
+        sx={{ ...filterStyles, flexGrow: 1, minWidth: 220 }}
       />
 
-      <FormControl size="small" sx={{ minWidth: 150 }}>
+      <FormControl size="small" sx={{ ...filterStyles, minWidth: 160 }}>
         <InputLabel>Danh mục</InputLabel>
         <Select
           value={category}
@@ -112,7 +138,7 @@ export default function ProductFilters({
         </Select>
       </FormControl>
 
-      <FormControl size="small" sx={{ minWidth: 120 }}>
+      <FormControl size="small" sx={{ ...filterStyles, minWidth: 140 }}>
         <InputLabel>Kích thước</InputLabel>
         <Select value={size} label="Kích thước" onChange={(e) => onSizeChange(e.target.value)}>
           <MenuItem value="">Tất cả kích thước</MenuItem>

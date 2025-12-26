@@ -174,7 +174,7 @@ export default function LeafieChatPanel({
             </div>
             <div>
               <h3 className="font-semibold text-[#473C2F] text-base md:text-lg">Leafie</h3>
-              <p className="text-xs text-[#7A6F63]">Trợ lý của Leaf Crème</p>
+              <p className="text-xs text-[#7A6F63]">Trợ lý của Leaf Creme</p>
             </div>
           </div>
           <div className="flex items-center gap-1">

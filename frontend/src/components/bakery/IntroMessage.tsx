@@ -21,19 +21,25 @@ export default function IntroMessage() {
               {/* Christmas decoration */}
               <div className="absolute top-4 right-4 text-[#D4A574] text-2xl animate-sparkle">✨</div>
               <h2 className="font-heading text-2xl md:text-3xl font-medium text-text-primary mb-6 leading-tight">
-                Leaf Creme · A light pause in your day <span className="text-[#D4A574]">🎄</span>
+                Khoảng lặng giữa ngày <span className="text-[#D4A574]">🎄</span>
               </h2>
               <div className="space-y-4 text-text-secondary leading-relaxed">
                 <p>
-                  Tên "Leaf Creme" được lấy cảm hứng từ những chiếc lá xanh tươi mát và lớp kem mịn màng. 
-                  Chúng tôi tin rằng mỗi chiếc bánh không chỉ là món tráng miệng, mà còn là một khoảnh khắc 
-                  nhẹ nhàng trong ngày bận rộn của bạn.
+                  Có những buổi chiều, bạn chỉ muốn ngồi lại một chút. 
+                  Không làm gì cả. Chỉ là thở.
                 </p>
                 <p>
-                  Từ bếp Leaf Creme, chúng tôi mang đến những hương vị ngọt ngào nhưng thanh tao, 
-                  không quá ngọt, không quá béo. Mỗi chiếc bánh được làm bằng tình yêu và sự tận tâm, 
-                  để bạn có thể tận hưởng những khoảnh khắc bình yên, dù là trong ngày sinh nhật, 
-                  dịp kỷ niệm, hay chỉ đơn giản là một buổi chiều thư giãn.
+                  Chúng tôi nghĩ về điều đó khi làm bánh. 
+                  Không phải để thêm ngọt vào ngày của bạn—mà để nó chậm lại một chút.
+                </p>
+                <p>
+                  Leaf Creme là khoảnh khắc bạn gác điện thoại xuống. 
+                  Là lúc bạn ngồi đối diện với ai đó, hoặc chỉ với chính mình. 
+                  Và cảm thấy ổn như thế cũng đủ rồi.
+                </p>
+                <p>
+                  Chúng tôi không hứa gì to tát. 
+                  Chỉ mong bạn dừng lại, dù chỉ năm phút—và cảm nhận được rằng hôm nay vẫn còn những khoảnh khắc êm ấm.
                 </p>
               </div>
             </div>

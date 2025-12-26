@@ -80,11 +80,11 @@ export default function Header() {
           <button
             onClick={() => navigate('/')}
             className="flex items-center hover:opacity-80 transition-default"
-            aria-label="Leaf Crème - Về trang chủ"
+            aria-label="Leaf Creme - Về trang chủ"
           >
             <img
               src={IMAGE_PATHS.navbar.logo}
-              alt="Leaf Crème"
+              alt="Leaf Creme"
               className="h-8 md:h-10 w-auto object-contain"
               onError={(e) => {
                 // Fallback to main logo or text if image not found
@@ -104,7 +104,7 @@ export default function Header() {
               }}
             />
             <span className="font-heading text-xl md:text-2xl font-medium text-text-primary leading-tight hidden">
-              Leaf Crème
+              Leaf Creme
             </span>
           </button>
 
@@ -148,12 +148,13 @@ export default function Header() {
               Hộp quà
             </button>
 
-            <a
-              href="#contact"
+            <button
+              type="button"
+              onClick={() => navigate('/contact')}
               className="text-text-secondary hover:text-text-primary transition-default"
             >
               Liên hệ
-            </a>
+            </button>
           </nav>
 
           {/* Right side: Chatbot, Cart and User (được đẩy sang phải) */}
@@ -212,6 +213,17 @@ export default function Header() {
                   ) : (
                     <UserIcon className="w-10 h-10 text-text-primary" />
                   )}
+                  {/* Christmas Santa Hat */}
+                  <div className="absolute -top-1.5 -left-1" style={{ width: '22px', height: '22px', transform: 'rotate(-25deg)' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      {/* Hat body */}
+                      <path d="M4 16 L12 4 L20 16 Z" fill="#DC2626" stroke="#FFF" strokeWidth="0.5"/>
+                      {/* White trim */}
+                      <ellipse cx="12" cy="16" rx="8" ry="1.5" fill="#FFF"/>
+                      {/* Pom-pom */}
+                      <circle cx="12" cy="3" r="2" fill="#FFF"/>
+                    </svg>
+                  </div>
                 </button>
 
                 {showUserMenu && (

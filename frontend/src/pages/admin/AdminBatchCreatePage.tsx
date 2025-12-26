@@ -416,11 +416,12 @@ export default function AdminBatchCreatePage() {
           />
           <TextField
             label="Ngày hết hạn *"
-            type="datetime-local"
+            type="date"
             value={common.ngay_het_han}
             onChange={(e) => setCommon((p) => ({ ...p, ngay_het_han: e.target.value }))}
             fullWidth
-            InputLabelProps={{ shrink: true }}
+            placeholder="dd/mm/yyyy"
+            slotProps={{ inputLabel: { shrink: true } }}
           />
           <TextField
             label="Số lượng *"
@@ -447,10 +448,60 @@ export default function AdminBatchCreatePage() {
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
-          <Button variant="outlined" onClick={resetForm} disabled={loading}>
+          <Button 
+            variant="outlined" 
+            onClick={resetForm} 
+            disabled={loading}
+            sx={{
+              borderColor: 'rgba(122, 111, 99, 0.3)',
+              color: '#7A6F63',
+              borderRadius: '12px',
+              px: 3,
+              py: 1.25,
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.9375rem',
+              borderWidth: '1.5px',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: '#7A6F63',
+                bgcolor: 'rgba(122, 111, 99, 0.08)',
+                borderWidth: '1.5px',
+              },
+            }}
+          >
             Reset
           </Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={!canSubmit || loading}>
+          <Button 
+            variant="contained" 
+            onClick={handleSubmit} 
+            disabled={!canSubmit || loading}
+            sx={{
+              bgcolor: '#C59B72',
+              color: 'white',
+              borderRadius: '12px',
+              px: 4,
+              py: 1.25,
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.9375rem',
+              boxShadow: '0 4px 12px rgba(197, 155, 114, 0.25)',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: '#B0895F',
+                boxShadow: '0 6px 20px rgba(197, 155, 114, 0.35)',
+                transform: 'translateY(-2px)',
+              },
+              '&:active': {
+                transform: 'translateY(0)',
+              },
+              '&:disabled': {
+                bgcolor: '#E8E5DD',
+                color: '#9B948B',
+                boxShadow: 'none',
+              },
+            }}
+          >
             Tạo lô
           </Button>
         </Box>

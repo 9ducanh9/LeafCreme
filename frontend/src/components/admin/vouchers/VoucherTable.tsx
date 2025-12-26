@@ -39,19 +39,26 @@ export default function VoucherTable({ vouchers, onEdit, onDelete }: VoucherTabl
   }
 
   return (
-    <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #EFEDE6' }}>
+    <TableContainer 
+      component={Paper} 
+      sx={{ 
+        borderRadius: '16px',
+        border: 'none',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+      }}
+    >
       <Table>
         <TableHead>
-          <TableRow sx={{ bgcolor: '#FAFAF7' }}>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Mã</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Loại</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Giảm giá</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Áp dụng cho</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Đơn tối thiểu</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Giới hạn sử dụng</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Hết hạn</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Trạng thái</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+          <TableRow sx={{ bgcolor: '#F7F6F3' }}>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Loại</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">Giảm giá</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Áp dụng cho</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">Đơn tối thiểu</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">Giới hạn</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hết hạn</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Trạng thái</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
               Thao tác
             </TableCell>
           </TableRow>
@@ -59,81 +66,129 @@ export default function VoucherTable({ vouchers, onEdit, onDelete }: VoucherTabl
         <TableBody>
           {vouchers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} align="center" sx={{ py: 4, color: '#7A6F63' }}>
+              <TableCell colSpan={9} align="center" sx={{ py: 8, color: '#9B948B' }}>
                 Không tìm thấy mã giảm giá
               </TableCell>
             </TableRow>
           ) : (
             vouchers.map((voucher) => (
-              <TableRow key={voucher.id} hover>
-                <TableCell sx={{ fontWeight: 600, color: '#473C2F', fontFamily: 'monospace' }}>
+              <TableRow 
+                key={voucher.id}
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease',
+                  '&:hover': { 
+                    bgcolor: '#FAFAF9',
+                    '& .action-buttons': {
+                      opacity: 1
+                    }
+                  }
+                }}
+              >
+                <TableCell sx={{ fontWeight: 700, color: '#473C2F', fontFamily: 'monospace', py: 2, fontSize: '0.875rem' }}>
                   {voucher.code}
                 </TableCell>
-                <TableCell>
+                <TableCell align="center" sx={{ py: 2 }}>
                   <Chip
-                    label={voucher.type === 'percent' ? 'Phần trăm' : 'Số tiền cố định'}
+                    label={voucher.type === 'percent' ? 'Phần trăm' : 'Số tiền'}
                     size="small"
                     sx={{
-                      bgcolor: '#F5C96A',
-                      color: '#473C2F',
-                      fontWeight: 500,
+                      bgcolor: 'rgba(245, 201, 106, 0.15)',
+                      color: '#C59B72',
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      borderRadius: '12px',
+                      border: 'none'
                     }}
                   />
                 </TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>
+                <TableCell sx={{ fontWeight: 700, color: '#473C2F', py: 2, fontSize: '0.9375rem' }} align="right">
                   {voucher.discountValue}
                   {getTypeLabel(voucher.type)}
                 </TableCell>
-                <TableCell>
+                <TableCell align="center" sx={{ py: 2 }}>
                   <Chip
                     label={
                       voucher.appliesTo === 'all'
-                        ? 'Tất cả sản phẩm'
+                        ? 'Tất cả'
                         : voucher.appliesTo === 'category'
                         ? 'Danh mục'
                         : 'Sản phẩm'
                     }
                     size="small"
                     sx={{
-                      bgcolor: '#E8E5DD',
-                      color: '#473C2F',
+                      bgcolor: 'rgba(232, 229, 221, 0.5)',
+                      color: '#7A6F63',
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      borderRadius: '12px',
+                      border: 'none'
                     }}
                   />
                 </TableCell>
-                <TableCell sx={{ color: '#7A6F63' }}>
-                  {voucher.minOrderValue ? `${voucher.minOrderValue.toLocaleString()} VND` : '-'}
+                <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }} align="right">
+                  {voucher.minOrderValue ? `${voucher.minOrderValue.toLocaleString()}` : '-'}
                 </TableCell>
-                <TableCell sx={{ color: '#7A6F63' }}>
-                  {voucher.usageLimit || 'Không giới hạn'}
+                <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }} align="right">
+                  {voucher.usageLimit || '∞'}
                 </TableCell>
                 <TableCell
                   sx={{
                     color: isExpired(voucher.expiresAt) ? '#d32f2f' : '#7A6F63',
-                    fontWeight: isExpired(voucher.expiresAt) ? 600 : 400,
+                    fontWeight: isExpired(voucher.expiresAt) ? 600 : 500,
+                    py: 2,
+                    fontSize: '0.875rem'
                   }}
                 >
                   {formatDate(voucher.expiresAt)}
                 </TableCell>
-                <TableCell>
+                <TableCell align="center" sx={{ py: 2 }}>
                   <Chip
-                    label={voucher.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
+                    label={voucher.status === 'active' ? 'Hoạt động' : 'Tắt'}
                     color={getStatusColor(voucher.status)}
                     size="small"
+                    sx={{
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      borderRadius: '12px',
+                      fontWeight: 600
+                    }}
                   />
                 </TableCell>
-                <TableCell align="right">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                <TableCell align="right" sx={{ py: 2 }}>
+                  <Box 
+                    className="action-buttons"
+                    sx={{ 
+                      display: 'flex', 
+                      gap: 0.5, 
+                      justifyContent: 'flex-end',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease'
+                    }}
+                  >
                     <IconButton
                       size="small"
                       onClick={() => onEdit(voucher)}
-                      sx={{ color: '#C59B72' }}
+                      sx={{ 
+                        color: '#C59B72',
+                        '&:hover': {
+                          bgcolor: 'rgba(197, 155, 114, 0.1)'
+                        }
+                      }}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => onDelete(voucher.id)}
-                      sx={{ color: '#d32f2f' }}
+                      sx={{ 
+                        color: '#d32f2f',
+                        '&:hover': {
+                          bgcolor: 'rgba(211, 47, 47, 0.1)'
+                        }
+                      }}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

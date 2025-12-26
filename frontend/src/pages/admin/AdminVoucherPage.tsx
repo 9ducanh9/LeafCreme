@@ -97,7 +97,26 @@ export default function AdminVoucherPage() {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleCreate}
-          sx={{ bgcolor: '#C59B72', '&:hover': { bgcolor: '#B0895F' } }}
+          sx={{ 
+            bgcolor: '#C59B72',
+            color: 'white',
+            borderRadius: '12px',
+            px: 3,
+            py: 1.25,
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '0.9375rem',
+            boxShadow: '0 4px 12px rgba(197, 155, 114, 0.25)',
+            transition: 'all 0.2s ease',
+            '&:hover': { 
+              bgcolor: '#B0895F',
+              boxShadow: '0 6px 20px rgba(197, 155, 114, 0.35)',
+              transform: 'translateY(-2px)',
+            },
+            '&:active': {
+              transform: 'translateY(0)',
+            },
+          }}
         >
           Tạo mã giảm giá
         </Button>

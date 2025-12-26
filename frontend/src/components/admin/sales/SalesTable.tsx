@@ -66,19 +66,26 @@ export default function SalesTable({ orders, onDelete }: SalesTableProps) {
   }
 
   return (
-    <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #EFEDE6' }}>
+    <TableContainer 
+      component={Paper} 
+      sx={{ 
+        borderRadius: '16px',
+        border: 'none',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+      }}
+    >
       <Table>
         <TableHead>
-          <TableRow sx={{ bgcolor: '#FAFAF7' }}>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Mã đơn</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Loại</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Khách hàng</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Ngày</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Sản phẩm</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Tổng tiền</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Thanh toán</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Trạng thái</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+          <TableRow sx={{ bgcolor: '#F7F6F3' }}>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã đơn</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Loại</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Khách hàng</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Ngày</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">Sản phẩm</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">Tổng tiền</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Thanh toán</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Trạng thái</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
               Thao tác
             </TableCell>
           </TableRow>
@@ -86,41 +93,59 @@ export default function SalesTable({ orders, onDelete }: SalesTableProps) {
         <TableBody>
           {orders.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} align="center" sx={{ py: 4, color: '#7A6F63' }}>
+              <TableCell colSpan={9} align="center" sx={{ py: 8, color: '#9B948B' }}>
                 Không tìm thấy đơn hàng
               </TableCell>
             </TableRow>
           ) : (
             orders.map((order) => (
-              <TableRow key={order.id} hover>
-                <TableCell sx={{ color: '#7A6F63', fontFamily: 'monospace', fontWeight: 500 }}>
+              <TableRow 
+                key={order.id}
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease',
+                  '&:hover': { 
+                    bgcolor: '#FAFAF9',
+                    '& .action-buttons': {
+                      opacity: 1
+                    }
+                  }
+                }}
+              >
+                <TableCell sx={{ color: '#9B948B', fontFamily: 'monospace', fontWeight: 600, py: 2, fontSize: '0.8125rem' }}>
                   {order.id}
                 </TableCell>
-                <TableCell>
+                <TableCell align="center" sx={{ py: 2 }}>
                   <Chip
                     label={getTypeLabel(order.orderType)}
                     size="small"
                     sx={{
-                      bgcolor: order.orderType === 'online' ? '#F5C96A' : '#E8E5DD',
-                      color: '#473C2F',
-                      fontWeight: 500,
+                      bgcolor: order.orderType === 'online' 
+                        ? 'rgba(245, 201, 106, 0.15)' 
+                        : 'rgba(232, 229, 221, 0.5)',
+                      color: order.orderType === 'online' ? '#C59B72' : '#7A6F63',
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      borderRadius: '12px',
+                      border: 'none'
                     }}
                   />
                 </TableCell>
-                <TableCell sx={{ fontWeight: 500, color: '#473C2F' }}>
+                <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>
                   {order.customerName}
                 </TableCell>
-                <TableCell sx={{ color: '#7A6F63' }}>{formatDate(order.date)}</TableCell>
-                <TableCell sx={{ color: '#7A6F63' }}>
-                  {order.items.length} sản phẩm
+                <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{formatDate(order.date)}</TableCell>
+                <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }} align="right">
+                  {order.items.length}
                 </TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>
+                <TableCell sx={{ fontWeight: 700, color: '#473C2F', py: 2, fontSize: '0.9375rem' }} align="right">
                   {formatPrice(order.totalAmount)}
                 </TableCell>
-                <TableCell sx={{ color: '#7A6F63', fontSize: '0.875rem' }}>
+                <TableCell sx={{ color: '#7A6F63', fontSize: '0.8125rem', py: 2 }}>
                   {getPaymentMethodLabel(order.paymentMethod)}
                 </TableCell>
-                <TableCell>
+                <TableCell align="center" sx={{ py: 2 }}>
                   <Chip
                     label={
                       order.status === 'pending' ? 'Chờ xử lý' :
@@ -131,21 +156,46 @@ export default function SalesTable({ orders, onDelete }: SalesTableProps) {
                     }
                     color={getStatusColor(order.status)}
                     size="small"
+                    sx={{
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      borderRadius: '12px',
+                      fontWeight: 600
+                    }}
                   />
                 </TableCell>
-                <TableCell align="right">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                <TableCell align="right" sx={{ py: 2 }}>
+                  <Box 
+                    className="action-buttons"
+                    sx={{ 
+                      display: 'flex', 
+                      gap: 0.5, 
+                      justifyContent: 'flex-end',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease'
+                    }}
+                  >
                     <IconButton
                       size="small"
                       onClick={() => navigate(`/admin/sales/${order.id}`)}
-                      sx={{ color: '#C59B72' }}
+                      sx={{ 
+                        color: '#C59B72',
+                        '&:hover': {
+                          bgcolor: 'rgba(197, 155, 114, 0.1)'
+                        }
+                      }}
                     >
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => onDelete(order.id)}
-                      sx={{ color: '#d32f2f' }}
+                      sx={{ 
+                        color: '#d32f2f',
+                        '&:hover': {
+                          bgcolor: 'rgba(211, 47, 47, 0.1)'
+                        }
+                      }}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

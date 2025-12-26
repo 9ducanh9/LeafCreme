@@ -131,14 +131,25 @@ def require_role(*allowed_roles: str):
     Usage: Depends(require_role("admin", "manager"))
     """
     def role_checker(current_user: NguoiDung = Depends(get_current_active_user)) -> NguoiDung:
+        import logging
+        logger = logging.getLogger("bakeryonl.api")
+        
         # Lấy tên vai trò từ relationship
         vaitro_ten = current_user.vaitro.ten_vai_tro if current_user.vaitro else None
         
+        # Debug logging
+        logger.info(f"🔐 Role check for user {current_user.nguoidung_id} ({current_user.email})")
+        logger.info(f"   User role: '{vaitro_ten}'")
+        logger.info(f"   Required roles: {allowed_roles}")
+        
         if vaitro_ten not in allowed_roles:
+            logger.warning(f"❌ Access denied! User role '{vaitro_ten}' not in {allowed_roles}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Required role: {', '.join(allowed_roles)}"
+                detail=f"Bạn không có quyền truy cập. Yêu cầu: {', '.join(allowed_roles)}. Hiện tại: {vaitro_ten or 'không có role'}"
             )
+        
+        logger.info(f"✅ Access granted!")
         return current_user
     
     return role_checker

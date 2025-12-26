@@ -30,19 +30,26 @@ export default function ProductTable({ variants, onEdit, onDelete }: ProductTabl
   }
 
   return (
-    <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #EFEDE6' }}>
+    <TableContainer 
+      component={Paper} 
+      sx={{ 
+        borderRadius: '16px',
+        border: 'none',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+      }}
+    >
       <Table>
         <TableHead>
-          <TableRow sx={{ bgcolor: '#FAFAF7' }}>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Hình ảnh</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Tên</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Mô tả</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Danh mục</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Giá</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Kích thước</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>Trạng thái</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>SKU</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#473C2F' }} align="right">
+          <TableRow sx={{ bgcolor: '#F7F6F3' }}>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hình ảnh</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Tên</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mô tả</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Danh mục</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">Giá</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Kích thước</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Trạng thái</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>SKU</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
               Thao tác
             </TableCell>
           </TableRow>
@@ -50,74 +57,120 @@ export default function ProductTable({ variants, onEdit, onDelete }: ProductTabl
         <TableBody>
           {variants.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} align="center" sx={{ py: 4, color: '#7A6F63' }}>
+              <TableCell colSpan={9} align="center" sx={{ py: 8, color: '#9B948B' }}>
                 Không tìm thấy sản phẩm
               </TableCell>
             </TableRow>
           ) : (
             variants.map((variant) => (
-              <TableRow key={variant.id} hover>
-                <TableCell>
+              <TableRow 
+                key={variant.id}
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease',
+                  '&:hover': { 
+                    bgcolor: '#FAFAF9',
+                    '& .action-buttons': {
+                      opacity: 1
+                    }
+                  }
+                }}
+              >
+                <TableCell sx={{ py: 2 }}>
                   <Avatar
                     src={variant.image ? getImageUrl(variant.image) : undefined}
                     alt={variant.name}
                     variant="rounded"
-                    sx={{ width: 56, height: 56 }}
+                    sx={{ width: 48, height: 48, borderRadius: '8px' }}
                   >
                     {variant.name.charAt(0).toUpperCase()}
                   </Avatar>
                 </TableCell>
-                <TableCell sx={{ fontWeight: 500, color: '#473C2F' }}>{variant.name}</TableCell>
-                <TableCell sx={{ color: '#7A6F63', maxWidth: 300 }}>
+                <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>{variant.name}</TableCell>
+                <TableCell sx={{ color: '#7A6F63', maxWidth: 300, py: 2, fontSize: '0.875rem' }}>
                   {variant.description}
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ py: 2 }}>
                   <Chip
                     label={variant.category}
                     size="small"
                     sx={{
-                      bgcolor: '#F5C96A',
-                      color: '#473C2F',
-                      fontWeight: 500,
+                      bgcolor: 'rgba(245, 201, 106, 0.15)',
+                      color: '#C59B72',
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      borderRadius: '12px',
+                      border: 'none'
                     }}
                   />
                 </TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#473C2F' }}>
+                <TableCell sx={{ fontWeight: 700, color: '#473C2F', py: 2, fontSize: '0.9375rem' }} align="right">
                   {formatPrice(variant.price)}
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ py: 2 }} align="center">
                   <Chip
                     label={variant.size}
                     size="small"
                     sx={{
-                      bgcolor: '#E8E5DD',
-                      color: '#473C2F',
+                      bgcolor: 'rgba(232, 229, 221, 0.5)',
+                      color: '#7A6F63',
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      borderRadius: '12px',
+                      border: 'none'
                     }}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ py: 2 }} align="center">
                   <Chip
                     label={variant.status === 'active' ? 'Hoạt động' : 'Ẩn'}
                     color={getStatusColor(variant.status)}
                     size="small"
+                    sx={{
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      borderRadius: '12px',
+                      fontWeight: 600
+                    }}
                   />
                 </TableCell>
-                <TableCell sx={{ color: '#7A6F63', fontSize: '0.875rem' }}>
+                <TableCell sx={{ color: '#9B948B', fontSize: '0.8125rem', py: 2, fontFamily: 'monospace' }}>
                   {variant.sku || '-'}
                 </TableCell>
-                <TableCell align="right">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                <TableCell align="right" sx={{ py: 2 }}>
+                  <Box 
+                    className="action-buttons"
+                    sx={{ 
+                      display: 'flex', 
+                      gap: 0.5, 
+                      justifyContent: 'flex-end',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease'
+                    }}
+                  >
                     <IconButton
                       size="small"
                       onClick={() => onEdit(variant)}
-                      sx={{ color: '#C59B72' }}
+                      sx={{ 
+                        color: '#C59B72',
+                        '&:hover': {
+                          bgcolor: 'rgba(197, 155, 114, 0.1)'
+                        }
+                      }}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => onDelete(variant.id)}
-                      sx={{ color: '#d32f2f' }}
+                      sx={{ 
+                        color: '#d32f2f',
+                        '&:hover': {
+                          bgcolor: 'rgba(211, 47, 47, 0.1)'
+                        }
+                      }}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

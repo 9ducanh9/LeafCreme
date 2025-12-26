@@ -187,14 +187,47 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
     }
   }
 
+  const inputStyles = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '12px',
+      transition: 'all 0.2s ease',
+      '& fieldset': {
+        borderColor: 'rgba(122, 111, 99, 0.2)',
+        transition: 'border-color 0.2s ease',
+      },
+      '&:hover fieldset': {
+        borderColor: 'rgba(122, 111, 99, 0.4)',
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: '#C59B72',
+        borderWidth: '2px',
+      },
+      '&:hover': {
+        backgroundColor: 'rgba(250, 250, 249, 0.5)',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      fontSize: '0.9375rem',
+      fontWeight: 500,
+      '&.Mui-focused': {
+        color: '#C59B72',
+      },
+    },
+    '& .MuiFormHelperText-root': {
+      fontSize: '0.75rem',
+      marginTop: '6px',
+      color: '#9B948B',
+    },
+  }
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F' }}>
+        <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F', pb: 1 }}>
           {voucher ? 'Chỉnh sửa mã giảm giá' : 'Tạo mã giảm giá mới'}
         </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <TextField
               label="Mã giảm giá"
               required
@@ -202,192 +235,275 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
               value={formData.code}
               onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
               error={!!errors.code}
-              helperText={errors.code}
+              helperText={errors.code || 'Mã sẽ tự động viết hoa'}
               inputProps={{ style: { textTransform: 'uppercase' } }}
+              sx={inputStyles}
             />
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControl fullWidth required>
-                <InputLabel>Loại</InputLabel>
-                <Select
-                  value={formData.type}
-                  label="Loại"
-                  onChange={(e) =>
-                    setFormData({ ...formData, type: e.target.value as Voucher['type'] })
-                  }
-                >
-                  <MenuItem value="percent">Phần trăm</MenuItem>
-                  <MenuItem value="fixed_amount">Số tiền cố định</MenuItem>
-                </Select>
-              </FormControl>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: '180px' }}>
+                <FormControl fullWidth required sx={inputStyles}>
+                  <InputLabel>Loại</InputLabel>
+                  <Select
+                    value={formData.type}
+                    label="Loại"
+                    onChange={(e) =>
+                      setFormData({ ...formData, type: e.target.value as Voucher['type'] })
+                    }
+                  >
+                    <MenuItem value="percent">Phần trăm</MenuItem>
+                    <MenuItem value="fixed_amount">Số tiền cố định</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
 
-              <TextField
-                label={formData.type === 'percent' ? 'Giảm giá (%)' : 'Giảm giá (VND)'}
-                type="number"
-                required
-                fullWidth
-                value={formData.discountValue}
-                onChange={(e) =>
-                  setFormData({ ...formData, discountValue: Number(e.target.value) })
-                }
-                error={!!errors.discountValue}
-                helperText={errors.discountValue}
-                inputProps={{ min: 0, max: formData.type === 'percent' ? 100 : undefined }}
-              />
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
+                <TextField
+                  label={formData.type === 'percent' ? 'Giảm giá (%)' : 'Giảm giá (VND)'}
+                  type="number"
+                  required
+                  fullWidth
+                  value={formData.discountValue}
+                  onChange={(e) =>
+                    setFormData({ ...formData, discountValue: Number(e.target.value) })
+                  }
+                  error={!!errors.discountValue}
+                  helperText={errors.discountValue || (formData.type === 'percent' ? 'Tối đa 100%' : 'Số tiền giảm cố định')}
+                  inputProps={{ min: 0, max: formData.type === 'percent' ? 100 : undefined, step: formData.type === 'percent' ? 1 : 1000 }}
+                  sx={inputStyles}
+                />
+              </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControl fullWidth required>
-                <InputLabel>Áp dụng cho</InputLabel>
-                <Select
-                  value={formData.appliesTo}
-                  label="Áp dụng cho"
-                  onChange={(e) => {
-                    const newAppliesTo = e.target.value as Voucher['appliesTo']
-                    setFormData({ 
-                      ...formData, 
-                      appliesTo: newAppliesTo,
-                      targetId: '', // Reset target when changing appliesTo
-                    })
-                    setSelectedProduct(null) // Reset selected product
-                    if (newAppliesTo === 'product') {
-                      loadProducts()
-                    }
-                  }}
-                >
-                  <MenuItem value="all">Tất cả sản phẩm</MenuItem>
-                  <MenuItem value="category">Danh mục</MenuItem>
-                  <MenuItem value="product">Sản phẩm</MenuItem>
-                </Select>
-              </FormControl>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
+                <FormControl fullWidth required sx={inputStyles}>
+                  <InputLabel>Áp dụng cho</InputLabel>
+                  <Select
+                    value={formData.appliesTo}
+                    label="Áp dụng cho"
+                    onChange={(e) => {
+                      const newAppliesTo = e.target.value as Voucher['appliesTo']
+                      setFormData({ 
+                        ...formData, 
+                        appliesTo: newAppliesTo,
+                        targetId: '', // Reset target when changing appliesTo
+                      })
+                      setSelectedProduct(null) // Reset selected product
+                      if (newAppliesTo === 'product') {
+                        loadProducts()
+                      }
+                    }}
+                  >
+                    <MenuItem value="all">Tất cả sản phẩm</MenuItem>
+                    <MenuItem value="category">Danh mục</MenuItem>
+                    <MenuItem value="product">Sản phẩm</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
 
               {formData.appliesTo === 'category' && (
-                <FormControl fullWidth required>
-                  <InputLabel>Danh mục</InputLabel>
-                  <Select
-                    value={formData.targetId}
-                    label="Danh mục"
-                    onChange={(e) => setFormData({ ...formData, targetId: e.target.value })}
-                    error={!!errors.targetId}
-                  >
-                    {categories.map((cat) => (
-                      <MenuItem key={cat} value={cat}>
-                        {cat}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.targetId && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                      {errors.targetId}
-                    </Typography>
-                  )}
-                </FormControl>
+                <Box sx={{ flex: 1, minWidth: '200px' }}>
+                  <FormControl fullWidth required sx={inputStyles}>
+                    <InputLabel>Danh mục</InputLabel>
+                    <Select
+                      value={formData.targetId}
+                      label="Danh mục"
+                      onChange={(e) => setFormData({ ...formData, targetId: e.target.value })}
+                      error={!!errors.targetId}
+                    >
+                      {categories.map((cat) => (
+                        <MenuItem key={cat} value={cat}>
+                          {cat}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.targetId && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75, fontSize: '0.75rem' }}>
+                        {errors.targetId}
+                      </Typography>
+                    )}
+                  </FormControl>
+                </Box>
               )}
 
               {formData.appliesTo === 'product' && (
-                <Autocomplete
-                  fullWidth
-                  options={products}
-                  getOptionLabel={(option) => `${option.ten} (ID: ${option.sanpham_id})`}
-                  loading={loadingProducts}
-                  value={selectedProduct}
-                  onChange={(_, newValue) => {
-                    setSelectedProduct(newValue)
-                    setFormData({ 
-                      ...formData, 
-                      targetId: newValue ? newValue.sanpham_id.toString() : '' 
-                    })
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Chọn sản phẩm"
-                      error={!!errors.targetId}
-                      helperText={errors.targetId || 'Tìm kiếm và chọn một sản phẩm'}
-                    />
-                  )}
-                />
+                <Box sx={{ flex: 1, minWidth: '200px' }}>
+                  <Autocomplete
+                    fullWidth
+                    options={products}
+                    getOptionLabel={(option) => `${option.ten} (ID: ${option.sanpham_id})`}
+                    loading={loadingProducts}
+                    value={selectedProduct}
+                    onChange={(_, newValue) => {
+                      setSelectedProduct(newValue)
+                      setFormData({ 
+                        ...formData, 
+                        targetId: newValue ? newValue.sanpham_id.toString() : '' 
+                      })
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Chọn sản phẩm"
+                        error={!!errors.targetId}
+                        helperText={errors.targetId || 'Tìm kiếm và chọn một sản phẩm'}
+                        sx={inputStyles}
+                      />
+                    )}
+                    sx={{
+                      '& .MuiAutocomplete-inputRoot': {
+                        borderRadius: '12px',
+                      },
+                    }}
+                  />
+                </Box>
               )}
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Giá trị đơn hàng tối thiểu (VND)"
-                type="number"
-                fullWidth
-                value={formData.minOrderValue || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, minOrderValue: Number(e.target.value) || 0 })
-                }
-                error={!!errors.minOrderValue}
-                helperText={errors.minOrderValue || 'Để 0 nếu không có tối thiểu'}
-                inputProps={{ min: 0 }}
-              />
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: '220px' }}>
+                <TextField
+                  label="Giá trị đơn hàng tối thiểu"
+                  type="number"
+                  fullWidth
+                  value={formData.minOrderValue || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, minOrderValue: Number(e.target.value) || 0 })
+                  }
+                  error={!!errors.minOrderValue}
+                  helperText={errors.minOrderValue || 'Để 0 nếu không có yêu cầu'}
+                  inputProps={{ min: 0, step: 1000 }}
+                  sx={inputStyles}
+                />
+              </Box>
 
-              <TextField
-                label="Giới hạn sử dụng"
-                type="number"
-                fullWidth
-                value={formData.usageLimit || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, usageLimit: Number(e.target.value) || 0 })
-                }
-                error={!!errors.usageLimit}
-                helperText={errors.usageLimit || 'Để 0 nếu không giới hạn'}
-                inputProps={{ min: 0 }}
-              />
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
+                <TextField
+                  label="Giới hạn sử dụng"
+                  type="number"
+                  fullWidth
+                  value={formData.usageLimit || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, usageLimit: Number(e.target.value) || 0 })
+                  }
+                  error={!!errors.usageLimit}
+                  helperText={errors.usageLimit || 'Để 0 nếu không giới hạn'}
+                  inputProps={{ min: 0 }}
+                  sx={inputStyles}
+                />
+              </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
-                <DateTimePicker
-                  label="Hết hạn"
-                  value={expiresAtDate}
-                  onChange={(newValue) => {
-                    setExpiresAtDate(newValue)
-                    if (newValue) {
-                      setFormData({ ...formData, expiresAt: newValue.toISOString() })
-                    }
-                  }}
-                  format="DD/MM/YYYY HH:mm"
-                  slotProps={{
-                    textField: {
-                      required: true,
-                      fullWidth: true,
-                      error: !!errors.expiresAt,
-                      helperText: errors.expiresAt || 'Format: DD/MM/YYYY HH:MM',
-                    },
-                  }}
-                />
-              </LocalizationProvider>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: '220px' }}>
+                <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
+                  <DateTimePicker
+                    label="Hết hạn"
+                    value={expiresAtDate}
+                    onChange={(newValue) => {
+                      setExpiresAtDate(newValue)
+                      if (newValue) {
+                        setFormData({ ...formData, expiresAt: newValue.toISOString() })
+                      }
+                    }}
+                    format="DD/MM/YYYY HH:mm"
+                    slotProps={{
+                      textField: {
+                        required: true,
+                        fullWidth: true,
+                        error: !!errors.expiresAt,
+                        helperText: errors.expiresAt || 'Ngày và giờ hết hạn sử dụng mã',
+                        sx: inputStyles,
+                      },
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '12px',
+                      },
+                    }}
+                  />
+                </LocalizationProvider>
+              </Box>
 
-              <FormControl fullWidth required>
-                <InputLabel>Trạng thái</InputLabel>
-                <Select
-                  value={formData.status}
-                  label="Trạng thái"
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as Voucher['status'] })
-                  }
-                >
-                  <MenuItem value="active">Hoạt động</MenuItem>
-                  <MenuItem value="inactive">Không hoạt động</MenuItem>
-                </Select>
-              </FormControl>
+              <Box sx={{ flex: 1, minWidth: '200px' }}>
+                <FormControl fullWidth required sx={inputStyles}>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select
+                    value={formData.status}
+                    label="Trạng thái"
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value as Voucher['status'] })
+                    }
+                  >
+                    <MenuItem value="active">Hoạt động</MenuItem>
+                    <MenuItem value="inactive">Không hoạt động</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
             </Box>
 
             {formData.type === 'percent' && formData.discountValue > 50 && (
-              <Alert severity="warning">
+              <Alert 
+                severity="warning"
+                sx={{
+                  borderRadius: '12px',
+                  border: '1px solid rgba(245, 201, 106, 0.3)',
+                  '& .MuiAlert-message': {
+                    fontSize: '0.875rem',
+                  },
+                }}
+              >
                 Giảm giá phần trăm cao ({formData.discountValue}%). Vui lòng xem xét cẩn thận.
               </Alert>
             )}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={onClose} disabled={loading}>
+        <DialogActions sx={{ p: 3, gap: 1.5, borderTop: '1px solid rgba(122, 111, 99, 0.08)' }}>
+          <Button 
+            onClick={onClose} 
+            disabled={loading}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+              color: '#7A6F63',
+              borderRadius: '10px',
+              px: 3,
+              py: 1,
+              '&:hover': {
+                bgcolor: 'rgba(122, 111, 99, 0.08)',
+              },
+            }}
+          >
             Hủy
           </Button>
-          <Button type="submit" variant="contained" disabled={loading} sx={{ bgcolor: '#C59B72' }}>
+          <Button 
+            type="submit" 
+            variant="contained" 
+            disabled={loading}
+            sx={{ 
+              bgcolor: '#C59B72',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '10px',
+              px: 4,
+              py: 1,
+              boxShadow: '0 2px 8px rgba(197, 155, 114, 0.25)',
+              transition: 'all 0.2s ease',
+              '&:hover': { 
+                bgcolor: '#B0895F',
+                boxShadow: '0 4px 12px rgba(197, 155, 114, 0.35)',
+                transform: 'translateY(-1px)',
+              },
+              '&:active': {
+                transform: 'translateY(0)',
+              },
+              '&:disabled': {
+                bgcolor: '#E8E5DD',
+                color: '#9B948B',
+              },
+            }}
+          >
             {loading ? 'Đang lưu...' : voucher ? 'Cập nhật' : 'Tạo mới'}
           </Button>
         </DialogActions>

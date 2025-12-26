@@ -6,7 +6,7 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
-import { formatPrice } from '../utils/formatPrice'
+import PriceDisplay from '../components/ui/PriceDisplay'
 import { getImageUrl } from '../utils/getImageUrl'
 import { getProductById, Product, getProductVariants, ProductVariant } from '../services/productService'
 import { useCart } from '../contexts/CartContext'
@@ -165,26 +165,27 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background py-16">
-      <div className="max-w-[1440px] mx-auto px-6">
+    <div className="min-h-screen bg-background py-8 md:py-12">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-6">
         {/* Back Button */}
         <Button
           variant="outline"
           onClick={() => navigate('/')}
-          className="mb-8"
+          className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Về trang chủ
         </Button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Product Image */}
-          <div>
-            <Card className="p-0 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-[52%_48%] gap-8 lg:gap-10">
+          {/* Product Image - Limited height for balance */}
+          <div className="lg:sticky lg:top-6 lg:self-start">
+            <Card className="p-0 overflow-hidden" style={{ maxHeight: '75vh' }}>
               <img
                 src={product.hinh_anh_url ? getImageUrl(product.hinh_anh_url) : FALLBACK_IMAGE.productDetail}
                 alt={product.ten}
-                className="w-full h-auto object-cover"
+                className="w-full h-full object-cover"
+                style={{ maxHeight: '75vh' }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
                   target.src = FALLBACK_IMAGE.productDetail
@@ -195,70 +196,75 @@ export default function ProductDetailPage() {
 
           {/* Product Info */}
           <div className="flex flex-col">
-            <div className="mb-6">
+            {/* Product Identity */}
+            <div className="mb-5">
               {product.danh_muc && (
-                <Badge className="mb-4">{product.danh_muc}</Badge>
+                <Badge className="mb-3">{product.danh_muc}</Badge>
               )}
-              <h1 className="font-heading text-4xl font-semibold text-text-primary mb-4">
+              <h1 className="font-heading text-3xl md:text-4xl font-semibold text-text-primary mb-3 leading-tight">
                 {product.ten}
               </h1>
-              <p className="text-text-secondary text-lg mb-6">
+              <p className="text-text-secondary text-base leading-relaxed">
                 {product.mo_ta || 'Sản phẩm chất lượng cao từ Leaf Creme.'}
               </p>
             </div>
 
-            {/* Variants Selection */}
-            {variants.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold text-text-primary mb-3">
-                  Chọn biến thể:
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {variants.map((variant) => (
-                    <button
-                      key={variant.bienthe_id}
-                      onClick={() => setSelectedVariant(variant)}
-                      className={`px-4 py-2 rounded-button border transition-default ${
-                        selectedVariant?.bienthe_id === variant.bienthe_id
-                          ? 'border-accent-brown bg-accent-brown/10'
-                          : 'border-border hover:border-accent-brown'
-                      }`}
-                    >
-                      <span className="text-sm text-text-primary">
+            {/* Purchase Decision Group */}
+            <div className="bg-background-secondary/30 rounded-2xl p-5 mb-5">
+              {/* Variants Selection */}
+              {variants.length > 0 && (
+                <div className="mb-5">
+                  <h3 className="font-semibold text-text-primary mb-2.5 text-sm">
+                    Chọn biến thể:
+                  </h3>
+                  <div className="flex flex-wrap gap-2.5">
+                    {variants.map((variant) => (
+                      <button
+                        key={variant.bienthe_id}
+                        onClick={() => setSelectedVariant(variant)}
+                        className={`px-3.5 py-2 rounded-lg border transition-default text-sm ${
+                          selectedVariant?.bienthe_id === variant.bienthe_id
+                            ? 'border-accent-brown bg-accent-brown/10 font-medium'
+                            : 'border-border hover:border-accent-brown'
+                        }`}
+                      >
                         {getVariantLabel(variant)}
-                      </span>
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Price */}
-            <div className="mb-8">
-              <div className="flex items-baseline gap-3">
-                <span className="font-heading text-4xl font-semibold text-text-primary tracking-tight">
-                  {formatPrice(getDisplayPrice())}
-                </span>
+              {/* Price */}
+              <div className="pt-4 border-t border-border/50">
+                <div className="flex items-baseline gap-3">
+                  <PriceDisplay 
+                    price={getDisplayPrice()} 
+                    className="text-3xl md:text-4xl font-medium"
+                  />
+                  {selectedVariant && (
+                    <PriceDisplay 
+                      price={Number(product.gia_co_ban)}
+                      className="text-sm"
+                      strikethrough
+                    />
+                  )}
+                </div>
                 {selectedVariant && (
-                  <span className="text-text-secondary text-sm line-through">
-                    {formatPrice(Number(product.gia_co_ban))}
-                  </span>
+                  <p className="text-text-secondary text-sm mt-1.5">
+                    {selectedVariant.muc_gioi_han_ton > 0
+                      ? `Còn ${selectedVariant.muc_gioi_han_ton} sản phẩm`
+                      : 'Hết hàng'}
+                  </p>
                 )}
               </div>
-              {selectedVariant && (
-                <p className="text-text-secondary text-sm mt-2">
-                  {selectedVariant.muc_gioi_han_ton > 0
-                    ? `Còn ${selectedVariant.muc_gioi_han_ton} sản phẩm`
-                    : 'Hết hàng'}
-                </p>
-              )}
             </div>
 
-            {/* Add to Cart Button */}
-            <div className="mt-auto">
+            {/* Add to Cart - Prominent CTA */}
+            <div>
               <Button
                 variant="primary"
-                className="w-full py-4 text-lg"
+                className="w-full py-3.5 text-base font-semibold shadow-md hover:shadow-lg"
                 onClick={handleAddToCart}
                 disabled={
                   addingToCart ||
@@ -267,36 +273,8 @@ export default function ProductDetailPage() {
                       (selectedVariant.muc_gioi_han_ton <= 0)))
                 }
               >
-                {addingToCart ? 'Đang thêm...' : 'Thêm vào giỏ'}
+                {addingToCart ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
               </Button>
-            </div>
-
-            {/* Product Details */}
-            <div className="mt-8 pt-8 border-t border-border">
-              <h3 className="font-semibold text-text-primary mb-3">
-                Thông tin sản phẩm
-              </h3>
-              <div className="space-y-2 text-sm text-text-secondary">
-                <p>
-                  <span className="font-medium">SKU:</span> {product.sku}
-                </p>
-                {product.don_vi_tinh && (
-                  <p>
-                    <span className="font-medium">Đơn vị:</span>{' '}
-                    {product.don_vi_tinh}
-                  </p>
-                )}
-                {product.loai && (
-                  <p>
-                    <span className="font-medium">Loại:</span>{' '}
-                    {product.loai === 'don'
-                      ? 'Đơn'
-                      : product.loai === 'bien_the'
-                      ? 'Biến thể'
-                      : 'Hộp quà'}
-                  </p>
-                )}
-              </div>
             </div>
           </div>
         </div>

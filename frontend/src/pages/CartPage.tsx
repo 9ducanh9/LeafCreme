@@ -104,10 +104,10 @@ export default function CartPage() {
               Giỏ hàng của bạn đang trống.
             </h2>
             <p className="text-text-secondary mb-8">
-              Khám phá các sản phẩm tuyệt vời từ Leaf Crème
+              Khám phá các sản phẩm tuyệt vời từ Leaf Creme
             </p>
             <Button variant="primary" onClick={() => navigate('/search')}>
-              Khám phá bánh tại Leaf Crème
+              Khám phá bánh tại Leaf Creme
             </Button>
           </Card>
         </div>
