@@ -1,5 +1,5 @@
 // Header/Navbar component - simple, slim header pinned to top
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShoppingCart, User as UserIcon, LogOut, LayoutDashboard, Leaf } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
@@ -7,23 +7,52 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useLeafieContext } from '../../contexts/LeafieContext'
 import Button from '../ui/Button'
 import ProductDropdown from './ProductDropdown'
-import CartDrawer from '../cart/CartDrawer'
 import { IMAGE_PATHS } from '../../constants/images'
 
 export default function Header() {
   const navigate = useNavigate()
-  const { cart } = useCart()
+  const { cart, openCartDrawer } = useCart()
   const { user, logout } = useAuth()
   const { openChat } = useLeafieContext()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState(false)
-  const [showCartDrawer, setShowCartDrawer] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
+  const avatarButtonRef = useRef<HTMLButtonElement>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null)
 
   // Reset avatar error when user or avatar_url changes
   useEffect(() => {
     setAvatarError(false)
   }, [user?.avatar_url])
+
+  // Calculate menu position when opening
+  useEffect(() => {
+    if (showUserMenu && avatarButtonRef.current) {
+      const updatePosition = () => {
+        if (avatarButtonRef.current) {
+          const rect = avatarButtonRef.current.getBoundingClientRect()
+          setMenuPosition({
+            top: rect.bottom + 8, // 8px = mt-2 equivalent
+            right: window.innerWidth - rect.right,
+          })
+        }
+      }
+      
+      // Calculate immediately
+      updatePosition()
+      
+      // Update position on scroll or resize
+      window.addEventListener('scroll', updatePosition, true)
+      window.addEventListener('resize', updatePosition)
+      
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true)
+        window.removeEventListener('resize', updatePosition)
+      }
+    } else {
+      setMenuPosition(null)
+    }
+  }, [showUserMenu])
 
   const handleLogout = () => {
     logout()
@@ -36,8 +65,15 @@ export default function Header() {
                   user?.vaitro?.vaitro_id === 1
 
   return (
-    <header className="sticky top-0 z-50 bg-surface-warm border-b border-border-warm backdrop-blur-sm">
-      <div className="max-w-[1440px] mx-auto px-6 py-4">
+    <header className="sticky top-0 z-50 bg-gradient-to-r from-[#FFF5E6] via-[#FFFEF9] to-[#FFF5E6] border-b-2 border-[#D4A574] backdrop-blur-sm shadow-sm relative">
+      {/* Christmas sparkles decoration */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-2 left-10 text-[#D4A574] text-lg animate-pulse">✨</div>
+        <div className="absolute top-3 right-20 text-[#C59B72] text-sm animate-pulse" style={{ animationDelay: '0.5s' }}>❄</div>
+        <div className="absolute top-4 left-1/4 text-[#F5C96A] text-xs animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
+      </div>
+      
+      <div className="max-w-[1440px] mx-auto px-6 py-4 relative z-10">
         {/* Cụm trái: logo + nav, cụm phải: cart + user */}
         <div className="flex items-center gap-8">
           {/* Logo */}
@@ -122,24 +158,27 @@ export default function Header() {
 
           {/* Right side: Chatbot, Cart and User (được đẩy sang phải) */}
           <div className="flex items-center gap-4 ml-auto">
-            {/* Leafie Chatbot Icon */}
+            {/* Leafie Chatbot Icon - Christmas style */}
             <button
               onClick={() => openChat()}
               className="relative p-2 hover:opacity-70 transition-default group"
               aria-label="Trò chuyện với Leafie"
             >
-              <Leaf className="w-6 h-6 text-text-primary group-hover:text-accent-brown transition-default" />
+              <div className="relative">
+                <Leaf className="w-6 h-6 text-[#C59B72] group-hover:text-[#D4A574] transition-default" />
+                <span className="absolute -top-1 -right-1 text-[#F5C96A] text-xs animate-pulse">✨</span>
+              </div>
             </button>
 
             {/* Cart Icon */}
             <button
-              onClick={() => setShowCartDrawer(true)}
+              onClick={openCartDrawer}
               className="relative p-2 hover:opacity-70 transition-default"
               aria-label="Giỏ hàng"
             >
               <ShoppingCart className="w-6 h-6 text-text-primary" />
               {cart.itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-accent-brown text-white text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-gradient-to-br from-[#C59B72] to-[#D4A574] text-white text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md border border-[#F5C96A]/30">
                   {cart.itemCount > 99 ? '99+' : cart.itemCount}
                 </span>
               )}
@@ -149,8 +188,9 @@ export default function Header() {
             {user ? (
               <div className="relative">
                 <button
+                  ref={avatarButtonRef}
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="relative p-1 hover:opacity-70 transition-default"
+                  className="relative p-1 hover:opacity-70 transition-default z-10"
                   aria-label="Tài khoản"
                 >
                   {user.avatar_url && user.avatar_url.trim() && !avatarError ? (
@@ -177,10 +217,19 @@ export default function Header() {
                 {showUserMenu && (
                   <>
                     <div
-                      className="fixed inset-0 z-10"
+                      className="fixed inset-0 z-[105]"
                       onClick={() => setShowUserMenu(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-card z-20 overflow-hidden">
+                    <div
+                      className="fixed w-56 bg-surface border border-border rounded-card shadow-xl z-[110] overflow-hidden"
+                      style={menuPosition ? {
+                        top: `${menuPosition.top}px`,
+                        right: `${menuPosition.right}px`,
+                      } : {
+                        top: '60px',
+                        right: '20px',
+                      }}
+                    >
                       <div className="p-4 border-b border-border">
                         <p className="font-semibold text-text-primary mb-2">
                           {user.ho_ten}
@@ -250,9 +299,6 @@ export default function Header() {
           </div>
         </div>
       </div>
-
-      {/* Cart Drawer */}
-      <CartDrawer isOpen={showCartDrawer} onClose={() => setShowCartDrawer(false)} />
     </header>
   )
 }

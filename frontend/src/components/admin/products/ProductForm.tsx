@@ -18,6 +18,7 @@ import {
 } from '@mui/material'
 import { ProductVariant } from '../../../types/admin'
 import { getCategories } from '../../../services/admin/categoryService'
+import { getImageUrl } from '../../../utils/getImageUrl'
 
 interface ProductFormProps {
   open: boolean
@@ -82,7 +83,9 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
         image: variant.image,
         sku: variant.sku || '',
       })
-      setImagePreview(variant.image || '')
+      // Use getImageUrl to convert relative path to full URL for preview
+      const previewUrl = variant.image ? (variant.image.startsWith('http') || variant.image.startsWith('data:') || variant.image.startsWith('blob:') ? variant.image : getImageUrl(variant.image)) : ''
+      setImagePreview(previewUrl)
       setImageInputType(variant.image?.startsWith('data:') || variant.image?.startsWith('blob:') ? 'file' : 'url')
     } else {
       setFormData({
@@ -101,38 +104,94 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
     }
   }, [variant, open, categories])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert('Vui lòng chọn file ảnh')
-        return
-      }
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn file ảnh')
+      return
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File ảnh không được vượt quá 5MB')
+      return
+    }
+
+    // Show preview immediately
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64String = reader.result as string
+      setImagePreview(base64String)
+    }
+    reader.readAsDataURL(file)
+
+    // Upload file to server
+    try {
+      setLoading(true)
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const token = localStorage.getItem('access_token')
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
       
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File ảnh không được vượt quá 5MB')
-        return
+      const response = await fetch(`${API_BASE_URL}/products/upload-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token?.trim()}`,
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || 'Upload ảnh thất bại')
       }
 
-      // Convert to base64 for preview and storage
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const base64String = reader.result as string
-        setFormData({ ...formData, image: base64String })
-        setImagePreview(base64String)
-      }
-      reader.readAsDataURL(file)
+      const result = await response.json()
+      // Update form data with relative path from server
+      setFormData((prev) => ({ ...prev, image: result.image_path }))
+      
+      // Update preview with full URL
+      const { getImageUrl } = await import('../../../utils/getImageUrl')
+      setImagePreview(getImageUrl(result.image_path))
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert(error instanceof Error ? error.message : 'Upload ảnh thất bại')
+      setImagePreview('')
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Convert full URL back to relative path if needed
+    let imagePath = formData.image
+    if (imagePath) {
+      // If it's a full URL from our API, extract relative path
+      const urlMatch = imagePath.match(/\/uploads\/(product|giftboxes)\/(.+)$/)
+      if (urlMatch) {
+        imagePath = `${urlMatch[1]}/${urlMatch[2]}`
+      } else if (imagePath.startsWith('data:') || imagePath.startsWith('blob:')) {
+        // Base64/blob - this shouldn't happen if file was uploaded correctly
+        // But if it does, we need to upload it first
+        console.warn('Base64 image detected, should have been uploaded already')
+        imagePath = '' // Clear it, user needs to upload file again
+      } else if (imagePath.startsWith('http') && !imagePath.includes('/uploads/')) {
+        // External URL, keep as is
+        imagePath = imagePath
+      }
+      // If already relative path (product/xxx.jpg), keep as is
+    }
+    
     // Auto-generate SKU if not editing or if SKU is empty
     const finalData = {
       ...formData,
+      image: imagePath || '',
       sku: variant?.sku || generateSKU(formData.name, formData.size),
     }
     
@@ -262,8 +321,11 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                   fullWidth
                   value={formData.image}
                   onChange={(e) => {
-                    setFormData({ ...formData, image: e.target.value })
-                    setImagePreview(e.target.value)
+                    const url = e.target.value
+                    setFormData({ ...formData, image: url })
+                    // If it's a relative path, convert to full URL for preview
+                    const previewUrl = url ? (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:') ? url : getImageUrl(url)) : ''
+                    setImagePreview(previewUrl)
                   }}
                   placeholder="https://example.com/image.jpg"
                 />

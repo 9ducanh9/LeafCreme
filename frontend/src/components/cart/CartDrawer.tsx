@@ -60,7 +60,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     <>
       {/* Overlay */}
       <div
-        className={`fixed inset-0 bg-black/20 z-40 transition-opacity duration-500 ${
+        className={`fixed inset-0 bg-black/20 z-[90] transition-opacity duration-500 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
@@ -70,8 +70,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
       {/* Drawer */}
       <div
-        className={`fixed top-0 right-0 h-screen w-full max-w-md bg-background z-50 shadow-lg transform transition-all duration-500 ${
-          isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+        className={`fixed top-0 right-0 h-screen w-full max-w-md bg-background z-[100] shadow-2xl transform transition-all duration-500 ${
+          isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
         }`}
         style={{ 
           transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',

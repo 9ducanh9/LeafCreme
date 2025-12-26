@@ -14,6 +14,6 @@ export async function getSuppliers(params?: {
   return await apiClient.get<SupplierItem[]>('/suppliers', {
     search: params?.search || null,
     dang_hoat_dong: params?.dang_hoat_dong ?? null,
-    limit: 200,
+    limit: 100, // Backend chỉ cho phép tối đa 100
   })
 }

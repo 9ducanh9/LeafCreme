@@ -16,10 +16,10 @@ export default function Button({
   const baseStyles = 'px-6 py-3 rounded-button font-medium transition-soft inline-flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed'
   
   const variantStyles = {
-    primary: 'bg-accent-brown text-white hover:opacity-90 border border-accent-brown',
-    secondary: 'bg-accent-yellow text-text-primary hover:opacity-90 border border-accent-yellow',
-    outline: 'border border-border text-text-primary hover:border-accent-brown bg-surface',
-    ghost: 'text-text-primary hover:bg-surface border border-transparent',
+    primary: 'bg-gradient-to-r from-[#C59B72] to-[#D4A574] text-white hover:from-[#B88A5F] hover:to-[#C59B72] border border-[#D4A574] shadow-md hover:shadow-lg',
+    secondary: 'bg-gradient-to-r from-[#F5C96A] to-[#F7D794] text-[#473C2F] hover:opacity-90 border border-[#F5C96A] shadow-sm',
+    outline: 'border-2 border-[#D4A574] text-[#473C2F] hover:bg-[#FFF5E6] hover:border-[#C59B72] bg-surface shadow-sm',
+    ghost: 'text-[#473C2F] hover:bg-[#FFF5E6] border border-transparent',
   }
   
   return (

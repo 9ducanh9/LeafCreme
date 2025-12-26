@@ -298,7 +298,7 @@ export default function AdminGiftBoxBomPage() {
                       <Button
                         variant="ghost"
                         onClick={() => handleDelete(item.bom_id)}
-                        sx={{ color: '#d32f2f', minWidth: 'auto', p: 1 }}
+                        className="text-red-600 hover:text-red-700 min-w-0 p-1"
                       >
                         <DeleteIcon fontSize="small" />
                       </Button>

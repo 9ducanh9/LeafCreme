@@ -5,6 +5,7 @@ import Card from '../ui/Card'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { formatPrice } from '../../utils/formatPrice'
+import { getImageUrl } from '../../utils/getImageUrl'
 import { getProducts, Product } from '../../services/productService'
 import { FALLBACK_IMAGE } from '../../constants/images'
 
@@ -79,12 +80,13 @@ export default function BestSellers() {
     <section id="best-sellers" className="py-16">
       <div className="max-w-[1440px] mx-auto px-6">
         {/* Section Header */}
-        <div className="text-center mb-12">
-          <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight">
-            Best Sellers Season
+        <div className="text-center mb-12 relative">
+          <div className="absolute top-0 right-0 text-[#D4A574] text-2xl animate-sparkle">✨</div>
+          <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight flex items-center justify-center gap-2">
+            Best Sellers Season <span className="text-[#C59B72] text-2xl">🎁</span>
           </h2>
           <p className="text-text-secondary text-base md:text-lg leading-relaxed">
-            Bốn sản phẩm được yêu thích nhất mùa này, được chọn lọc kỹ lưỡng từ bếp Leaf Crème.
+            Bốn sản phẩm được yêu thích nhất mùa này, được chọn lọc kỹ lưỡng từ bếp Leaf Crème. <span className="text-[#D4A574]">❄</span>
           </p>
         </div>
 
@@ -125,7 +127,7 @@ export default function BestSellers() {
                   {/* Product Image */}
                   <div className="relative mb-4 -mx-6 -mt-6">
                     <img
-                      src={product.hinh_anh_url || FALLBACK_IMAGE.product}
+                      src={product.hinh_anh_url ? getImageUrl(product.hinh_anh_url) : FALLBACK_IMAGE.product}
                       alt={product.ten}
                       className="w-full h-64 object-cover rounded-t-card"
                       onError={(e) => {

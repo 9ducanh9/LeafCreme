@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import { getProducts, getProductVariants, Product, ProductVariant } from '../../services/productService'
 import { formatPrice } from '../../utils/formatPrice'
+import { getImageUrl } from '../../utils/getImageUrl'
 import { FALLBACK_IMAGE } from '../../constants/images'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
@@ -242,7 +243,7 @@ export default function ProductDropdown({ isOpen, onClose }: ProductDropdownProp
               >
                 <div className="relative mb-3 h-32 bg-border rounded-card overflow-hidden">
                   <img
-                    src={product.hinh_anh_url || FALLBACK_IMAGE.product}
+                    src={product.hinh_anh_url ? getImageUrl(product.hinh_anh_url) : FALLBACK_IMAGE.product}
                     alt={product.ten}
                     className="w-full h-full object-cover group-hover:scale-105 transition-default"
                     onError={(e) => {

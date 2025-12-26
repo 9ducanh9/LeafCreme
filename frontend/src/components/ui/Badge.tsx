@@ -13,10 +13,10 @@ export default function Badge({
   ...props 
 }: BadgeProps) {
   const variantStyles = {
-    default: 'bg-accent-yellow text-text-primary border border-accent-yellow',
-    yellow: 'bg-accent-yellow text-text-primary border border-accent-yellow',
-    pink: 'bg-accent-pink text-text-primary border border-accent-pink',
-    brown: 'bg-accent-brown text-white border border-accent-brown',
+    default: 'bg-gradient-to-r from-[#F5C96A] to-[#F7D794] text-[#473C2F] border border-[#F5C96A] shadow-sm',
+    yellow: 'bg-gradient-to-r from-[#F5C96A] to-[#F7D794] text-[#473C2F] border border-[#F5C96A] shadow-sm',
+    pink: 'bg-gradient-to-r from-[#F7B4B8] to-[#F9C5C9] text-[#473C2F] border border-[#F7B4B8] shadow-sm',
+    brown: 'bg-gradient-to-r from-[#C59B72] to-[#D4A574] text-white border border-[#D4A574] shadow-sm',
   }
   
   return (

@@ -2,6 +2,7 @@
 import { Plus, Minus, Trash2 } from 'lucide-react'
 import { CartItem as CartItemType } from '../../types/cart'
 import { formatPrice } from '../../utils/formatPrice'
+import { getImageUrl } from '../../utils/getImageUrl'
 import { FALLBACK_IMAGE } from '../../constants/images'
 import GiftBoxInfo from './GiftBoxInfo'
 import { parseGiftBoxMetadata } from '../../utils/giftBoxHelpers'
@@ -26,7 +27,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, compact = f
     onQuantityChange(item.productId, item.quantity + 1, item.variantId)
   }
 
-  const imageUrl = item.productImage || FALLBACK_IMAGE.cart
+  const imageUrl = item.productImage ? getImageUrl(item.productImage) : FALLBACK_IMAGE.cart
   const itemTotal = item.price * item.quantity
 
   if (compact) {

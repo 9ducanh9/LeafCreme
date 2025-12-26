@@ -16,6 +16,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { ProductVariant } from '../../../types/admin'
 import { formatPrice } from '../../../utils/formatPrice'
+import { getImageUrl } from '../../../utils/getImageUrl'
 
 interface ProductTableProps {
   variants: ProductVariant[]
@@ -58,11 +59,13 @@ export default function ProductTable({ variants, onEdit, onDelete }: ProductTabl
               <TableRow key={variant.id} hover>
                 <TableCell>
                   <Avatar
-                    src={variant.image}
+                    src={variant.image ? getImageUrl(variant.image) : undefined}
                     alt={variant.name}
                     variant="rounded"
                     sx={{ width: 56, height: 56 }}
-                  />
+                  >
+                    {variant.name.charAt(0).toUpperCase()}
+                  </Avatar>
                 </TableCell>
                 <TableCell sx={{ fontWeight: 500, color: '#473C2F' }}>{variant.name}</TableCell>
                 <TableCell sx={{ color: '#7A6F63', maxWidth: 300 }}>

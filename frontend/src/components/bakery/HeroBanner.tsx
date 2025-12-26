@@ -58,8 +58,14 @@ export default function HeroBanner() {
               alt={slide.title}
               className="w-full h-full object-cover"
             />
-            {/* overlay chung giúp chữ dễ đọc, không cần box trắng */}
-            <div className="absolute inset-0 bg-black/40" />
+            {/* overlay với Christmas gradient */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/50" />
+            {/* Christmas sparkles overlay */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-10 left-20 text-white/30 text-2xl animate-pulse">✨</div>
+              <div className="absolute top-20 right-30 text-white/20 text-xl animate-pulse" style={{ animationDelay: '0.5s' }}>❄</div>
+              <div className="absolute bottom-20 left-1/3 text-white/25 text-lg animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
+            </div>
           </div>
         ))}
 
@@ -75,11 +81,12 @@ export default function HeroBanner() {
               </p>
               <Button
                 variant="primary"
-                className="mt-4 inline-flex items-center gap-2"
+                className="mt-4 inline-flex items-center gap-2 shadow-lg hover:shadow-xl"
                 onClick={() => navigate(slides[activeIndex].ctaPath)}
               >
                 {slides[activeIndex].ctaLabel}
                 <ArrowRight className="w-4 h-4" />
+                <span className="ml-1 text-sm">✨</span>
               </Button>
             </div>
           </div>
@@ -94,8 +101,8 @@ export default function HeroBanner() {
               key={slide.id}
               type="button"
               onClick={() => setActiveIndex(index)}
-              className={`h-2 w-2 rounded-full border border-accent-brown transition-all duration-300 ${
-                index === activeIndex ? 'bg-accent-brown opacity-100 scale-110' : 'opacity-60'
+              className={`h-2 w-2 rounded-full border-2 border-[#D4A574] transition-all duration-300 ${
+                index === activeIndex ? 'bg-gradient-to-br from-[#C59B72] to-[#D4A574] opacity-100 scale-110 shadow-md' : 'opacity-60 bg-transparent'
               }`}
               style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
               aria-label={`Chuyển đến slide ${index + 1}`}

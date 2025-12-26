@@ -4,6 +4,7 @@ import Card from '../ui/Card'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { formatPrice } from '../../utils/formatPrice'
+import { getImageUrl } from '../../utils/getImageUrl'
 import { GiftBox } from '../../types/giftBox'
 import { GIFT_BOX_IMAGES, FALLBACK_IMAGE } from '../../constants/images'
 
@@ -14,8 +15,8 @@ interface GiftBoxCardProps {
 export default function GiftBoxCard({ giftBox }: GiftBoxCardProps) {
   const navigate = useNavigate()
 
-  const getImageUrl = () => {
-    if (giftBox.imageUrl) return giftBox.imageUrl
+  const getImageUrlForGiftBox = () => {
+    if (giftBox.imageUrl) return getImageUrl(giftBox.imageUrl)
     if (giftBox.imageKey && GIFT_BOX_IMAGES[giftBox.imageKey]) {
       return GIFT_BOX_IMAGES[giftBox.imageKey]
     }
@@ -30,7 +31,7 @@ export default function GiftBoxCard({ giftBox }: GiftBoxCardProps) {
       {/* Gift Box Image */}
       <div className="relative mb-4 -mx-6 -mt-6">
         <img
-          src={getImageUrl()}
+          src={getImageUrlForGiftBox()}
           alt={giftBox.name}
           className="w-full h-64 object-cover rounded-t-card"
           onError={(e) => {

@@ -4,26 +4,31 @@
  */
 
 :root {
-  /* Colors - Background */
-  --color-bg-main: #FAFAF7;
-  --color-bg-alt: #FDFBF7;
+  /* Colors - Background - Christmas Theme */
+  --color-bg-main: #FFF8F0; /* Warm cream with Christmas feel */
+  --color-bg-alt: #FFF5E6; /* Slightly warmer for variety */
   
-  /* Colors - Surface */
+  /* Colors - Surface - Christmas Theme */
   --color-surface: #FFFFFF;
   --color-surface-warm: #FFFEF9; /* Warmer white for cards */
   
-  /* Colors - Border */
+  /* Colors - Border - Christmas Theme */
   --color-border: #E8E5DD;
   --color-border-warm: #E5DFD4; /* Warmer border */
+  --color-border-christmas: #D4A574; /* Gold border for Christmas */
   
   /* Colors - Text */
   --color-text-primary: #473C2F;
   --color-text-secondary: #7A6F63;
   
-  /* Colors - Accents */
-  --color-accent-yellow: #F5C96A;
-  --color-accent-pink: #F7B4B8;
-  --color-accent-brown: #C59B72;
+  /* Colors - Accents - Christmas Theme */
+  --color-accent-yellow: #F5C96A; /* Gold */
+  --color-accent-pink: #F7B4B8; /* Soft pink */
+  --color-accent-brown: #C59B72; /* Bakery brown */
+  --color-christmas-red: #C41E3A; /* Christmas red */
+  --color-christmas-green: #2D5016; /* Deep green */
+  --color-christmas-gold: #D4A574; /* Gold accent */
+  --color-christmas-gold-light: #F5C96A; /* Light gold */
   
   /* Border Radius */
   --radius-card: 16px;

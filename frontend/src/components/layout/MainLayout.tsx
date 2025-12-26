@@ -4,7 +4,10 @@ import { useLocation } from 'react-router-dom'
 import Header from '../bakery/Header'
 import Footer from '../bakery/Footer'
 import { LeafieChatPanel } from '../leafie'
+import CartDrawer from '../cart/CartDrawer'
 import { useLeafieContext } from '../../contexts/LeafieContext'
+import { useCart } from '../../contexts/CartContext'
+import ChristmasSnowflakes from './ChristmasSnowflakes'
 
 interface MainLayoutProps {
   children: ReactNode
@@ -17,6 +20,7 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
   
   // Get Leafie chat state from context (must be called unconditionally for Hooks rules)
   const { isOpen, messages, loading, closeChat, sendMessage, clearHistory } = useLeafieContext()
+  const { isCartDrawerOpen, closeCartDrawer } = useCart()
   
   // Don't render Header/Footer for admin routes (AdminLayout handles its own layout)
   if (isAdminRoute) {
@@ -24,9 +28,12 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
   }
   
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background relative">
+      {/* Global Christmas snowflakes */}
+      <ChristmasSnowflakes />
+      
       <Header />
-      <main className="flex-1">
+      <main className="flex-1 relative z-10">
         {children}
       </main>
       {showFooter && <Footer />}
@@ -41,6 +48,9 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
         onSuggestionSelect={sendMessage}
         onClearHistory={clearHistory}
       />
+
+      {/* Cart Drawer - rendered outside Header to avoid overflow issues */}
+      <CartDrawer isOpen={isCartDrawerOpen} onClose={closeCartDrawer} />
     </div>
   )
 }

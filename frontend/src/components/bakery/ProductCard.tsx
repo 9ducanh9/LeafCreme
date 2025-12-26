@@ -4,6 +4,7 @@ import Card from '../ui/Card'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { formatPrice } from '../../utils/formatPrice'
+import { getImageUrl } from '../../utils/getImageUrl'
 import { Product } from '../../services/productService'
 
 import { FALLBACK_IMAGE } from '../../constants/images'
@@ -20,7 +21,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       {/* Product Image */}
       <div className="relative mb-4 -mx-6 -mt-6">
         <img
-          src={product.hinh_anh_url || FALLBACK_IMAGE.product}
+          src={product.hinh_anh_url ? getImageUrl(product.hinh_anh_url) : FALLBACK_IMAGE.product}
           alt={product.ten}
           className="w-full h-64 object-cover rounded-t-card"
           onError={(e) => {

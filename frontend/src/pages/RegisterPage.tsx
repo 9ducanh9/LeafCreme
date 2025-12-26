@@ -1,5 +1,5 @@
 // Register page component
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -26,6 +26,7 @@ export default function RegisterPage() {
   })
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({

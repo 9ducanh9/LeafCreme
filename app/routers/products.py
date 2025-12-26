@@ -1,12 +1,15 @@
 """
 Products Router: CRUD operations cho sản phẩm và biến thể
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional, List
 from decimal import Decimal
 from datetime import datetime
+from pathlib import Path
+import uuid
 
 from ..db import get_db
 from ..models import SanPham, BienTheSanPham
@@ -192,6 +195,49 @@ def create_product(
     db.commit()
     db.refresh(product)
     return product
+
+
+@router.post("/upload-image", status_code=status.HTTP_200_OK)
+async def upload_product_image(
+    file: UploadFile = File(...),
+    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+):
+    """Upload ảnh sản phẩm - PHẢI ĐẶT TRƯỚC /{product_id} để tránh conflict"""
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File phải là ảnh"
+        )
+    
+    # Validate file size (max 5MB)
+    file_content = await file.read()
+    if len(file_content) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kích thước file không được vượt quá 5MB"
+        )
+    
+    # Tạo thư mục uploads nếu chưa có
+    upload_dir = Path("uploads/product")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate unique filename
+    file_ext = Path(file.filename).suffix if file.filename else '.jpg'
+    unique_filename = f"{uuid.uuid4().hex}{file_ext}"
+    file_path = upload_dir / unique_filename
+    
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    
+    # Generate relative path
+    image_path = f"product/{unique_filename}"
+    
+    return JSONResponse({
+        "image_path": image_path,
+        "message": "Upload ảnh thành công"
+    })
 
 
 @router.get("/{product_id}", response_model=ProductResponse)

@@ -84,12 +84,41 @@ export default function AdminBatchCreatePage() {
   useEffect(() => {
     ;(async () => {
       try {
-        const [supplierData, variantData, componentData, giftBoxData] = await Promise.all([
-          getSuppliers({ dang_hoat_dong: true }),
-          getProductVariants(),
-          getComponents({ dang_hoat_dong: true }),
-          getGiftBoxes({ dang_hoat_dong: true }),
-        ])
+        // Load data separately to identify which API fails
+        const loadData = async () => {
+          let supplierData: Awaited<ReturnType<typeof getSuppliers>> = []
+          let variantData: Awaited<ReturnType<typeof getProductVariants>> = []
+          let componentData: Awaited<ReturnType<typeof getComponents>> = []
+          let giftBoxData: Awaited<ReturnType<typeof getGiftBoxes>> = []
+
+          try {
+            supplierData = await getSuppliers({ dang_hoat_dong: true })
+          } catch (e) {
+            console.error('Error loading suppliers:', e)
+          }
+
+          try {
+            variantData = await getProductVariants()
+          } catch (e) {
+            console.error('Error loading product variants:', e)
+          }
+
+          try {
+            componentData = await getComponents({ dang_hoat_dong: true })
+          } catch (e) {
+            console.error('Error loading components:', e)
+          }
+
+          try {
+            giftBoxData = await getGiftBoxes({ dang_hoat_dong: true })
+          } catch (e) {
+            console.error('Error loading gift boxes:', e)
+          }
+
+          return { supplierData, variantData, componentData, giftBoxData }
+        }
+
+        const { supplierData, variantData, componentData, giftBoxData } = await loadData()
 
         setSuppliers(supplierData.map((s) => ({ ncc_id: s.ncc_id, ten_ncc: s.ten_ncc })))
 
@@ -108,7 +137,15 @@ export default function AdminBatchCreatePage() {
         setComponents(componentData.map((c) => ({ linh_kien_id: c.linh_kien_id, ten_linh_kien: c.ten_linh_kien, sku: c.sku })))
         setGiftBoxes(giftBoxData.map((g) => ({ hop_qua_id: g.hop_qua_id, ten_hop_qua: g.ten_hop_qua, sku: g.sku, gia_ban: g.gia_ban })))
       } catch (e) {
-        setError('Không thể tải dữ liệu danh mục cho nhập lô')
+        console.error('Error loading batch entry data:', e)
+        const errorMessage = e && typeof e === 'object' && 'detail' in e 
+          ? (e as { detail?: unknown }).detail 
+          : undefined
+        setError(
+          typeof errorMessage === 'string' 
+            ? errorMessage 
+            : 'Không thể tải dữ liệu danh mục cho nhập lô. Vui lòng kiểm tra console để xem chi tiết lỗi.'
+        )
       }
     })()
   }, [])

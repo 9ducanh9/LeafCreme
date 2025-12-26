@@ -13,10 +13,13 @@
   
   body {
     @apply bg-background text-text-primary font-body;
+    /* Christmas theme background with warm gradients */
     background-image: 
-      radial-gradient(circle at 20% 50%, rgba(245, 201, 106, 0.03) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(197, 155, 114, 0.03) 0%, transparent 50%);
+      radial-gradient(circle at 20% 50%, rgba(245, 201, 106, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(197, 155, 114, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 50% 20%, rgba(212, 165, 116, 0.05) 0%, transparent 50%);
     background-attachment: fixed;
+    position: relative;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -167,6 +170,86 @@
   .animate-dot-bounce {
     animation: dot-bounce 1.4s ease-in-out infinite;
   }
+
+  /* Christmas animations */
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+  }
+
+  @keyframes twinkle {
+    0%, 100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .animate-sparkle {
+    animation: sparkle 2s ease-in-out infinite;
+  }
+
+  .animate-twinkle {
+    animation: twinkle 1.5s ease-in-out infinite;
+  }
+
+  /* 3D Flip Animation for Auth Page */
+  .preserve-3d {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  @keyframes snowflake {
+    0% {
+      transform: translateY(-100vh) rotate(0deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.3;
+    }
+    90% {
+      opacity: 0.3;
+    }
+    100% {
+      transform: translateY(100vh) rotate(360deg);
+      opacity: 0;
+    }
+  }
+
+  .animate-snowflake {
+    animation: snowflake linear infinite;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
   
   /* Soft transition utilities - Use these throughout the app */
   .transition-default {
@@ -216,6 +299,67 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Color Split Animation - Variant A: Soft Half Fade (DEFAULT) */
+  @keyframes color-split-half-fade {
+    0%, 100% {
+      background: linear-gradient(to right, #FAFAF7 0%, #FAFAF7 50%, #FAFAF7 50%, #FAFAF7 100%);
+    }
+    50% {
+      background: linear-gradient(to right, #FDF1E3 0%, #FDF1E3 50%, #FAFAF7 50%, #FAFAF7 100%);
+    }
+  }
+
+  .color-split-variant-a {
+    animation: color-split-half-fade 1.4s ease-in-out infinite;
+  }
+
+  /* Color Split Animation - Variant B: Diagonal Blend (More premium) */
+  @keyframes color-split-diagonal {
+    0%, 100% {
+      background: linear-gradient(135deg, #FAFAF7 0%, #FAFAF7 50%, #FAFAF7 50%, #FAFAF7 100%);
+    }
+    50% {
+      background: linear-gradient(135deg, #FDF1E3 0%, #FDF1E3 50%, #FAFAF7 50%, #FAFAF7 100%);
+    }
+  }
+
+  .color-split-variant-b {
+    animation: color-split-diagonal 1.6s ease-in-out infinite;
+  }
+
+  /* Color Split Animation - Variant C: Pulse Block (Minimalist) */
+  @keyframes color-split-pulse {
+    0%, 100% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .color-split-variant-c {
+    position: relative;
+  }
+
+  .color-split-variant-c::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    background: #FDF1E3;
+    opacity: 0;
+    animation: color-split-pulse 1.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Apply variant on hover or auto-trigger */
+  .color-split-variant-c:hover::before,
+  .color-split-variant-c-auto::before {
+    animation: color-split-pulse 1.2s ease-in-out infinite;
   }
 }
 

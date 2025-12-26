@@ -19,6 +19,7 @@ import { useToast } from '../../contexts/ToastContext'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../../components/ui/Modal'
+import { getImageUrl } from '../../utils/getImageUrl'
 
 export default function AdminGiftBoxPage() {
   const navigate = useNavigate()
@@ -315,7 +316,29 @@ export default function AdminGiftBoxPage() {
             value={formData.hinh_anh_url}
             onChange={(e) => setFormData({ ...formData, hinh_anh_url: e.target.value })}
             fullWidth
+            placeholder="product/xxx.jpg hoặc giftboxes/xxx.jpg hoặc URL đầy đủ"
+            helperText="Có thể nhập đường dẫn tương đối (product/xxx.jpg) hoặc URL đầy đủ"
           />
+          {/* Image Preview */}
+          {formData.hinh_anh_url && (
+            <Box sx={{ mt: 1 }}>
+              <img
+                src={getImageUrl(formData.hinh_anh_url)}
+                alt="Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '200px',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  border: '1px solid #E8E5DD',
+                }}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                }}
+              />
+            </Box>
+          )}
           <TextField
             label="Kích thước"
             value={formData.kich_thuoc}

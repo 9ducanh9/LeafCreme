@@ -91,12 +91,13 @@ export default function ProductCategories() {
   }, [])
 
   return (
-    <section className="py-16 bg-bg-alt">
+    <section className="py-16 bg-gradient-to-b from-[#FFF8F0] to-[#FFF5E6]">
       <div className="max-w-[1440px] mx-auto px-6">
         {/* Section Header */}
-        <div className="text-center mb-12">
-          <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight">
-            Explore our main lines
+        <div className="text-center mb-12 relative">
+          <div className="absolute top-0 left-0 text-[#D4A574] text-xl animate-twinkle">⭐</div>
+          <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight flex items-center justify-center gap-2">
+            Explore our main lines <span className="text-[#C59B72] text-2xl">🎄</span>
           </h2>
           <p className="text-text-secondary text-base md:text-lg leading-relaxed">
             Bốn dòng bánh chính từ bếp Leaf Creme.
@@ -129,8 +130,9 @@ export default function ProductCategories() {
                     alt={category.name}
                     className="w-full h-64 object-cover rounded-t-card"
                   />
-                  <div className="absolute top-3 right-3">
-                    <Leaf className="w-5 h-5 text-accent-brown opacity-70" />
+                  <div className="absolute top-3 right-3 flex items-center gap-1">
+                    <Leaf className="w-5 h-5 text-[#C59B72] opacity-70" />
+                    <span className="text-[#D4A574] text-xs animate-sparkle">✨</span>
                   </div>
                 </div>
 

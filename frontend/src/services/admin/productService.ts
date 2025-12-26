@@ -177,26 +177,44 @@ export async function createProductVariant(
         // Product exists, just create variant
       } catch (error) {
         // Product doesn't exist, create it first
+        // Convert full URL back to relative path if needed
+        let imagePath = data.image
+        if (imagePath) {
+          const urlMatch = imagePath.match(/\/uploads\/(product|giftboxes)\/(.+)$/)
+          if (urlMatch) {
+            imagePath = `${urlMatch[1]}/${urlMatch[2]}`
+          }
+        }
+        
         product = await apiClient.post<Product>('/products', {
           ten: data.name,
           sku: data.sku || `SP-${Date.now()}`,
           loai: 'bien_the',
           gia_co_ban: data.price,
           mo_ta: data.description,
-          hinh_anh_url: data.image,
+          hinh_anh_url: imagePath || null,
           danh_muc: data.category,
           dang_hoat_dong: data.status === 'active',
         })
       }
     } else {
       // Create new product
+      // Convert full URL back to relative path if needed
+      let imagePath = data.image
+      if (imagePath) {
+        const urlMatch = imagePath.match(/\/uploads\/(product|giftboxes)\/(.+)$/)
+        if (urlMatch) {
+          imagePath = `${urlMatch[1]}/${urlMatch[2]}`
+        }
+      }
+      
       product = await apiClient.post<Product>('/products', {
         ten: data.name,
         sku: data.sku || `SP-${Date.now()}`,
         loai: 'bien_the',
         gia_co_ban: data.price,
         mo_ta: data.description,
-        hinh_anh_url: data.image,
+        hinh_anh_url: imagePath || null,
         danh_muc: data.category,
         dang_hoat_dong: data.status === 'active',
       })
@@ -239,24 +257,64 @@ export async function updateProductVariant(
     const variantId = parseInt(id)
     
     if (!isNaN(variantId)) {
-      // Update variant
-      const variant = await apiClient.put<BackendVariant>(`/products/variants/${variantId}`, {
-        huong_vi: data.name,
-        kich_thuoc: data.size,
-        gia_bienthe: data.price,
-        sku_bienthe: data.sku,
-        dang_hoat_dong: data.status === 'active',
-      })
+      // Update variant - only include fields that are provided
+      const variantUpdatePayload: Record<string, any> = {}
+      
+      if (data.name !== undefined && data.name !== null && data.name.trim() !== '') {
+        variantUpdatePayload.huong_vi = data.name
+      }
+      if (data.size !== undefined && data.size !== null && data.size !== '') {
+        variantUpdatePayload.kich_thuoc = data.size
+      }
+      if (data.price !== undefined && data.price !== null && data.price > 0) {
+        variantUpdatePayload.gia_bienthe = data.price
+      }
+      if (data.sku !== undefined && data.sku !== null && data.sku !== '') {
+        variantUpdatePayload.sku_bienthe = data.sku
+      }
+      if (data.status !== undefined) {
+        variantUpdatePayload.dang_hoat_dong = data.status === 'active'
+      }
+      
+      const variant = await apiClient.put<BackendVariant>(`/products/variants/${variantId}`, variantUpdatePayload)
 
       // Update product
       const product = await apiClient.get<Product>(`/products/${variant.sanpham_id}`)
-      await apiClient.put<Product>(`/products/${variant.sanpham_id}`, {
-        ten: data.name || product.ten,
-        mo_ta: data.description,
-        hinh_anh_url: data.image,
-        danh_muc: data.category,
-        dang_hoat_dong: data.status === 'active',
-      })
+      
+      // Convert full URL back to relative path if needed
+      let imagePath = data.image
+      if (imagePath) {
+        // If it's a full URL, extract the relative path
+        const urlMatch = imagePath.match(/\/uploads\/(product|giftboxes)\/(.+)$/)
+        if (urlMatch) {
+          imagePath = `${urlMatch[1]}/${urlMatch[2]}`
+        } else if (imagePath.startsWith('http')) {
+          // If it's external URL, keep as is
+          imagePath = imagePath
+        }
+        // If already relative path (product/xxx.jpg), keep as is
+      }
+      
+      // Build update payload - only include fields that are provided
+      const productUpdatePayload: Record<string, any> = {}
+      
+      if (data.name !== undefined && data.name !== null && data.name.trim() !== '') {
+        productUpdatePayload.ten = data.name
+      }
+      if (data.description !== undefined && data.description !== null) {
+        productUpdatePayload.mo_ta = data.description
+      }
+      if (imagePath !== undefined && imagePath !== null && imagePath !== '') {
+        productUpdatePayload.hinh_anh_url = imagePath
+      }
+      if (data.category !== undefined && data.category !== null && data.category !== '') {
+        productUpdatePayload.danh_muc = data.category
+      }
+      if (data.status !== undefined) {
+        productUpdatePayload.dang_hoat_dong = data.status === 'active'
+      }
+      
+      await apiClient.put<Product>(`/products/${variant.sanpham_id}`, productUpdatePayload)
 
       // Get updated product
       const updatedProduct = await apiClient.get<Product>(`/products/${variant.sanpham_id}`)
@@ -266,14 +324,46 @@ export async function updateProductVariant(
     // If not a variant ID, try as product ID
     const productId = parseInt(id)
     if (!isNaN(productId)) {
-      const product = await apiClient.put<Product>(`/products/${productId}`, {
-        ten: data.name,
-        mo_ta: data.description,
-        hinh_anh_url: data.image,
-        danh_muc: data.category,
-        gia_co_ban: data.price,
-        dang_hoat_dong: data.status === 'active',
-      })
+      // Get existing product first
+      const existingProduct = await apiClient.get<Product>(`/products/${productId}`)
+      
+      // Convert full URL back to relative path if needed
+      let imagePath = data.image
+      if (imagePath) {
+        // If it's a full URL, extract the relative path
+        const urlMatch = imagePath.match(/\/uploads\/(product|giftboxes)\/(.+)$/)
+        if (urlMatch) {
+          imagePath = `${urlMatch[1]}/${urlMatch[2]}`
+        } else if (imagePath.startsWith('http')) {
+          // If it's external URL, keep as is
+          imagePath = imagePath
+        }
+        // If already relative path (product/xxx.jpg), keep as is
+      }
+      
+      // Build update payload - only include fields that are provided
+      const productUpdatePayload: Record<string, any> = {}
+      
+      if (data.name !== undefined && data.name !== null && data.name.trim() !== '') {
+        productUpdatePayload.ten = data.name
+      }
+      if (data.description !== undefined && data.description !== null) {
+        productUpdatePayload.mo_ta = data.description
+      }
+      if (imagePath !== undefined && imagePath !== null && imagePath !== '') {
+        productUpdatePayload.hinh_anh_url = imagePath
+      }
+      if (data.category !== undefined && data.category !== null && data.category !== '') {
+        productUpdatePayload.danh_muc = data.category
+      }
+      if (data.price !== undefined && data.price !== null && data.price > 0) {
+        productUpdatePayload.gia_co_ban = data.price
+      }
+      if (data.status !== undefined) {
+        productUpdatePayload.dang_hoat_dong = data.status === 'active'
+      }
+      
+      const product = await apiClient.put<Product>(`/products/${productId}`, productUpdatePayload)
       return mapToAdminVariant(product)
     }
 

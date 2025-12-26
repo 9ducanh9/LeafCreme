@@ -21,6 +21,9 @@ interface CartContextType {
   cartCount: number // Alias for cart.itemCount
   cartSubtotal: number // Alias for cart.total
   appliedVoucher: AppliedVoucher | null
+  isCartDrawerOpen: boolean
+  openCartDrawer: () => void
+  closeCartDrawer: () => void
   addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
   removeFromCart: (productId: number, variantId?: number) => void
   updateQuantity: (productId: number, quantity: number, variantId?: number) => void
@@ -35,6 +38,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<Cart>(getCart())
   const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(null)
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false)
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -108,6 +112,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setAppliedVoucher(null)
   }
 
+  const openCartDrawer = () => {
+    setIsCartDrawerOpen(true)
+  }
+
+  const closeCartDrawer = () => {
+    setIsCartDrawerOpen(false)
+  }
+
   // Remove voucher when cart changes
   useEffect(() => {
     if (appliedVoucher) {
@@ -143,6 +155,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         cartCount: cart.itemCount,
         cartSubtotal: cart.total,
         appliedVoucher,
+        isCartDrawerOpen,
+        openCartDrawer,
+        closeCartDrawer,
         addToCart,
         removeFromCart,
         updateQuantity,

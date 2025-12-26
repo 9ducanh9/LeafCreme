@@ -1,4 +1,5 @@
 // Gift box image gallery component
+import { getImageUrl } from '../../utils/getImageUrl'
 import { FALLBACK_IMAGE, GIFT_BOX_IMAGES } from '../../constants/images'
 import { GiftBox } from '../../types/giftBox'
 
@@ -7,8 +8,8 @@ interface GiftBoxGalleryProps {
 }
 
 export default function GiftBoxGallery({ giftBox }: GiftBoxGalleryProps) {
-  const getImageUrl = () => {
-    if (giftBox.imageUrl) return giftBox.imageUrl
+  const getImageUrlForGiftBox = () => {
+    if (giftBox.imageUrl) return getImageUrl(giftBox.imageUrl)
     if (giftBox.imageKey && GIFT_BOX_IMAGES[giftBox.imageKey]) {
       return GIFT_BOX_IMAGES[giftBox.imageKey]
     }
@@ -18,7 +19,7 @@ export default function GiftBoxGallery({ giftBox }: GiftBoxGalleryProps) {
   return (
     <div className="w-full">
       <img
-        src={getImageUrl()}
+        src={getImageUrlForGiftBox()}
         alt={giftBox.name}
         className="w-full h-[280px] sm:h-[320px] md:h-[450px] object-cover rounded-xl border border-border"
         onError={(e) => {

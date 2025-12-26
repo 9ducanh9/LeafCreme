@@ -7,6 +7,7 @@ import Badge from '../components/ui/Badge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import { formatPrice } from '../utils/formatPrice'
+import { getImageUrl } from '../utils/getImageUrl'
 import { getProductById, Product, getProductVariants, ProductVariant } from '../services/productService'
 import { useCart } from '../contexts/CartContext'
 import { useToast } from '../contexts/ToastContext'
@@ -181,7 +182,7 @@ export default function ProductDetailPage() {
           <div>
             <Card className="p-0 overflow-hidden">
               <img
-                src={product.hinh_anh_url || FALLBACK_IMAGE.productDetail}
+                src={product.hinh_anh_url ? getImageUrl(product.hinh_anh_url) : FALLBACK_IMAGE.productDetail}
                 alt={product.ten}
                 className="w-full h-auto object-cover"
                 onError={(e) => {

@@ -1,9 +1,15 @@
-// Footer component - Clean, premium footer using design tokens
+// Footer component - Christmas theme
 export default function Footer() {
   return (
-    <footer className="bg-surface-warm border-t border-border-warm py-12">
+    <footer className="bg-gradient-to-b from-[#FFFEF9] to-[#FFF5E6] border-t-2 border-[#D4A574] py-12 relative overflow-hidden">
+      {/* Christmas decorations */}
+      <div className="absolute inset-0 pointer-events-none opacity-30">
+        <div className="absolute bottom-10 left-10 text-[#C59B72] text-2xl">🎄</div>
+        <div className="absolute bottom-8 right-20 text-[#D4A574] text-xl">✨</div>
+        <div className="absolute bottom-12 left-1/3 text-[#F5C96A] text-lg">⭐</div>
+      </div>
       {/* Consistent container width - matches Header */}
-      <div className="max-w-[1440px] mx-auto px-4 md:px-6">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-6 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-8">
           {/* Brand Section */}
           <div>
