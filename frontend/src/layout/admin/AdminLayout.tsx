@@ -40,7 +40,7 @@ const menuItems = [
   { text: 'Tồn kho', icon: <WarehouseIcon />, path: '/admin/inventory' },
   { text: 'Nhập lô', icon: <QrCodeScannerIcon />, path: '/admin/batches' },
   { text: 'Mã giảm giá', icon: <LocalOfferIcon />, path: '/admin/vouchers' },
-  { text: 'Đặt trước', icon: <EventNoteIcon />, path: '/admin/preorders' },
+  { text: 'Đơn hàng', icon: <EventNoteIcon />, path: '/admin/preorders' },
   { text: 'Bán hàng', icon: <PointOfSaleIcon />, path: '/admin/sales' },
 ]
 

@@ -1,6 +1,7 @@
 // Auth Context for user authentication state management
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { login as loginService, register as registerService, getCurrentUser, logout as logoutService, isAuthenticated, User } from '../services/authService'
+import { onLogout as cartOnLogout, clearGuestCart } from '../services/cartService'
 
 interface AuthContextType {
   user: User | null
@@ -73,6 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('access_token', authResponse.access_token)
         localStorage.setItem('refresh_token', authResponse.refresh_token)
         
+        // Clear guest cart when logging in (user will use their own cart)
+        clearGuestCart()
+        
         // Small delay to ensure localStorage is updated
         await new Promise(resolve => setTimeout(resolve, 100))
       }
@@ -80,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Now fetch user data
       const userData = await getCurrentUser()
       setUser(userData)
+      
+      // Dispatch custom event to notify CartContext to reload cart for this user
+      window.dispatchEvent(new CustomEvent('auth-change', { detail: { type: 'login', userId: userData.nguoidung_id } }))
     } catch (error) {
       // Clear tokens if login failed
       logoutService()
@@ -111,8 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    // Clear cart data on logout (user's cart stays in localStorage, just switching to guest mode)
+    cartOnLogout()
     logoutService()
     setUser(null)
+    // Dispatch custom event to notify CartContext to reload cart
+    window.dispatchEvent(new CustomEvent('auth-change', { detail: { type: 'logout' } }))
   }
 
   const refreshUser = async () => {

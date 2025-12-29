@@ -16,6 +16,7 @@ import RegisterPage from './pages/RegisterPage'
 import UserProfilePage from './pages/UserProfilePage'
 import CheckoutPage from './pages/CheckoutPage'
 import OrderSuccessPage from './pages/OrderSuccessPage'
+import PaymentQRPage from './pages/PaymentQRPage'
 import CategoryListingPage from './pages/CategoryListingPage'
 import SearchPage from './pages/SearchPage'
 import GiftBoxListPage from './pages/GiftBoxListPage'
@@ -68,6 +69,7 @@ function App() {
                   }
                 />
                 <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/orders/:id/payment-qr" element={<PaymentQRPage />} />
                 <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
 
                 {/* Admin Routes */}

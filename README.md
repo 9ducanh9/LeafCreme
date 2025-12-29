@@ -119,6 +119,7 @@ Leaf Crème/
 - ✅ User authentication (login/register)
 - ✅ User profile management
 - ✅ Category listing pages
+- ✅ Multiple payment methods (Cash on Delivery, MoMo QR)
 
 ### Backend
 - ✅ RESTful API với FastAPI
@@ -127,12 +128,36 @@ Leaf Crème/
 - ✅ Order management với FEFO allocation
 - ✅ Inventory management
 - ✅ Batch tracking
-- ✅ Payment processing
+- ✅ Payment processing (MoMo QR integration với auto-fill)
 
 ## 📝 Documentation
 
 - `RulesLeafCreme.md` - Design rules và guidelines cho frontend
+- `START_HERE_MOMO.md` - **BẮT ĐẦU TẠI ĐÂY** để setup thanh toán MoMo
+- `QUICK_START_MOMO_QR.md` - Setup MoMo QR đơn giản trong 5 phút
+- `MOMO_INTEGRATION_GUIDE.md` - Hướng dẫn MoMo Business API (nâng cao)
+- `ENV_SETUP.md` - Hướng dẫn cấu hình biến môi trường
 - API Documentation: http://localhost:8000/docs (Swagger UI)
+
+## 💳 Payment Integration
+
+Hệ thống hỗ trợ 2 phương thức thanh toán:
+
+### 1. Thanh toán khi nhận hàng (COD)
+- Khách hàng thanh toán trực tiếp khi nhận hàng
+- Không cần cấu hình thêm
+
+### 2. Thanh toán MoMo ⭐
+- **Quét QR tự động điền số tiền & nội dung** - Khách chỉ cần xác nhận
+- Setup trong 5 phút, không cần đăng ký doanh nghiệp
+- Xác nhận thủ công qua app MoMo
+- **Bắt đầu:** `START_HERE_MOMO.md` → `QUICK_START_MOMO_QR.md`
+
+**Cấu hình MoMo:**
+1. Chụp ảnh QR MoMo của bạn
+2. Tạo file `.env` với MOMO_QR_PHONE
+3. Restart backend  
+4. Test thử - QR sẽ tự động điền số tiền!
 
 ## 🐛 Troubleshooting
 

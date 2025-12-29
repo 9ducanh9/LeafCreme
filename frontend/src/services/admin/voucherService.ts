@@ -4,10 +4,21 @@ import { Voucher } from '../../types/admin'
 // Mock data storage key
 const STORAGE_KEY = 'leaf_creme_mock_vouchers'
 
-// Initial mock data
+// Initial mock data - SYNC WITH BACKEND DATABASE
 const INITIAL_MOCK_VOUCHERS: Voucher[] = [
   {
     id: '1',
+    code: 'WELCOME',
+    type: 'percent',
+    discountValue: 10,
+    appliesTo: 'all',
+    minOrderValue: 0,
+    usageLimit: 5,
+    expiresAt: '2026-01-14T23:59:59',
+    status: 'active',
+  },
+  {
+    id: '2',
     code: 'WELCOME10',
     type: 'percent',
     discountValue: 10,
@@ -18,7 +29,7 @@ const INITIAL_MOCK_VOUCHERS: Voucher[] = [
     status: 'active',
   },
   {
-    id: '2',
+    id: '3',
     code: 'SAVE50K',
     type: 'fixed_amount',
     discountValue: 50000,
@@ -29,7 +40,7 @@ const INITIAL_MOCK_VOUCHERS: Voucher[] = [
     status: 'active',
   },
   {
-    id: '3',
+    id: '4',
     code: 'MOUSSE20',
     type: 'percent',
     discountValue: 20,

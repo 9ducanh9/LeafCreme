@@ -16,7 +16,7 @@ from app.models import (
     NguoiDung, HopQua, LoHangHopQua, HopQuaBOM
 )
 from app.services.fefo import alloc_fefo_by_variant
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.schemas import validate_san_pham_ap_dung, SanPhamApDung
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -111,6 +111,10 @@ class OrderListResponse(BaseModel):
     tien_thanh_toan: Decimal
     trang_thai: str
     ten_khach_hang: Optional[str] = None
+    so_dien_thoai_khach: Optional[str] = None
+    dia_chi_giao_hang: Optional[str] = None
+    ngay_giao_du_kien: Optional[datetime] = None
+    ghi_chu: Optional[str] = None
     ngay_tao: datetime
     
     class Config:
@@ -413,7 +417,7 @@ def create_order(
             tien_giam_gia=Decimal("0"),
             tien_thanh_toan=Decimal("0"),
             tien_dat_coc=payload.tien_dat_coc or Decimal("0"),
-            trang_thai="cho" if loai_don == "dattruoc" else ("cho" if loai_don == "online" else "thanh_toan"),
+            trang_thai="cho" if loai_don == "dattruoc" else ("dang_xu_ly" if loai_don == "online" else "thanh_toan"),
             ten_khach_hang=payload.ten_khach_hang,
             so_dien_thoai_khach=payload.so_dien_thoai_khach,
             dia_chi_giao_hang=payload.dia_chi_giao_hang,
@@ -679,3 +683,30 @@ def cancel_order(
     db.refresh(order)
     
     return get_order(order_id, db, current_user)
+
+
+@router.delete("/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+):
+    """
+    Xóa đơn hàng (chỉ admin/quản lý)
+    CẢNH BÁO: Thao tác này sẽ xóa vĩnh viễn đơn hàng và các chi tiết liên quan
+    """
+    order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Không tìm thấy đơn hàng #{order_id}"
+        )
+    
+    # Xóa chi tiết đơn hàng trước (do foreign key constraint)
+    db.query(ChiTietDonHang).filter(ChiTietDonHang.donhang_id == order_id).delete()
+    
+    # Xóa đơn hàng
+    db.delete(order)
+    db.commit()
+    
+    return None

@@ -3,14 +3,15 @@
 import { getProducts, getProductVariants } from '../services/productService'
 import { getGiftBoxes } from '../services/giftBoxService'
 import { getVouchers } from '../services/admin/voucherService'
-import type { LeafieContext } from '../types/leafie'
+import type { LeafieContextBase } from '../types/leafie'
 import type { Product } from '../types/product'
 
 /**
- * Build complete context bundle for Leafie
+ * Build complete context bundle for Leafie (without sessionId)
+ * sessionId is added by useLeafie hook based on user state
  * Includes ALL products, variants count, categories, gift boxes, and vouchers
  */
-export async function buildLeafieContext(): Promise<LeafieContext> {
+export async function buildLeafieContext(): Promise<LeafieContextBase> {
   try {
     // Fetch ALL active products (not limited)
     const allProducts = await getProducts({
@@ -74,7 +75,7 @@ export async function buildLeafieContext(): Promise<LeafieContext> {
     ]
 
     // Fetch ALL gift boxes
-    let giftBoxes: LeafieContext['giftBoxes'] = []
+    let giftBoxes: LeafieContextBase['giftBoxes'] = []
     try {
       const allGiftBoxes = await getGiftBoxes({})
       giftBoxes = allGiftBoxes.map((box) => ({
@@ -89,7 +90,7 @@ export async function buildLeafieContext(): Promise<LeafieContext> {
     }
 
     // Fetch ALL active vouchers
-    let vouchers: LeafieContext['vouchers'] = []
+    let vouchers: LeafieContextBase['vouchers'] = []
     try {
       const activeVouchers = await getVouchers({ status: 'active' })
       vouchers = activeVouchers.map((v) => ({

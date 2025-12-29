@@ -1,12 +1,19 @@
 import { apiClient } from './api'
 
-export interface VnpayCreatePaymentResponse {
+export interface MomoQRPaymentInfo {
   payment_id: number
-  payment_url: string
+  method: string
+  phone_number: string
+  account_name: string
+  amount: number
+  transfer_content: string
+  qr_code?: string
+  qr_image?: string
+  instructions: string[]
 }
 
-export async function createVnpayPayment(orderId: number): Promise<VnpayCreatePaymentResponse> {
-  return await apiClient.post<VnpayCreatePaymentResponse>('/payments/vnpay/create', {
+export async function createMomoQRPayment(orderId: number): Promise<MomoQRPaymentInfo> {
+  return await apiClient.post<MomoQRPaymentInfo>('/payments/momo-qr/create', {
     donhang_id: orderId,
   })
 }

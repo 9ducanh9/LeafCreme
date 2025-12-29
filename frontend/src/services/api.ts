@@ -147,6 +147,22 @@ class ApiClient {
       method: 'DELETE',
     })
   }
+
+  async patch<T>(endpoint: string, data?: unknown, options?: { params?: Record<string, string | number | boolean | null> }): Promise<T> {
+    let url = endpoint
+    if (options?.params) {
+      const queryString = new URLSearchParams(
+        Object.entries(options.params)
+          .filter(([, value]) => value !== null && value !== undefined)
+          .map(([key, value]) => [key, String(value)])
+      ).toString()
+      url = `${endpoint}?${queryString}`
+    }
+    return this.request<T>(url, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    })
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)

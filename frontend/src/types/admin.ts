@@ -53,11 +53,14 @@ export interface PreOrder {
   customerName: string
   phone: string
   pickupDate: string
-  status: 'pending' | 'confirmed' | 'preparing' | 'done' | 'canceled'
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled'
   notes?: string
   items: PreOrderItem[]
   totalAmount: number
   createdAt: string
+  orderCode?: string
+  orderType?: string
+  address?: string
 }
 
 // Sales/Order types

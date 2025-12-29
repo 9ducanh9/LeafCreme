@@ -64,6 +64,7 @@ class LeafieRequest(BaseModel):
     message: str
     context: Optional[Dict[str, Any]] = None  # LeafieContext from frontend
     conversationHistory: Optional[List[Dict[str, Any]]] = None  # Conversation history
+    sessionId: Optional[str] = None  # Session ID cho n8n memory (ưu tiên cao nhất)
 
 
 @router.post("/ask")
@@ -170,6 +171,12 @@ async def ask_leafie(payload: LeafieRequest):
             "message": payload.message
         }
         
+        # 🔑 Add sessionId for n8n memory (priority: sessionId > context.sessionId > 'leafie-default')
+        # n8n sẽ dùng: $json.sessionId || $json.session_id || $json.user_id || 'leafie-default'
+        if payload.sessionId:
+            n8n_payload["sessionId"] = payload.sessionId
+            n8n_payload["session_id"] = payload.sessionId  # Alternative key for n8n
+        
         # Add context if provided
         if payload.context:
             n8n_payload["context"] = payload.context
@@ -185,6 +192,7 @@ async def ask_leafie(payload: LeafieRequest):
             "has_history": "conversationHistory" in n8n_payload,
             "history_length": len(payload.conversationHistory) if payload.conversationHistory else 0,
             "context_has_products": "allProducts" in (payload.context or {}),
+            "sessionId": payload.sessionId,  # 🔑 Session ID cho n8n memory
         }, "D")
         # #endregion
         

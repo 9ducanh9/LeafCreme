@@ -21,7 +21,7 @@ trang_thai_don_hang = ENUM("cho", "thanh_toan", "da_nhan", "huy", "dang_xu_ly", 
 trang_thai_lo_hang = ENUM("hoatdong", "hethan", "huy", name="trang_thai_lo_hang", create_type=False)
 
 # ENUM mới - dùng String nếu chưa biết giá trị chính xác
-loai_giam_gia = ENUM("phan_tram", "so_tien", name="loai_giam_gia", create_type=False)  # Phỏng đoán
+loai_giam_gia = ENUM("phantram", "sotien", name="loai_giam_gia", create_type=False)
 phuong_thuc_thanh_toan = ENUM("tien_mat", "chuyen_khoan", "the", "vi_dien_tu", name="phuong_thuc_thanh_toan", create_type=False)
 trang_thai_thanh_toan = ENUM("dang_xu_ly", "thanh_cong", "that_bai", "huy", name="trang_thai_thanh_toan", create_type=False)
 trang_thai_doi_tra = ENUM("yeu_cau", "dong_y", "tu_choi", "hoan_thanh", name="trang_thai_doi_tra", create_type=False)

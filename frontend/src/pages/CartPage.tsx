@@ -9,7 +9,7 @@ import { useToast } from '../contexts/ToastContext'
 import { scanLookup } from '../services/lookupService'
 import CartItem from '../components/cart/CartItem'
 import CartSummary from '../components/cart/CartSummary'
-import { ArrowLeft, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, ShoppingBag, Cake } from 'lucide-react'
 
 export default function CartPage() {
   const navigate = useNavigate()
@@ -93,21 +93,29 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-background py-16">
         <div className="max-w-[1440px] mx-auto px-6">
-          <Button variant="outline" onClick={() => navigate('/')} className="mb-8">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/')} 
+            className="mb-10 text-sm text-text-secondary border-border/60 hover:border-border hover:bg-transparent"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Tiếp tục mua sắm
           </Button>
 
-          <Card className="text-center py-16">
-            <ShoppingBag className="w-20 h-20 text-text-secondary/30 mx-auto mb-6" />
-            <h2 className="font-heading text-3xl font-semibold text-text-primary mb-4">
-              Giỏ hàng của bạn đang trống.
+          <Card className="text-center py-24 px-8 rounded-[20px] bg-[#FAF9F7] shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+            <Cake className="w-28 h-28 text-accent-brown/15 mx-auto mb-5 stroke-[1.5]" />
+            <h2 className="font-heading text-2xl font-normal text-text-primary mb-4">
+              Chưa có gì trong giỏ cả
             </h2>
-            <p className="text-text-secondary mb-8">
-              Khám phá các sản phẩm tuyệt vời từ Leaf Creme
+            <p className="text-base text-[#7A6F63]/90 mb-12 max-w-[420px] mx-auto leading-[1.7]">
+              Hãy để chúng mình làm ngọt ngào thêm ngày của bạn nhé
             </p>
-            <Button variant="primary" onClick={() => navigate('/search')}>
-              Khám phá bánh tại Leaf Creme
+            <Button 
+              variant="primary" 
+              onClick={() => navigate('/search')} 
+              className="px-10 py-3 rounded-full shadow-[0_2px_8px_rgba(197,155,114,0.15)] hover:shadow-[0_3px_12px_rgba(197,155,114,0.25)] hover:-translate-y-[1px] transition-all duration-200"
+            >
+              Xem bánh ngon
             </Button>
           </Card>
         </div>

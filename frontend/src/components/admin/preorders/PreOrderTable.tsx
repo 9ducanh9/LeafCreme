@@ -26,17 +26,19 @@ export default function PreOrderTable({ preOrders, onDelete }: PreOrderTableProp
   const navigate = useNavigate()
 
   const getStatusColor = (status: PreOrder['status']) => {
-    const colors: Record<PreOrder['status'], 'default' | 'primary' | 'warning' | 'success' | 'error'> = {
+    const colors: Record<PreOrder['status'], 'default' | 'primary' | 'warning' | 'success' | 'error' | 'info'> = {
       pending: 'warning',
       confirmed: 'primary',
       preparing: 'info',
-      done: 'success',
-      canceled: 'error',
+      ready: 'success',
+      completed: 'success',
+      cancelled: 'error',
     }
     return colors[status] || 'default'
   }
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '—'
     return new Date(dateString).toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: 'short',
@@ -49,12 +51,22 @@ export default function PreOrderTable({ preOrders, onDelete }: PreOrderTableProp
   const getStatusLabel = (status: PreOrder['status']) => {
     const labels: Record<PreOrder['status'], string> = {
       pending: 'Chờ xử lý',
-      confirmed: 'Đã xác nhận',
+      confirmed: 'Đang xử lý',
       preparing: 'Đang chuẩn bị',
-      done: 'Hoàn thành',
-      canceled: 'Đã hủy',
+      ready: 'Sẵn sàng',
+      completed: 'Hoàn thành',
+      cancelled: 'Đã hủy',
     }
-    return labels[status]
+    return labels[status] || status
+  }
+
+  const getOrderTypeLabel = (type?: string) => {
+    const labels: Record<string, string> = {
+      online: 'Online',
+      dattruoc: 'Đặt trước',
+      pos: 'Tại quán',
+    }
+    return type ? labels[type] || type : '—'
   }
 
   return (
@@ -69,11 +81,11 @@ export default function PreOrderTable({ preOrders, onDelete }: PreOrderTableProp
       <Table>
         <TableHead>
           <TableRow sx={{ bgcolor: '#F7F6F3' }}>
-            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>ID</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã đơn</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Loại</TableCell>
             <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Khách hàng</TableCell>
             <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Số điện thoại</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Ngày lấy</TableCell>
-            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">Sản phẩm</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Ngày giao</TableCell>
             <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">Tổng tiền</TableCell>
             <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Trạng thái</TableCell>
             <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
@@ -85,7 +97,7 @@ export default function PreOrderTable({ preOrders, onDelete }: PreOrderTableProp
           {preOrders.length === 0 ? (
             <TableRow>
               <TableCell colSpan={8} align="center" sx={{ py: 8, color: '#9B948B' }}>
-                Không tìm thấy đặt trước
+                Không tìm thấy đơn hàng
               </TableCell>
             </TableRow>
           ) : (
@@ -103,17 +115,28 @@ export default function PreOrderTable({ preOrders, onDelete }: PreOrderTableProp
                   }
                 }}
               >
-                <TableCell sx={{ color: '#9B948B', fontFamily: 'monospace', fontWeight: 600, py: 2, fontSize: '0.8125rem' }}>
-                  #{order.id}
+                <TableCell sx={{ color: '#C59B72', fontFamily: 'monospace', fontWeight: 600, py: 2, fontSize: '0.8125rem' }}>
+                  {order.orderCode || `#${order.id}`}
+                </TableCell>
+                <TableCell sx={{ py: 2 }}>
+                  <Chip
+                    label={getOrderTypeLabel(order.orderType)}
+                    size="small"
+                    sx={{
+                      fontSize: '0.7rem',
+                      height: '22px',
+                      borderRadius: '6px',
+                      fontWeight: 500,
+                      bgcolor: order.orderType === 'online' ? '#E3F2FD' : '#FFF3E0',
+                      color: order.orderType === 'online' ? '#1976D2' : '#E65100',
+                    }}
+                  />
                 </TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>
                   {order.customerName}
                 </TableCell>
                 <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem', fontFamily: 'monospace' }}>{order.phone}</TableCell>
                 <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{formatDate(order.pickupDate)}</TableCell>
-                <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }} align="right">
-                  {order.items.length}
-                </TableCell>
                 <TableCell sx={{ fontWeight: 700, color: '#473C2F', py: 2, fontSize: '0.9375rem' }} align="right">
                   {formatPrice(order.totalAmount)}
                 </TableCell>

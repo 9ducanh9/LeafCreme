@@ -15,9 +15,10 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../contexts/ToastContext'
 import { formatPrice } from '../utils/formatPrice'
 import { createOrder, OrderCreate } from '../services/orderService'
-import { createVnpayPayment } from '../services/paymentService'
+import { createMomoQRPayment } from '../services/paymentService'
 import { ArrowLeft } from 'lucide-react'
 import ProtectedRoute from '../components/routing/ProtectedRoute'
 import GiftBoxInfo from '../components/cart/GiftBoxInfo'
@@ -32,8 +33,9 @@ dayjs.locale('vi')
 
 function CheckoutPageContent() {
   const navigate = useNavigate()
-  const { cart, clearCart } = useCart()
+  const { cart, clearCart, appliedVoucher } = useCart()
   const { user } = useAuth()
+  const { showSuccess } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,9 +48,19 @@ function CheckoutPageContent() {
   })
   const [deliveryDateTime, setDeliveryDateTime] = useState<Dayjs | null>(null)
   const [deliveryTimeError, setDeliveryTimeError] = useState<string>('')
+  const [deliveryTimeTouched, setDeliveryTimeTouched] = useState(false)
 
   const [voucherCode, setVoucherCode] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'pay_later' | 'vnpay'>('pay_later')
+  const [voucherError, setVoucherError] = useState<string>('')
+  const [paymentMethod, setPaymentMethod] = useState<'pay_later' | 'momo_qr'>('pay_later')
+
+  // Auto-fill voucher code from cart if applied
+  useEffect(() => {
+    if (appliedVoucher?.code) {
+      setVoucherCode(appliedVoucher.code)
+      setVoucherError('') // Clear error when voucher is applied from cart
+    }
+  }, [appliedVoucher])
 
   useEffect(() => {
     if (cart.items.length === 0) {
@@ -69,7 +81,7 @@ function CheckoutPageContent() {
     e.preventDefault()
     setError(null)
 
-    // Validation
+    // Validation - Tất cả trường đều bắt buộc (trừ mã giảm giá và ghi chú)
     if (!shippingInfo.ten_khach_hang.trim()) {
       setError('Vui lòng nhập tên khách hàng')
       return
@@ -85,13 +97,18 @@ function CheckoutPageContent() {
       return
     }
 
+    // Ngày giao dự kiến là bắt buộc
+    if (!deliveryDateTime) {
+      setDeliveryTimeTouched(true)
+      setError('Vui lòng chọn ngày và giờ giao dự kiến')
+      return
+    }
+
     // Validate delivery time
-    if (deliveryDateTime) {
-      const timeError = validateDeliveryTime(deliveryDateTime)
-      if (timeError) {
-        setError(timeError)
-        return
-      }
+    const timeError = validateDeliveryTime(deliveryDateTime)
+    if (timeError) {
+      setError(timeError)
+      return
     }
 
     // Convert cart items to order items
@@ -147,9 +164,15 @@ function CheckoutPageContent() {
       // Clear cart after successful order
       clearCart()
 
-      if (paymentMethod === 'vnpay') {
-        const { payment_url } = await createVnpayPayment(order.donhang_id)
-        window.location.href = payment_url
+      // Show success notification
+      showSuccess(`Đơn hàng ${order.ma_don_hang} đã được tạo thành công! Chúng tôi sẽ xử lý đơn hàng của bạn sớm nhất.`)
+
+      if (paymentMethod === 'momo_qr') {
+        const paymentInfo = await createMomoQRPayment(order.donhang_id)
+        // Redirect to payment QR page
+        navigate(`/orders/${order.donhang_id}/payment-qr`, { 
+          state: { paymentInfo } 
+        })
         return
       }
 
@@ -172,6 +195,12 @@ function CheckoutPageContent() {
         errorMessage = 'Hộp quà này hiện chưa có sẵn trong hệ thống. Vui lòng liên hệ cửa hàng để đặt hàng hoặc chọn sản phẩm khác.'
       } else if (typeof detail === 'string' && detail) {
         errorMessage = detail
+        // Check if error is voucher related
+        if (detail.toLowerCase().includes('voucher') || detail.toLowerCase().includes('mã') || detail.toLowerCase().includes('giảm giá')) {
+          setVoucherError(detail)
+          setError(null) // Don't show in main error, only in voucher field
+          return
+        }
       } else if (typeof errorText === 'string' && errorText) {
         errorMessage = errorText
       }
@@ -307,6 +336,14 @@ function CheckoutPageContent() {
                     {formatPrice(cart.total)}
                   </span>
                 </div>
+                {appliedVoucher && appliedVoucher.discountAmount > 0 && (
+                  <div className="flex justify-between text-accent-brown">
+                    <span>Giảm giá ({appliedVoucher.code}):</span>
+                    <span className="font-medium">
+                      -{formatPrice(appliedVoucher.discountAmount)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-text-secondary">
                   <span>Phí vận chuyển:</span>
                   <span className="font-medium text-text-primary">
@@ -319,7 +356,7 @@ function CheckoutPageContent() {
                       Tổng cộng:
                     </span>
                     <span className="font-heading text-xl font-semibold text-text-primary">
-                      {formatPrice(cart.total)}
+                      {formatPrice(cart.total - (appliedVoucher?.discountAmount || 0))}
                     </span>
                   </div>
                 </div>
@@ -398,12 +435,16 @@ function CheckoutPageContent() {
                 </div>
 
                 <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    Ngày và giờ giao dự kiến <span className="text-accent-brown">*</span>
+                  </label>
                   <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
                     <DateTimePicker
-                      label="Ngày và giờ giao dự kiến"
+                      label="Chọn ngày và giờ"
                       value={deliveryDateTime}
                       onChange={(newValue) => {
                         setDeliveryDateTime(newValue)
+                        setDeliveryTimeTouched(true)
                         const error = validateDeliveryTime(newValue)
                         setDeliveryTimeError(error)
                         
@@ -432,8 +473,9 @@ function CheckoutPageContent() {
                         textField: {
                           fullWidth: true,
                           disabled: loading,
-                          error: !!deliveryTimeError,
-                          helperText: deliveryTimeError || 'Giờ cửa hàng: 8:00 - 20:00. Đặt trước tối thiểu 2 giờ',
+                          required: true,
+                          error: !!deliveryTimeError || (!deliveryDateTime && deliveryTimeTouched),
+                          helperText: deliveryTimeError || (!deliveryDateTime && deliveryTimeTouched ? 'Vui lòng chọn ngày và giờ giao dự kiến' : 'Giờ cửa hàng: 8:00 - 20:00. Đặt trước tối thiểu 2 giờ'),
                           className: 'w-full',
                           sx: {
                             '& .MuiOutlinedInput-root': {
@@ -483,11 +525,19 @@ function CheckoutPageContent() {
                     id="voucherCode"
                     type="text"
                     value={voucherCode}
-                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                    className="w-full px-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default"
+                    onChange={(e) => {
+                      setVoucherCode(e.target.value.toUpperCase())
+                      setVoucherError('') // Clear error when user types
+                    }}
+                    className={`w-full px-4 py-3 rounded-input border ${
+                      voucherError ? 'border-red-500' : 'border-border'
+                    } focus:outline-none focus:border-accent-brown transition-default uppercase`}
                     disabled={loading}
-                    placeholder="Nhập mã giảm giá"
+                    placeholder="Nhập mã giảm giá (nếu có)"
                   />
+                  {voucherError && (
+                    <p className="mt-1 text-xs text-red-500">{voucherError}</p>
+                  )}
                 </div>
 
                 <div>
@@ -529,12 +579,12 @@ function CheckoutPageContent() {
                       <input
                         type="radio"
                         name="paymentMethod"
-                        value="vnpay"
-                        checked={paymentMethod === 'vnpay'}
-                        onChange={() => setPaymentMethod('vnpay')}
+                        value="momo_qr"
+                        checked={paymentMethod === 'momo_qr'}
+                        onChange={() => setPaymentMethod('momo_qr')}
                         disabled={loading}
                       />
-                      Thanh toán VNPay
+                      Thanh toán MoMo
                     </label>
                   </div>
                 </div>
@@ -544,7 +594,14 @@ function CheckoutPageContent() {
                     type="submit"
                     variant="primary"
                     className="w-full py-4 text-lg"
-                    disabled={loading || cart.items.length === 0}
+                    disabled={
+                      loading || 
+                      cart.items.length === 0 ||
+                      !shippingInfo.ten_khach_hang.trim() ||
+                      !shippingInfo.so_dien_thoai_khach.trim() ||
+                      !shippingInfo.dia_chi_giao_hang.trim() ||
+                      !deliveryDateTime
+                    }
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">

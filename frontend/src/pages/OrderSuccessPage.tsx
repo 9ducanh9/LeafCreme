@@ -18,16 +18,26 @@ export default function OrderSuccessPage() {
   const [error, setError] = useState<string | null>(null)
 
   const paymentStatus = new URLSearchParams(location.search).get('payment_status')
+  const paymentMethod = new URLSearchParams(location.search).get('payment_method')
+
+  const getPaymentMethodName = () => {
+    if (paymentMethod === 'momo' || paymentMethod === 'momo_qr') return 'MoMo'
+    return 'MoMo' // Default
+  }
 
   const paymentStatusText =
     paymentStatus === 'success'
-      ? 'Thanh toán VNPay thành công.'
+      ? `Thanh toán ${getPaymentMethodName()} thành công.`
       : paymentStatus === 'failed'
-      ? 'Thanh toán VNPay thất bại hoặc bị hủy.'
+      ? `Thanh toán ${getPaymentMethodName()} thất bại hoặc bị hủy.`
+      : paymentStatus === 'checking'
+      ? 'Đang chờ xác nhận thanh toán. Chúng tôi sẽ kiểm tra và cập nhật trong 5-15 phút.'
+      : paymentStatus === 'pending'
+      ? 'Vui lòng hoàn tất thanh toán để chúng tôi xử lý đơn hàng.'
       : paymentStatus === 'invalid_signature'
-      ? 'Thanh toán VNPay không hợp lệ (sai chữ ký).' 
+      ? `Thanh toán ${getPaymentMethodName()} không hợp lệ (sai chữ ký).` 
       : paymentStatus === 'config_error'
-      ? 'Hệ thống thiếu cấu hình VNPay.'
+      ? `Hệ thống thiếu cấu hình ${getPaymentMethodName()}.`
       : paymentStatus
       ? `Trạng thái thanh toán: ${paymentStatus}`
       : null

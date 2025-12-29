@@ -32,7 +32,7 @@ export default function AdminPreOrderPage() {
       })
       setPreOrders(data)
     } catch (error) {
-      showError('Không thể tải danh sách đặt trước')
+      showError('Không thể tải danh sách đơn hàng')
     }
   }, [dateFrom, dateTo, search, showError, status])
 
@@ -60,7 +60,7 @@ export default function AdminPreOrderPage() {
   return (
     <Box>
       <Typography variant="h4" sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F', mb: 3 }}>
-        Quản lý đặt trước
+        Quản lý đơn hàng
       </Typography>
 
       <PreOrderFilters

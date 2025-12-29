@@ -26,6 +26,19 @@ class Settings:
     VNPAY_CURR_CODE: str = os.getenv("VNPAY_CURR_CODE", "VND")
     VNPAY_ORDER_TYPE: str = os.getenv("VNPAY_ORDER_TYPE", "other")
 
+    # MoMo Settings
+    MOMO_PARTNER_CODE: str = os.getenv("MOMO_PARTNER_CODE", "")
+    MOMO_ACCESS_KEY: str = os.getenv("MOMO_ACCESS_KEY", "")
+    MOMO_SECRET_KEY: str = os.getenv("MOMO_SECRET_KEY", "")
+    MOMO_PAYMENT_URL: str = os.getenv("MOMO_PAYMENT_URL", "https://test-payment.momo.vn/v2/gateway/api/create")
+    MOMO_REQUEST_TYPE: str = os.getenv("MOMO_REQUEST_TYPE", "payWithMethod")
+    MOMO_LANG: str = os.getenv("MOMO_LANG", "vi")
+
+    # MoMo Simple QR Payment (không cần Business API)
+    MOMO_QR_PHONE: str = os.getenv("MOMO_QR_PHONE", "")
+    MOMO_QR_ACCOUNT_NAME: str = os.getenv("MOMO_QR_ACCOUNT_NAME", "")
+    MOMO_QR_IMAGE_PATH: str = os.getenv("MOMO_QR_IMAGE_PATH", "")
+
 
 settings = Settings()
 

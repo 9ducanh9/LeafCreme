@@ -15,7 +15,10 @@ from app.models import ThanhToan, DonHang
 from app.core.dependencies import get_current_user, require_role
 from app.core.config import settings
 from app.schemas import ThongTinGiaoDich, validate_thong_tin_giao_dich
-from app.services.vnpay import build_payment_url, verify_params, parse_vnpay_date
+from app.services.momo import create_payment_request, verify_signature, parse_momo_datetime
+from app.services.momo_qr import create_momo_payment_info
+import requests
+import uuid
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -69,13 +72,35 @@ class PaymentResponse(BaseModel):
         from_attributes = True
 
 
-class VnpayCreateRequest(BaseModel):
+class MomoCreateRequest(BaseModel):
     donhang_id: int = Field(..., description="ID đơn hàng")
 
 
-class VnpayCreateResponse(BaseModel):
+class MomoCreateResponse(BaseModel):
     payment_id: int
     payment_url: str
+
+
+class MomoQRCreateRequest(BaseModel):
+    donhang_id: int = Field(..., description="ID đơn hàng")
+
+
+class MomoQRPaymentInfo(BaseModel):
+    payment_id: int
+    method: str
+    phone_number: str
+    account_name: str
+    amount: int
+    transfer_content: str
+    qr_code: Optional[str] = None
+    qr_image: Optional[str] = None
+    instructions: List[str]
+
+
+class MomoQRConfirmRequest(BaseModel):
+    payment_id: int = Field(..., description="ID thanh toán")
+    confirmed: bool = Field(..., description="Đã nhận tiền hay chưa")
+    transaction_note: Optional[str] = Field(None, description="Ghi chú từ admin")
 
 
 # =========================================================
@@ -165,17 +190,21 @@ def get_payment(
     return PaymentResponse(**payment_dict)
 
 
-@router.post("/vnpay/create", response_model=VnpayCreateResponse, status_code=status.HTTP_201_CREATED)
-def create_vnpay_payment(
-    payload: VnpayCreateRequest,
+# =========================================================
+# MoMo Payment Endpoints
+# =========================================================
+@router.post("/momo/create", response_model=MomoCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_momo_payment(
+    payload: MomoCreateRequest,
     request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    if not settings.VNPAY_TMN_CODE or not settings.VNPAY_HASH_SECRET:
+    """Tạo thanh toán MoMo"""
+    if not settings.MOMO_PARTNER_CODE or not settings.MOMO_ACCESS_KEY or not settings.MOMO_SECRET_KEY:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Thiếu cấu hình VNPay (VNPAY_TMN_CODE/VNPAY_HASH_SECRET)"
+            detail="Thiếu cấu hình MoMo (MOMO_PARTNER_CODE/MOMO_ACCESS_KEY/MOMO_SECRET_KEY)"
         )
 
     order = db.query(DonHang).filter(DonHang.donhang_id == payload.donhang_id).first()
@@ -215,120 +244,179 @@ def create_vnpay_payment(
         thong_tin_giao_dich=validate_thong_tin_giao_dich({
             "ma_giao_dich_ben_thu_3": None,
             "thoi_gian_giao_dich": None,
-            "chi_tiet_raw": {"provider": "vnpay"}
+            "chi_tiet_raw": {"provider": "momo"}
         })
     )
     db.add(payment)
     db.flush()
 
-    ip_addr = request.client.host if request.client else "127.0.0.1"
-    now = datetime.utcnow()
+    # Tạo request ID unique
+    request_id = f"MOMO_{payment.thanhtoan_id}_{uuid.uuid4().hex[:8]}"
+    order_id = str(payment.thanhtoan_id)
+    
+    # Số tiền phải là integer (VND)
+    amount = int(payment.so_tien or Decimal("0"))
 
-    vnp_amount = int((payment.so_tien or Decimal("0")) * Decimal("100"))
+    return_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/payments/momo/return"
+    ipn_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/payments/momo/ipn"
 
-    return_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/payments/vnpay/return"
-    ipn_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/payments/vnpay/ipn"
+    momo_request = create_payment_request(
+        partner_code=settings.MOMO_PARTNER_CODE,
+        access_key=settings.MOMO_ACCESS_KEY,
+        secret_key=settings.MOMO_SECRET_KEY,
+        order_id=order_id,
+        amount=amount,
+        order_info=f"Thanh toan don hang {order.ma_don_hang}",
+        redirect_url=return_url,
+        ipn_url=ipn_url,
+        request_id=request_id,
+        extra_data="",
+        request_type=settings.MOMO_REQUEST_TYPE,
+        lang=settings.MOMO_LANG
+    )
 
-    vnp_params = {
-        "vnp_Version": settings.VNPAY_VERSION,
-        "vnp_Command": settings.VNPAY_COMMAND,
-        "vnp_TmnCode": settings.VNPAY_TMN_CODE,
-        "vnp_Amount": str(vnp_amount),
-        "vnp_CurrCode": settings.VNPAY_CURR_CODE,
-        "vnp_TxnRef": str(payment.thanhtoan_id),
-        "vnp_OrderInfo": f"Thanh toan don hang {order.ma_don_hang}",
-        "vnp_OrderType": settings.VNPAY_ORDER_TYPE,
-        "vnp_Locale": settings.VNPAY_LOCALE,
-        "vnp_ReturnUrl": return_url,
-        "vnp_IpAddr": ip_addr,
-        "vnp_CreateDate": now.strftime("%Y%m%d%H%M%S"),
-        "vnp_IpnUrl": ipn_url,
-    }
+    # Gọi MoMo API
+    try:
+        response = requests.post(
+            settings.MOMO_PAYMENT_URL,
+            json=momo_request,
+            timeout=30
+        )
+        response.raise_for_status()
+        momo_response = response.json()
+        
+        if momo_response.get("resultCode") != 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"MoMo error: {momo_response.get('message', 'Unknown error')}"
+            )
+        
+        payment_url = momo_response.get("payUrl")
+        if not payment_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="MoMo không trả về payment URL"
+            )
+        
+        db.commit()
+        db.refresh(payment)
+        
+        return MomoCreateResponse(payment_id=payment.thanhtoan_id, payment_url=payment_url)
+        
+    except requests.exceptions.RequestException as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi kết nối MoMo: {str(e)}"
+        )
 
-    payment_url = build_payment_url(settings.VNPAY_PAYMENT_URL, vnp_params, settings.VNPAY_HASH_SECRET)
 
-    db.commit()
-    db.refresh(payment)
+@router.api_route("/momo/ipn", methods=["GET", "POST"])
+async def momo_ipn(request: Request, db: Session = Depends(get_db)):
+    """MoMo IPN (Instant Payment Notification) callback"""
+    try:
+        if request.method == "POST":
+            body = await request.json()
+        else:
+            body = dict(request.query_params)
+    except Exception:
+        return JSONResponse(
+            status_code=400,
+            content={"resultCode": 1, "message": "Invalid request"}
+        )
 
-    return VnpayCreateResponse(payment_id=payment.thanhtoan_id, payment_url=payment_url)
+    if not settings.MOMO_SECRET_KEY:
+        return JSONResponse(
+            status_code=500,
+            content={"resultCode": 1, "message": "Missing MoMo config"}
+        )
 
-
-@router.api_route("/vnpay/ipn", methods=["GET", "POST"])
-async def vnpay_ipn(request: Request, db: Session = Depends(get_db)):
-    if request.method == "POST":
-        body = await request.body()
-        try:
-            raw = body.decode("utf-8")
-        except Exception:
-            raw = ""
-        params = dict(request.query_params)
-        if not params and raw:
-            return JSONResponse(status_code=400, content={"RspCode": "99", "Message": "Invalid request"})
-    else:
-        params = dict(request.query_params)
-
-    if not params:
-        return JSONResponse(status_code=400, content={"RspCode": "99", "Message": "No params"})
-
-    if not settings.VNPAY_HASH_SECRET:
-        return JSONResponse(status_code=500, content={"RspCode": "99", "Message": "Missing VNPay config"})
-
-    ok, _ = verify_params(params, settings.VNPAY_HASH_SECRET)
+    # Verify signature
+    ok, _ = verify_signature(body, settings.MOMO_SECRET_KEY)
     if not ok:
-        return JSONResponse(status_code=200, content={"RspCode": "97", "Message": "Invalid signature"})
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 97, "message": "Invalid signature"}
+        )
 
-    txn_ref = params.get("vnp_TxnRef")
-    if not txn_ref:
-        return JSONResponse(status_code=200, content={"RspCode": "01", "Message": "Order not found"})
+    order_id = body.get("orderId")
+    if not order_id:
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 1, "message": "Order not found"}
+        )
 
     try:
-        payment_id = int(str(txn_ref))
+        payment_id = int(str(order_id))
     except Exception:
-        return JSONResponse(status_code=200, content={"RspCode": "01", "Message": "Order not found"})
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 1, "message": "Invalid order ID"}
+        )
 
     payment = db.query(ThanhToan).filter(ThanhToan.thanhtoan_id == payment_id).first()
     if not payment:
-        return JSONResponse(status_code=200, content={"RspCode": "01", "Message": "Order not found"})
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 1, "message": "Payment not found"}
+        )
 
     order = db.query(DonHang).filter(DonHang.donhang_id == payment.donhang_id).first()
     if not order:
-        return JSONResponse(status_code=200, content={"RspCode": "01", "Message": "Order not found"})
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 1, "message": "Order not found"}
+        )
 
-    vnp_amount = params.get("vnp_Amount")
-    if vnp_amount is None:
-        return JSONResponse(status_code=200, content={"RspCode": "04", "Message": "Invalid amount"})
+    # Check amount
+    received_amount = body.get("amount")
+    if received_amount is None:
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 4, "message": "Invalid amount"}
+        )
 
     try:
-        expected_amount = int((payment.so_tien or Decimal("0")) * Decimal("100"))
-        received_amount = int(str(vnp_amount))
+        expected_amount = int(payment.so_tien or Decimal("0"))
+        received_amount = int(received_amount)
     except Exception:
-        return JSONResponse(status_code=200, content={"RspCode": "04", "Message": "Invalid amount"})
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 4, "message": "Invalid amount"}
+        )
 
     if received_amount != expected_amount:
-        return JSONResponse(status_code=200, content={"RspCode": "04", "Message": "Invalid amount"})
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 4, "message": "Amount mismatch"}
+        )
 
-    resp_code = str(params.get("vnp_ResponseCode") or "")
-    trans_status = str(params.get("vnp_TransactionStatus") or "")
-
+    # Check if already processed
     if payment.trang_thai == "thanh_cong":
-        return JSONResponse(status_code=200, content={"RspCode": "02", "Message": "Order already confirmed"})
+        return JSONResponse(
+            status_code=200,
+            content={"resultCode": 2, "message": "Order already confirmed"}
+        )
 
-    if resp_code == "00" and (trans_status == "00" or trans_status == ""):
+    # Update payment status
+    result_code = body.get("resultCode")
+    if result_code == 0:
         payment.trang_thai = "thanh_cong"
-        payment.ngay_thanh_toan = parse_vnpay_date(str(params.get("vnp_PayDate") or "")) or datetime.utcnow()
+        payment.ngay_thanh_toan = parse_momo_datetime(str(body.get("responseTime"))) or datetime.utcnow()
     else:
         payment.trang_thai = "that_bai"
 
-    vnp_transaction_no = params.get("vnp_TransactionNo")
-    if vnp_transaction_no:
-        payment.ma_giao_dich = str(vnp_transaction_no)
+    trans_id = body.get("transId")
+    if trans_id:
+        payment.ma_giao_dich = str(trans_id)
 
     payment.thong_tin_giao_dich = {
-        "ma_giao_dich_ben_thu_3": str(vnp_transaction_no) if vnp_transaction_no else None,
-        "thoi_gian_giao_dich": str(params.get("vnp_PayDate")) if params.get("vnp_PayDate") else None,
-        "chi_tiet_raw": params
+        "ma_giao_dich_ben_thu_3": str(trans_id) if trans_id else None,
+        "thoi_gian_giao_dich": str(body.get("responseTime")) if body.get("responseTime") else None,
+        "chi_tiet_raw": body
     }
 
+    # Update order status if payment successful
     if payment.trang_thai == "thanh_cong":
         total_paid = db.query(ThanhToan).filter(
             ThanhToan.donhang_id == order.donhang_id,
@@ -342,33 +430,35 @@ async def vnpay_ipn(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
 
-    return JSONResponse(status_code=200, content={"RspCode": "00", "Message": "Confirm Success"})
+    return JSONResponse(
+        status_code=200,
+        content={"resultCode": 0, "message": "Success"}
+    )
 
 
-@router.get("/vnpay/return")
-def vnpay_return(request: Request, db: Session = Depends(get_db)):
+@router.get("/momo/return")
+def momo_return(request: Request, db: Session = Depends(get_db)):
+    """MoMo return URL - redirect user after payment"""
     params = dict(request.query_params)
 
     payment_status = "unknown"
-    if not settings.VNPAY_HASH_SECRET:
+    if not settings.MOMO_SECRET_KEY:
         payment_status = "config_error"
     else:
-        ok, _ = verify_params(params, settings.VNPAY_HASH_SECRET)
-        if not ok:
-            payment_status = "invalid_signature"
+        # MoMo return URL may not have signature, check resultCode
+        result_code = params.get("resultCode")
+        if result_code == "0":
+            payment_status = "success"
+        elif result_code:
+            payment_status = "failed"
         else:
-            resp_code = str(params.get("vnp_ResponseCode") or "")
-            trans_status = str(params.get("vnp_TransactionStatus") or "")
-            if resp_code == "00" and (trans_status == "00" or trans_status == ""):
-                payment_status = "success"
-            else:
-                payment_status = "failed"
+            payment_status = "unknown"
 
     order_id = None
-    txn_ref = params.get("vnp_TxnRef")
-    if txn_ref:
+    momo_order_id = params.get("orderId")
+    if momo_order_id:
         try:
-            payment_id = int(str(txn_ref))
+            payment_id = int(str(momo_order_id))
             payment = db.query(ThanhToan).filter(ThanhToan.thanhtoan_id == payment_id).first()
             if payment:
                 order_id = payment.donhang_id
@@ -378,8 +468,162 @@ def vnpay_return(request: Request, db: Session = Depends(get_db)):
     if not order_id:
         return RedirectResponse(url=f"{settings.FRONTEND_BASE_URL.rstrip('/')}/")
 
-    target = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/orders/{order_id}/success?payment_status={payment_status}"
+    target = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/orders/{order_id}/success?payment_status={payment_status}&payment_method=momo"
     return RedirectResponse(url=target)
+
+
+# =========================================================
+# MoMo QR Simple Payment Endpoints (không cần Business API)
+# =========================================================
+@router.post("/momo-qr/create", response_model=MomoQRPaymentInfo, status_code=status.HTTP_201_CREATED)
+def create_momo_qr_payment(
+    payload: MomoQRCreateRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Tạo thanh toán MoMo QR đơn giản (không cần API)
+    Hiển thị QR cho khách quét và chuyển tiền
+    """
+    if not settings.MOMO_QR_PHONE:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Chưa cấu hình số điện thoại MoMo (MOMO_QR_PHONE)"
+        )
+
+    order = db.query(DonHang).filter(DonHang.donhang_id == payload.donhang_id).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Đơn hàng không tồn tại"
+        )
+
+    vaitro_ten = current_user.vaitro.ten_vai_tro if current_user.vaitro else None
+    if vaitro_ten not in ["admin", "manager"]:
+        if order.nguoidung_id != current_user.nguoidung_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn chỉ có thể thanh toán đơn hàng của mình"
+            )
+
+    total_paid = db.query(ThanhToan).filter(
+        ThanhToan.donhang_id == order.donhang_id,
+        ThanhToan.trang_thai == "thanh_cong"
+    ).with_entities(
+        func.sum(ThanhToan.so_tien)
+    ).scalar() or Decimal("0")
+
+    remaining = (order.tien_thanh_toan or Decimal("0")) - total_paid
+    if remaining <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Đơn hàng đã được thanh toán đủ"
+        )
+
+    # Tạo payment record
+    payment = ThanhToan(
+        donhang_id=order.donhang_id,
+        phuong_thuc="vi_dien_tu",
+        so_tien=remaining,
+        trang_thai="dang_xu_ly",
+        thong_tin_giao_dich=validate_thong_tin_giao_dich({
+            "ma_giao_dich_ben_thu_3": None,
+            "thoi_gian_giao_dich": None,
+            "chi_tiet_raw": {"provider": "momo_qr", "method": "manual"}
+        })
+    )
+    db.add(payment)
+    db.flush()
+
+    # Tạo thông tin thanh toán với QR
+    payment_info = create_momo_payment_info(
+        order_code=order.ma_don_hang,
+        amount=int(remaining),
+        phone_number=settings.MOMO_QR_PHONE,
+        account_name=settings.MOMO_QR_ACCOUNT_NAME or "Leaf Creme",
+        qr_image_path=settings.MOMO_QR_IMAGE_PATH or None
+    )
+
+    db.commit()
+    db.refresh(payment)
+
+    return MomoQRPaymentInfo(
+        payment_id=payment.thanhtoan_id,
+        **payment_info
+    )
+
+
+@router.post("/momo-qr/{payment_id}/confirm", response_model=PaymentResponse)
+def confirm_momo_qr_payment(
+    payment_id: int,
+    payload: MomoQRConfirmRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role("admin", "manager", "staff"))
+):
+    """
+    Admin xác nhận đã nhận tiền MoMo (manual confirmation)
+    """
+    if payload.payment_id != payment_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Payment ID không khớp"
+        )
+
+    payment = db.query(ThanhToan).filter(ThanhToan.thanhtoan_id == payment_id).first()
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Thanh toán không tồn tại"
+        )
+
+    order = db.query(DonHang).filter(DonHang.donhang_id == payment.donhang_id).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Đơn hàng không tồn tại"
+        )
+
+    if payload.confirmed:
+        # Admin xác nhận đã nhận tiền
+        payment.trang_thai = "thanh_cong"
+        payment.ngay_thanh_toan = datetime.utcnow()
+        
+        # Lưu thông tin xác nhận
+        if payment.thong_tin_giao_dich:
+            payment.thong_tin_giao_dich["confirmed_by"] = current_user.nguoidung_id
+            payment.thong_tin_giao_dich["confirmed_at"] = datetime.utcnow().isoformat()
+            if payload.transaction_note:
+                payment.thong_tin_giao_dich["admin_note"] = payload.transaction_note
+        
+        # Cập nhật trạng thái đơn hàng
+        total_paid = db.query(ThanhToan).filter(
+            ThanhToan.donhang_id == order.donhang_id,
+            ThanhToan.trang_thai == "thanh_cong"
+        ).with_entities(
+            func.sum(ThanhToan.so_tien)
+        ).scalar() or Decimal("0")
+
+        if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
+            order.trang_thai = "thanh_toan"
+    else:
+        # Admin xác nhận KHÔNG nhận được tiền
+        payment.trang_thai = "that_bai"
+        if payment.thong_tin_giao_dich:
+            payment.thong_tin_giao_dich["rejected_by"] = current_user.nguoidung_id
+            payment.thong_tin_giao_dich["rejected_at"] = datetime.utcnow().isoformat()
+            if payload.transaction_note:
+                payment.thong_tin_giao_dich["reject_reason"] = payload.transaction_note
+
+    db.commit()
+    db.refresh(payment)
+
+    payment_dict = {
+        **{c.name: getattr(payment, c.name) for c in payment.__table__.columns},
+        "ma_don_hang": order.ma_don_hang,
+        "tong_tien_don_hang": order.tong_tien
+    }
+
+    return PaymentResponse(**payment_dict)
 
 
 @router.get("/orders/{order_id}", response_model=List[PaymentResponse])

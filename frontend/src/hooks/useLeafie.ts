@@ -8,6 +8,7 @@ import type { LeafieContext, LeafieMessage } from '../types/leafie'
 
 const CONTEXT_CACHE_KEY = 'leafie_context_cache'
 const CONTEXT_TTL = 5 * 60 * 1000 // 5 phút
+const GUEST_SESSION_KEY = 'leafie_guest_session_id'
 
 // Storage key helpers
 function getMessagesStorageKey(userId: number | null): string {
@@ -21,6 +22,29 @@ function getStorage(userId: number | null): Storage {
   // Authenticated users: localStorage (persistent)
   // Guest users: sessionStorage (cleared on tab close)
   return userId ? localStorage : sessionStorage
+}
+
+/**
+ * Generate a unique session ID for n8n memory
+ * - Logged in users: user_{nguoidung_id}
+ * - Guest users: guest_{uuid} (stored in sessionStorage)
+ * 
+ * ⚠️ QUAN TRỌNG: Session ID PHẢI giữ nguyên trong suốt 1 cuộc chat
+ */
+function getSessionId(userId: number | null): string {
+  if (userId) {
+    // Logged in user - use persistent user ID
+    return `user_${userId}`
+  }
+  
+  // Guest user - generate or retrieve UUID from sessionStorage
+  let guestSessionId = sessionStorage.getItem(GUEST_SESSION_KEY)
+  if (!guestSessionId) {
+    // Generate new UUID for this browser session
+    guestSessionId = `guest_${crypto.randomUUID()}`
+    sessionStorage.setItem(GUEST_SESSION_KEY, guestSessionId)
+  }
+  return guestSessionId
 }
 
 export interface UseLeafieReturn {
@@ -44,10 +68,10 @@ export function useLeafie(): UseLeafieReturn {
   const [error, setError] = useState<string | null>(null)
   const previousUserIdRef = useRef<number | null>(null)
 
-  // ✅ Load context on mount
+  // ✅ Load context on mount AND when user changes (for sessionId)
   useEffect(() => {
     loadContext()
-  }, [])
+  }, [user?.nguoidung_id])
 
   // ✅ Load messages when user changes
   useEffect(() => {
@@ -118,22 +142,31 @@ export function useLeafie(): UseLeafieReturn {
 
   async function loadContext() {
     try {
+      const currentUserId = user?.nguoidung_id || null
+      const sessionId = getSessionId(currentUserId)
+      
       const cached = localStorage.getItem(CONTEXT_CACHE_KEY)
       if (cached) {
         const parsed = JSON.parse(cached)
         if (Date.now() - parsed.timestamp < CONTEXT_TTL) {
-          setContext(parsed.context)
+          // Always update sessionId to match current user state
+          setContext({ ...parsed.context, sessionId })
           return
         }
       }
 
       const freshContext = await buildLeafieContext()
-      setContext(freshContext)
+      // Add sessionId to context
+      const contextWithSession: LeafieContext = {
+        ...freshContext,
+        sessionId,
+      }
+      setContext(contextWithSession)
 
       localStorage.setItem(
         CONTEXT_CACHE_KEY,
         JSON.stringify({
-          context: freshContext,
+          context: freshContext, // Cache without sessionId (it's dynamic)
           timestamp: Date.now(),
         })
       )

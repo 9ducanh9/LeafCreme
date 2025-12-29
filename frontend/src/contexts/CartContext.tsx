@@ -45,10 +45,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart(getCart())
   }, [])
 
+  // Listen for auth changes (login/logout) to reload cart
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setCart(getCart())
+      setAppliedVoucher(null) // Clear voucher on auth change
+    }
+
+    window.addEventListener('auth-change', handleAuthChange)
+    return () => window.removeEventListener('auth-change', handleAuthChange)
+  }, [])
+
   // Listen for storage changes (e.g., from other tabs)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'leaf_creme_cart') {
+      // Also listen for cart changes from other tabs
+      if (e.key?.startsWith('leaf_creme_cart')) {
         setCart(getCart())
       }
     }
@@ -75,6 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => {
     const emptyCart = clearCartService()
     setCart(emptyCart)
+    setAppliedVoucher(null) // Clear voucher when cart is cleared
   }
 
   const refreshCart = () => {
@@ -122,7 +135,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Remove voucher when cart changes
   useEffect(() => {
-    if (appliedVoucher) {
+    // Clear voucher if cart is empty
+    if (cart.items.length === 0 && appliedVoucher) {
+      setAppliedVoucher(null)
+      return
+    }
+
+    if (appliedVoucher && cart.items.length > 0) {
       // Re-validate voucher when cart changes
       validateVoucher(appliedVoucher.code, cart.total, cart.items).then((result) => {
         if (!result.valid) {
@@ -145,7 +164,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       })
     }
-  }, [appliedVoucher, cart.total, cart.items])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart.total, cart.items.length])
 
   return (
     <CartContext.Provider

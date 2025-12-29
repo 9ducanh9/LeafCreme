@@ -6,7 +6,10 @@ export interface LeafieMessage {
   timestamp: Date
 }
 
-export interface LeafieContext {
+/**
+ * Base context without sessionId - used by buildLeafieContext
+ */
+export interface LeafieContextBase {
   // All products (not just best sellers)
   allProducts: Array<{
     id: number
@@ -53,6 +56,15 @@ export interface LeafieContext {
     minOrderValue?: number
     expiresAt?: string
   }>
+}
+
+/**
+ * Full context with sessionId - used when sending to API
+ * ⚠️ QUAN TRỌNG: sessionId PHẢI giữ nguyên trong suốt 1 cuộc chat để n8n memory hoạt động đúng
+ */
+export interface LeafieContext extends LeafieContextBase {
+  // Session ID for n8n memory - MUST stay constant throughout conversation
+  sessionId: string
 }
 
 export interface LeafieReply {

@@ -65,7 +65,7 @@ export default function PreOrderDetailCard({
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h5" sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F', mb: 1 }}>
-            Đặt trước #{preOrder.id}
+            Đơn hàng {preOrder.orderCode || `#${preOrder.id}`}
           </Typography>
           <Typography variant="body2" sx={{ color: '#7A6F63' }}>
             Tạo lúc: {formatDate(preOrder.createdAt)}

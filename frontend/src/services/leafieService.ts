@@ -24,6 +24,9 @@ export interface AskLeafieResponse {
  * 🚨 SINGLE RESPONSIBILITY:
  * - Frontend KHÔNG suy nghĩ
  * - Chỉ forward dữ liệu cho backend → n8n
+ * 
+ * ⚠️ QUAN TRỌNG: sessionId được gửi riêng để n8n memory sử dụng
+ * Session Key ưu tiên trong n8n: conversationId || session_id || user_id || 'leafie-default'
  */
 export async function askLeafie(
   message: string,
@@ -40,6 +43,8 @@ export async function askLeafie(
         message,
         context,
         conversationHistory,
+        // 🔑 Session ID cho n8n memory - PHẢI giữ nguyên trong suốt cuộc chat
+        sessionId: context.sessionId,
       }),
     })
 
