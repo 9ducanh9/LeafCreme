@@ -1,5 +1,6 @@
 // Admin Sales Service - API calls for sales/order management
 import { Order } from '../../types/admin'
+import { apiClient } from '../api'
 
 // Mock data storage key
 const STORAGE_KEY = 'leaf_creme_mock_orders'
@@ -87,50 +88,58 @@ export async function getOrders(filters?: {
   amountTo?: number
   search?: string
 }): Promise<Order[]> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.get('/admin/orders', { params: filters })
-  // return response.data
-
-  const MOCK_ORDERS = getMockOrders()
-  let filtered = [...MOCK_ORDERS]
-
-  if (filters?.orderType) {
-    filtered = filtered.filter((o) => o.orderType === filters.orderType)
+  try {
+    // Build query params for backend
+    const params: Record<string, string | number | boolean | null> = {}
+    if (filters?.orderType) params.loai_don = filters.orderType
+    if (filters?.status) params.trang_thai = filters.status
+    if (filters?.dateFrom) params.from_date = filters.dateFrom
+    if (filters?.dateTo) params.to_date = filters.dateTo
+    if (filters?.search) params.ma_don_hang = filters.search
+    
+    // Call real API
+    const response = await apiClient.get<any[]>('/orders', Object.keys(params).length > 0 ? params : undefined)
+    
+    // Map backend response to frontend Order type
+    const orders: Order[] = response.map((item: any) => ({
+      id: String(item.donhang_id),
+      orderType: item.loai_don as 'online' | 'pos' | 'preorder',
+      customerName: item.ten_khach_hang || 'Khách hàng',
+      date: item.ngay_tao,
+      items: [], // Details not included in list response
+      totalAmount: Number(item.tien_thanh_toan),
+      paymentMethod: 'unknown', // Not in list response
+      status: mapBackendStatus(item.trang_thai),
+    }))
+    
+    // Apply client-side filters that aren't supported by backend
+    let filtered = orders
+    
+    if (filters?.amountFrom) {
+      filtered = filtered.filter((o) => o.totalAmount >= filters.amountFrom!)
+    }
+    
+    if (filters?.amountTo) {
+      filtered = filtered.filter((o) => o.totalAmount <= filters.amountTo!)
+    }
+    
+    return filtered
+  } catch (error) {
+    console.error('Error fetching orders:', error)
+    throw error
   }
+}
 
-  if (filters?.status) {
-    filtered = filtered.filter((o) => o.status === filters.status)
+// Helper function to map backend status to frontend status
+function mapBackendStatus(backendStatus: string): Order['status'] {
+  const statusMap: Record<string, Order['status']> = {
+    'cho': 'pending',
+    'dang_xu_ly': 'processing',
+    'thanh_toan': 'completed',
+    'da_nhan': 'completed',
+    'huy': 'canceled',
   }
-
-  if (filters?.dateFrom) {
-    const fromDate = new Date(filters.dateFrom)
-    filtered = filtered.filter((o) => new Date(o.date) >= fromDate)
-  }
-
-  if (filters?.dateTo) {
-    const toDate = new Date(filters.dateTo)
-    toDate.setHours(23, 59, 59, 999)
-    filtered = filtered.filter((o) => new Date(o.date) <= toDate)
-  }
-
-  if (filters?.amountFrom) {
-    filtered = filtered.filter((o) => o.totalAmount >= filters.amountFrom!)
-  }
-
-  if (filters?.amountTo) {
-    filtered = filtered.filter((o) => o.totalAmount <= filters.amountTo!)
-  }
-
-  if (filters?.search) {
-    const searchLower = filters.search.toLowerCase()
-    filtered = filtered.filter(
-      (o) =>
-        o.customerName.toLowerCase().includes(searchLower) ||
-        o.id.toLowerCase().includes(searchLower)
-    )
-  }
-
-  return filtered
+  return statusMap[backendStatus] || 'pending'
 }
 
 export async function getOrderById(id: string): Promise<Order> {
@@ -156,11 +165,31 @@ export async function updateOrderStatus(
 }
 
 export async function deleteOrder(id: string): Promise<void> {
-  // TODO: Replace with real API call
-  const MOCK_ORDERS = getMockOrders()
-  const index = MOCK_ORDERS.findIndex((o) => o.id === id)
-  if (index === -1) throw new Error('Order not found')
-  MOCK_ORDERS.splice(index, 1)
-  saveMockOrders(MOCK_ORDERS)
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/1376030d-9517-4cc1-80ad-27edd28027fc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'salesService.ts:158',message:'deleteOrder called',data:{orderId:id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A',runId:'post-fix-v2'})}).catch(()=>{});
+  // #endregion
+  
+  try {
+    console.log('🗑️ [deleteOrder] Deleting order:', id)
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/1376030d-9517-4cc1-80ad-27edd28027fc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'salesService.ts:163',message:'Calling real API DELETE',data:{orderId:id,endpoint:`/orders/${id}`},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A',runId:'post-fix-v2'})}).catch(()=>{});
+    // #endregion
+    
+    await apiClient.delete(`/orders/${id}`)
+    
+    console.log('✅ [deleteOrder] Order deleted successfully:', id)
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/1376030d-9517-4cc1-80ad-27edd28027fc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'salesService.ts:169',message:'API DELETE succeeded',data:{orderId:id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A',runId:'post-fix-v2'})}).catch(()=>{});
+    // #endregion
+  } catch (error) {
+    console.error('❌ [deleteOrder] Error:', error)
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/1376030d-9517-4cc1-80ad-27edd28027fc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'salesService.ts:173',message:'API DELETE failed',data:{orderId:id,error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B',runId:'post-fix-v2'})}).catch(()=>{});
+    // #endregion
+    throw error
+  }
 }
 

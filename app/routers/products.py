@@ -145,32 +145,6 @@ def list_products(
     if dang_hoat_dong is not None:
         query = query.filter(SanPham.dang_hoat_dong == dang_hoat_dong)
     
-    # #region agent log
-    import json
-    from datetime import datetime
-    try:
-        log_data = {
-            "function": "list_products",
-            "query_filters": {"dang_hoat_dong": dang_hoat_dong, "search": search, "danh_muc": danh_muc, "loai": loai},
-            "skip": skip,
-            "limit": limit,
-            "model_has_phu_hop_dip": hasattr(SanPham, 'phu_hop_dip')
-        }
-        with open(r"c:\Leaf Crème\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "id": f"log_{int(datetime.now().timestamp() * 1000)}",
-                "timestamp": int(datetime.now().timestamp() * 1000),
-                "location": "products.py:before_query",
-                "message": "About to execute query with phu_hop_dip field",
-                "data": log_data,
-                "sessionId": "debug-session",
-                "runId": "pre-fix",
-                "hypothesisId": "A"
-            }) + "\n")
-    except Exception:
-        pass
-    # #endregion
-    
     products = query.order_by(SanPham.sanpham_id.desc()).offset(skip).limit(limit).all()
     return products
 

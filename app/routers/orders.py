@@ -13,7 +13,8 @@ from app.db import get_db
 from app.models import (
     DonHang, ChiTietDonHang, BienTheSanPham, LoHangSanPham,
     PhieuGiamGia, DonHangPhieuGiamGia, TonKhoSanPham,
-    NguoiDung, HopQua, LoHangHopQua, HopQuaBOM
+    NguoiDung, HopQua, LoHangHopQua, HopQuaBOM, ThanhToan, DoiTra, DanhGiaSanPham,
+    LichSuKhoSanPham, LichSuKhoHopQua
 )
 from app.services.fefo import alloc_fefo_by_variant
 from app.core.dependencies import get_current_user, require_role
@@ -586,14 +587,16 @@ def create_order(
         )
 
 
-@router.put("/{order_id}/status", response_model=OrderResponse)
+@router.api_route("/{order_id}/status", methods=["PUT", "PATCH"], response_model=OrderResponse)
 def update_order_status(
     order_id: int,
-    payload: OrderUpdateStatus,
+    payload: Optional[OrderUpdateStatus] = None,
+    new_status: Optional[str] = Query(None, description="Trạng thái mới (query param)"),
+    ghi_chu: Optional[str] = Query(None, description="Ghi chú (query param)"),
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_user)
 ):
-    """Cập nhật trạng thái đơn hàng"""
+    """Cập nhật trạng thái đơn hàng (hỗ trợ cả body và query param)"""
     order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
     
     if not order:
@@ -610,9 +613,19 @@ def update_order_status(
             detail="Bạn không có quyền cập nhật trạng thái đơn hàng"
         )
     
+    # Lấy trạng thái từ body hoặc query param
+    trang_thai = (payload.trang_thai if payload else None) or new_status
+    note = (payload.ghi_chu if payload else None) or ghi_chu
+    
+    if not trang_thai:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Thiếu trạng thái mới (trang_thai hoặc new_status)"
+        )
+    
     # Validate trạng thái
     valid_statuses = ["cho", "dang_xu_ly", "thanh_toan", "da_nhan", "huy"]
-    if payload.trang_thai not in valid_statuses:
+    if trang_thai not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Trạng thái không hợp lệ. Chọn: {', '.join(valid_statuses)}"
@@ -620,13 +633,13 @@ def update_order_status(
     
     # Cập nhật trạng thái
     old_status = order.trang_thai
-    order.trang_thai = payload.trang_thai
+    order.trang_thai = trang_thai
     
-    if payload.ghi_chu:
-        order.ghi_chu = (order.ghi_chu or "") + f"\n[{datetime.utcnow().strftime('%Y-%m-%d %H:%M')}] {payload.ghi_chu}"
+    if note:
+        order.ghi_chu = (order.ghi_chu or "") + f"\n[{datetime.utcnow().strftime('%Y-%m-%d %H:%M')}] {note}"
     
     # Cập nhật ngày nhận nếu chuyển sang "da_nhan"
-    if payload.trang_thai == "da_nhan" and not order.ngay_nhan:
+    if trang_thai == "da_nhan" and not order.ngay_nhan:
         order.ngay_nhan = datetime.utcnow()
     
     db.commit()
@@ -702,11 +715,35 @@ def delete_order(
             detail=f"Không tìm thấy đơn hàng #{order_id}"
         )
     
-    # Xóa chi tiết đơn hàng trước (do foreign key constraint)
-    db.query(ChiTietDonHang).filter(ChiTietDonHang.donhang_id == order_id).delete()
-    
-    # Xóa đơn hàng
-    db.delete(order)
-    db.commit()
+    try:
+        # Xóa các bảng liên quan trước (theo thứ tự foreign key)
+        # 1. Xóa lịch sử kho
+        lichsu_sanpham_deleted = db.query(LichSuKhoSanPham).filter(LichSuKhoSanPham.donhang_id == order_id).delete()
+        lichsu_hopqua_deleted = db.query(LichSuKhoHopQua).filter(LichSuKhoHopQua.donhang_id == order_id).delete()
+        
+        # 2. Xóa đánh giá sản phẩm
+        danhgia_deleted = db.query(DanhGiaSanPham).filter(DanhGiaSanPham.donhang_id == order_id).delete()
+        
+        # 3. Xóa đổi trả
+        doitra_deleted = db.query(DoiTra).filter(DoiTra.donhang_id == order_id).delete()
+        
+        # 4. Xóa thanh toán
+        thanhtoan_deleted = db.query(ThanhToan).filter(ThanhToan.donhang_id == order_id).delete()
+        
+        # 5. Xóa voucher áp dụng
+        voucher_deleted = db.query(DonHangPhieuGiamGia).filter(DonHangPhieuGiamGia.donhang_id == order_id).delete()
+        
+        # 6. Xóa chi tiết đơn hàng
+        details_deleted = db.query(ChiTietDonHang).filter(ChiTietDonHang.donhang_id == order_id).delete()
+        
+        # 7. Xóa đơn hàng
+        db.delete(order)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Không thể xóa đơn hàng: {str(e)}"
+        )
     
     return None

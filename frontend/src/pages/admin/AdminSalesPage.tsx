@@ -52,11 +52,34 @@ export default function AdminSalesPage() {
 
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return
+    console.log('🗑️ [AdminSalesPage] Starting delete for order:', deleteConfirm.id)
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/1376030d-9517-4cc1-80ad-27edd28027fc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminSalesPage.tsx:53',message:'confirmDelete started',data:{orderId:deleteConfirm.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C',runId:'post-fix-v2'})}).catch(()=>{});
+    // #endregion
+    
     try {
       await deleteOrder(deleteConfirm.id)
+      console.log('✅ [AdminSalesPage] Delete succeeded, reloading orders...')
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/1376030d-9517-4cc1-80ad-27edd28027fc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminSalesPage.tsx:58',message:'deleteOrder succeeded',data:{orderId:deleteConfirm.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C',runId:'post-fix-v2'})}).catch(()=>{});
+      // #endregion
+      
       showSuccess('Xóa đơn hàng thành công')
       await loadOrders()
+      console.log('✅ [AdminSalesPage] Orders reloaded after delete')
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/1376030d-9517-4cc1-80ad-27edd28027fc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminSalesPage.tsx:65',message:'loadOrders completed after delete',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C',runId:'post-fix-v2'})}).catch(()=>{});
+      // #endregion
     } catch (error) {
+      console.error('❌ [AdminSalesPage] Delete failed:', error)
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/1376030d-9517-4cc1-80ad-27edd28027fc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminSalesPage.tsx:69',message:'deleteOrder failed',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B,D,E',runId:'post-fix-v2'})}).catch(()=>{});
+      // #endregion
+      
       showError('Không thể xóa đơn hàng')
     } finally {
       setDeleteConfirm({ open: false, id: null })

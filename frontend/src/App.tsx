@@ -14,6 +14,8 @@ import CartPage from './pages/CartPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import UserProfilePage from './pages/UserProfilePage'
+import MyOrdersPage from './pages/MyOrdersPage'
+import OrderDetailPage from './pages/OrderDetailPage'
 import CheckoutPage from './pages/CheckoutPage'
 import OrderSuccessPage from './pages/OrderSuccessPage'
 import PaymentQRPage from './pages/PaymentQRPage'
@@ -34,6 +36,7 @@ import AdminSalesPage from './pages/admin/AdminSalesPage'
 import AdminSalesDetailPage from './pages/admin/AdminSalesDetailPage'
 import AdminInventoryPage from './pages/admin/AdminInventoryPage'
 import AdminBatchCreatePage from './pages/admin/AdminBatchCreatePage'
+import AdminAlertsPage from './pages/admin/AdminAlertsPage'
 
 function App() {
   return (
@@ -68,6 +71,22 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/orders"
+                  element={
+                    <ProtectedRoute>
+                      <MyOrdersPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/orders/:id"
+                  element={
+                    <ProtectedRoute>
+                      <OrderDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/orders/:id/payment-qr" element={<PaymentQRPage />} />
                 <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
@@ -93,6 +112,7 @@ function App() {
                   <Route path="sales/:id" element={<AdminSalesDetailPage />} />
                   <Route path="inventory" element={<AdminInventoryPage />} />
                   <Route path="batches" element={<AdminBatchCreatePage />} />
+                  <Route path="alerts" element={<AdminAlertsPage />} />
                 </Route>
                 </Routes>
               </MainLayout>

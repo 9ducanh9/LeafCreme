@@ -266,7 +266,7 @@ def create_momo_payment(
         secret_key=settings.MOMO_SECRET_KEY,
         order_id=order_id,
         amount=amount,
-        order_info=f"Thanh toan don hang {order.ma_don_hang}",
+        order_info=f"Thanh toán đơn {order.ma_don_hang}",
         redirect_url=return_url,
         ipn_url=ipn_url,
         request_id=request_id,

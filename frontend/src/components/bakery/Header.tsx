@@ -1,7 +1,7 @@
 // Header/Navbar component - simple, slim header pinned to top
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShoppingCart, User as UserIcon, LogOut, LayoutDashboard, Leaf } from 'lucide-react'
+import { ShoppingCart, User as UserIcon, LogOut, LayoutDashboard, Leaf, Package } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLeafieContext } from '../../contexts/LeafieContext'
@@ -265,6 +265,16 @@ export default function Header() {
                         >
                           <UserIcon className="w-4 h-4" />
                           Thông tin cá nhân
+                        </button>
+                        <button
+                          onClick={() => {
+                            navigate('/orders')
+                            setShowUserMenu(false)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
+                        >
+                          <Package className="w-4 h-4" />
+                          Đơn hàng của tôi
                         </button>
                         {isAdmin && (
                           <button

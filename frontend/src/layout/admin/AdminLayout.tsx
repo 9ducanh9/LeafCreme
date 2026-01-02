@@ -27,6 +27,7 @@ import PointOfSaleIcon from '@mui/icons-material/PointOfSale'
 import HomeIcon from '@mui/icons-material/Home'
 import WarehouseIcon from '@mui/icons-material/Warehouse'
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner'
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
 import { useAuth } from '../../contexts/AuthContext'
 import { getImageUrl } from '../../utils/getImageUrl'
 
@@ -38,6 +39,7 @@ const menuItems = [
   { text: 'Sản phẩm', icon: <InventoryIcon />, path: '/admin/products' },
   { text: 'Hộp quà', icon: <CardGiftcardIcon />, path: '/admin/gift-boxes' },
   { text: 'Tồn kho', icon: <WarehouseIcon />, path: '/admin/inventory' },
+  { text: 'Cảnh báo', icon: <NotificationsActiveIcon />, path: '/admin/alerts' },
   { text: 'Nhập lô', icon: <QrCodeScannerIcon />, path: '/admin/batches' },
   { text: 'Mã giảm giá', icon: <LocalOfferIcon />, path: '/admin/vouchers' },
   { text: 'Đơn hàng', icon: <EventNoteIcon />, path: '/admin/preorders' },

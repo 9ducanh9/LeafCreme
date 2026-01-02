@@ -31,6 +31,10 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import StarIcon from '@mui/icons-material/Star'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import InventoryIcon from '@mui/icons-material/Inventory'
+import EventBusyIcon from '@mui/icons-material/EventBusy'
+import { useNavigate } from 'react-router-dom'
 import {
   getDailyRevenue,
   getMonthlyRevenue,
@@ -41,36 +45,41 @@ import {
   CategoryRevenue,
 } from '../../services/admin/reportService'
 import { RevenueData, ProductRevenue, BestSeller, DashboardStats } from '../../types/admin'
+import { getAlertsSummary, AlertSummary } from '../../services/admin/alertService'
 
 type TimeRange = 'daily' | 'monthly'
 
 const COLORS = ['#C59B72', '#F5C96A', '#F7B4B8', '#E8E5DD', '#7A6F63']
 
 export default function AdminDashboardPage() {
+  const navigate = useNavigate()
   const [timeRange, setTimeRange] = useState<TimeRange>('daily')
   const [revenueData, setRevenueData] = useState<RevenueData[]>([])
   const [productRevenue, setProductRevenue] = useState<ProductRevenue[]>([])
   const [bestSellers, setBestSellers] = useState<BestSeller[]>([])
   const [categoryRevenue, setCategoryRevenue] = useState<CategoryRevenue[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [alertsSummary, setAlertsSummary] = useState<AlertSummary | null>(null)
   const [loading, setLoading] = useState(true)
 
   const loadDashboardData = useCallback(async () => {
     setLoading(true)
     try {
-      const [revenue, products, sellers, categories, dashboardStats] = await Promise.all([
+      const [revenue, products, sellers, categories, dashboardStats, alerts] = await Promise.all([
         timeRange === 'daily' ? getDailyRevenue() : getMonthlyRevenue(),
         getRevenueByProduct(),
         getBestSellers(5),
         getRevenueByCategory(),
         getDashboardStats(),
+        getAlertsSummary(),
       ])
-      console.log('Dashboard data loaded:', { revenue, products, sellers, categories, dashboardStats })
+      console.log('Dashboard data loaded:', { revenue, products, sellers, categories, dashboardStats, alerts })
       setRevenueData(revenue)
       setProductRevenue(products)
       setBestSellers(sellers)
       setCategoryRevenue(categories)
       setStats(dashboardStats)
+      setAlertsSummary(alerts)
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
@@ -404,6 +413,145 @@ export default function AdminDashboardPage() {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Inventory Alerts Widget */}
+      {alertsSummary && alertsSummary.pending > 0 && (
+        <Card 
+          sx={{ 
+            mb: 4,
+            bgcolor: 'white', 
+            border: 'none',
+            borderRadius: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06)',
+              transform: 'translateY(-2px)',
+            }
+          }}
+          onClick={() => navigate('/admin/alerts')}
+        >
+          <CardContent sx={{ p: 3 }}>
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+              <Box display="flex" alignItems="center" gap={1.5}>
+                <Box
+                  sx={{
+                    bgcolor: 'rgba(230, 81, 0, 0.1)',
+                    borderRadius: '12px',
+                    p: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <WarningAmberIcon sx={{ color: '#E65100', fontSize: '1.5rem' }} />
+                </Box>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    color: '#473C2F', 
+                    fontFamily: 'Playfair Display, serif',
+                    fontWeight: 600,
+                    fontSize: '1.125rem'
+                  }}
+                >
+                  Cảnh báo tồn kho
+                </Typography>
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{ color: '#C59B72', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Xem tất cả →
+              </Typography>
+            </Box>
+            
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <Box 
+                  sx={{ 
+                    bgcolor: '#FFF3E0', 
+                    borderRadius: '12px', 
+                    p: 2, 
+                    textAlign: 'center' 
+                  }}
+                >
+                  <Typography variant="h4" sx={{ color: '#E65100', fontWeight: 700, mb: 0.5 }}>
+                    {alertsSummary.pending}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#7A6F63', fontWeight: 500 }}>
+                    Chưa xử lý
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <Box 
+                  sx={{ 
+                    bgcolor: '#FFF8E1', 
+                    borderRadius: '12px', 
+                    p: 2, 
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    <InventoryIcon sx={{ color: '#F57F17', fontSize: '1.25rem' }} />
+                    <Typography variant="h5" sx={{ color: '#F57F17', fontWeight: 700 }}>
+                      {alertsSummary.by_type?.ton_kho_thap || 0}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" sx={{ color: '#7A6F63', fontWeight: 500 }}>
+                    Tồn kho thấp
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <Box 
+                  sx={{ 
+                    bgcolor: '#FBE9E7', 
+                    borderRadius: '12px', 
+                    p: 2, 
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    <EventBusyIcon sx={{ color: '#D84315', fontSize: '1.25rem' }} />
+                    <Typography variant="h5" sx={{ color: '#D84315', fontWeight: 700 }}>
+                      {(alertsSummary.by_type?.sap_het_han || 0) + (alertsSummary.by_type?.qua_han || 0)}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" sx={{ color: '#7A6F63', fontWeight: 500 }}>
+                    Sắp/Đã hết hạn
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <Box 
+                  sx={{ 
+                    bgcolor: '#FFEBEE', 
+                    borderRadius: '12px', 
+                    p: 2, 
+                    textAlign: 'center' 
+                  }}
+                >
+                  <Typography variant="h4" sx={{ color: '#C62828', fontWeight: 700, mb: 0.5 }}>
+                    {alertsSummary.by_severity?.cao || 0}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#7A6F63', fontWeight: 500 }}>
+                    Mức độ cao
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts Row 1: Revenue Trend */}
       <Grid container spacing={3} mb={4}>

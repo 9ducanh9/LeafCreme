@@ -74,4 +74,28 @@ export async function getOrder(orderId: number): Promise<OrderResponse> {
   }
 }
 
+export interface OrderListItem {
+  donhang_id: number
+  ma_don_hang: string
+  loai_don: string
+  tong_tien: number
+  tien_giam_gia: number
+  tien_thanh_toan: number
+  trang_thai: string
+  ten_khach_hang?: string
+  so_dien_thoai_khach?: string
+  dia_chi_giao_hang?: string
+  ngay_giao_du_kien?: string
+  ghi_chu?: string
+  ngay_tao: string
+}
+
+export async function listOrders(): Promise<OrderListItem[]> {
+  try {
+    return await apiClient.get<OrderListItem[]>('/orders')
+  } catch (error) {
+    console.error('Error listing orders:', error)
+    throw error
+  }
+}
 

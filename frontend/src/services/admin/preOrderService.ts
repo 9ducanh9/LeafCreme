@@ -3,27 +3,29 @@ import { apiClient } from '../api'
 import { PreOrder } from '../../types/admin'
 
 // Map backend order status to frontend status
+// Backend statuses: cho, dang_xu_ly, thanh_toan, da_nhan, huy
 function mapBackendStatus(status: string): PreOrder['status'] {
   const statusMap: Record<string, PreOrder['status']> = {
     'cho': 'pending',
     'dang_xu_ly': 'confirmed',
-    'dang_lam': 'preparing',
-    'san_sang': 'ready',
-    'da_giao': 'completed',
-    'huy': 'cancelled',
-    'thanh_toan': 'completed',
+    'thanh_toan': 'preparing',
+    'da_nhan': 'done',
+    'huy': 'canceled',
   }
   return statusMap[status] || 'pending'
 }
 
 // Map frontend status to backend status
-function mapFrontendStatus(status: PreOrder['status']): string {
-  const statusMap: Record<PreOrder['status'], string> = {
+// UI uses: pending, confirmed, preparing, done, canceled
+function mapFrontendStatus(status: PreOrder['status'] | string): string {
+  const statusMap: Record<string, string> = {
     'pending': 'cho',
     'confirmed': 'dang_xu_ly',
-    'preparing': 'dang_lam',
-    'ready': 'san_sang',
-    'completed': 'da_giao',
+    'preparing': 'thanh_toan',
+    'ready': 'thanh_toan',
+    'done': 'da_nhan',
+    'completed': 'da_nhan',
+    'canceled': 'huy',
     'cancelled': 'huy',
   }
   return statusMap[status] || 'cho'
@@ -136,8 +138,8 @@ export async function updatePreOrderStatus(
 ): Promise<PreOrder> {
   try {
     const backendStatus = mapFrontendStatus(status)
-    const order = await apiClient.patch<any>(`/orders/${id}/status`, null, {
-      params: { new_status: backendStatus }
+    const order = await apiClient.put<any>(`/orders/${id}/status`, {
+      trang_thai: backendStatus
     })
     return transformOrder(order)
   } catch (error) {

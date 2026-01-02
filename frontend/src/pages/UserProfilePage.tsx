@@ -7,13 +7,13 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import { useAuth } from '../contexts/AuthContext'
 import { updateUserProfile, UserUpdateData, uploadAvatar } from '../services/userService'
-import { ArrowLeft, User as UserIcon, Lock } from 'lucide-react'
+import { ArrowLeft, User as UserIcon, Lock, Package } from 'lucide-react'
 import { MAX_AVATAR_SIZE, ALLOWED_IMAGE_TYPES } from '../constants/fileUpload'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
   const { user, refreshUser, loading: authLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'orders'>('profile')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -252,6 +252,13 @@ export default function UserProfilePage() {
                       }`}
                     />
                     <span className="text-[15px]">Đổi mật khẩu</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/orders')}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default text-text-secondary hover:bg-background-secondary/30 hover:text-text-primary"
+                  >
+                    <Package className="w-[18px] h-[18px] text-text-secondary/70" />
+                    <span className="text-[15px]">Đơn hàng của tôi</span>
                   </button>
                 </div>
               </div>

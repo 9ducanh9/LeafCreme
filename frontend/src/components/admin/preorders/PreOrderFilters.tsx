@@ -75,11 +75,10 @@ export default function PreOrderFilters({
         <Select value={status} label="Trạng thái" onChange={(e) => onStatusChange(e.target.value)}>
           <MenuItem value="">Tất cả trạng thái</MenuItem>
           <MenuItem value="pending">Chờ xử lý</MenuItem>
-          <MenuItem value="confirmed">Đang xử lý</MenuItem>
+          <MenuItem value="confirmed">Đã xác nhận</MenuItem>
           <MenuItem value="preparing">Đang chuẩn bị</MenuItem>
-          <MenuItem value="ready">Sẵn sàng</MenuItem>
-          <MenuItem value="completed">Hoàn thành</MenuItem>
-          <MenuItem value="cancelled">Đã hủy</MenuItem>
+          <MenuItem value="done">Hoàn thành</MenuItem>
+          <MenuItem value="canceled">Đã hủy</MenuItem>
         </Select>
       </FormControl>
 

@@ -61,9 +61,10 @@ echo.
 
 :WAIT_FOR_INPUT
 REM Use PowerShell to read single key press
-powershell -Command "$key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown'); Write-Host $key.Character" > temp_key.txt
-set /p "key=" < temp_key.txt
-del temp_key.txt 2>nul
+set "KEY_FILE=%TEMP%\leaf_creme_key.txt"
+powershell -Command "$key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown'); Write-Host $key.Character" > "%KEY_FILE%"
+set /p "key=" < "%KEY_FILE%"
+del "%KEY_FILE%" 2>nul
 
 if /i "%key%"=="R" goto RESTART
 if /i "%key%"=="S" goto STOP_ALL

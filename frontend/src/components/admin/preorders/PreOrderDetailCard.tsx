@@ -39,12 +39,15 @@ export default function PreOrderDetailCard({
   notesValue,
 }: PreOrderDetailCardProps) {
   const getStatusColor = (status: PreOrder['status']) => {
-    const colors: Record<PreOrder['status'], 'default' | 'primary' | 'warning' | 'success' | 'error' | 'info'> = {
+    const colors: Record<string, 'default' | 'primary' | 'warning' | 'success' | 'error' | 'info'> = {
       pending: 'warning',
       confirmed: 'primary',
       preparing: 'info',
+      ready: 'success',
       done: 'success',
+      completed: 'success',
       canceled: 'error',
+      cancelled: 'error',
     }
     return colors[status] || 'default'
   }

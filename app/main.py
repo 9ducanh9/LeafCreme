@@ -19,7 +19,7 @@ from pathlib import Path
 from app.db import get_db
 from app.routers import (
     products, batches, orders, auth, users, 
-    suppliers, payments, reports, analytics, gift_boxes, lookup, components, leafie
+    suppliers, payments, reports, analytics, gift_boxes, lookup, components, leafie, alerts
 )
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.security_middleware import SecurityMiddleware
@@ -122,6 +122,7 @@ app.include_router(gift_boxes.public_router)
 app.include_router(lookup.router)
 app.include_router(components.router)
 app.include_router(leafie.router)
+app.include_router(alerts.router)
 
 # =========================================================
 # Root Endpoint

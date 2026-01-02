@@ -26,12 +26,14 @@ export default function PreOrderTable({ preOrders, onDelete }: PreOrderTableProp
   const navigate = useNavigate()
 
   const getStatusColor = (status: PreOrder['status']) => {
-    const colors: Record<PreOrder['status'], 'default' | 'primary' | 'warning' | 'success' | 'error' | 'info'> = {
+    const colors: Record<string, 'default' | 'primary' | 'warning' | 'success' | 'error' | 'info'> = {
       pending: 'warning',
       confirmed: 'primary',
       preparing: 'info',
       ready: 'success',
+      done: 'success',
       completed: 'success',
+      canceled: 'error',
       cancelled: 'error',
     }
     return colors[status] || 'default'
@@ -49,12 +51,14 @@ export default function PreOrderTable({ preOrders, onDelete }: PreOrderTableProp
   }
 
   const getStatusLabel = (status: PreOrder['status']) => {
-    const labels: Record<PreOrder['status'], string> = {
+    const labels: Record<string, string> = {
       pending: 'Chờ xử lý',
-      confirmed: 'Đang xử lý',
+      confirmed: 'Đã xác nhận',
       preparing: 'Đang chuẩn bị',
       ready: 'Sẵn sàng',
+      done: 'Hoàn thành',
       completed: 'Hoàn thành',
+      canceled: 'Đã hủy',
       cancelled: 'Đã hủy',
     }
     return labels[status] || status

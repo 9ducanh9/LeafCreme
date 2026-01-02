@@ -53,7 +53,7 @@ export interface PreOrder {
   customerName: string
   phone: string
   pickupDate: string
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled'
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'done' | 'completed' | 'canceled' | 'cancelled'
   notes?: string
   items: PreOrderItem[]
   totalAmount: number

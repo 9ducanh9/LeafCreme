@@ -24,9 +24,9 @@ Script này sẽ tự động:
 start-backend.bat
 
 # Hoặc manual
-cd venv\Scripts
-activate
-cd ..\..
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
@@ -51,7 +51,7 @@ Frontend sẽ chạy tại: http://localhost:3000
 
 ### Backend
 - Python 3.11+
-- PostgreSQL database
+- PostgreSQL database (khuyến nghị chạy bằng Docker Compose)
 - Virtual environment với các packages trong `requirements.txt`
 
 ### Frontend
@@ -59,6 +59,15 @@ Frontend sẽ chạy tại: http://localhost:3000
 - npm hoặc yarn
 
 ## 🔧 Setup
+
+### 0. Chạy Postgres nhanh bằng Docker (khuyến nghị)
+
+```bash
+docker compose up -d
+```
+
+- Postgres: `localhost:5432` (db: `bakery`, user/pass: `postgres`)
+- Adminer (UI quản trị DB): `http://localhost:8080`
 
 ### 1. Backend Setup
 
@@ -76,6 +85,8 @@ pip install -r requirements.txt
 # DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 # SECRET_KEY=your-secret-key-here
 ```
+
+**Lưu ý quan trọng:** Backend sẽ báo lỗi nếu thiếu `DATABASE_URL` (xem `app/db.py`).
 
 ### 2. Frontend Setup
 
@@ -106,8 +117,10 @@ Leaf Crème/
 │   │   ├── pages/       # Page components
 │   │   ├── services/    # API services
 │   │   └── contexts/    # React contexts
-└── venv/                # Python virtual environment
+└── docs/                # Tài liệu nội bộ (note từng file, hướng dẫn MoMo)
 ```
+
+Xem mô tả **từng file** tại: `docs/FILE_NOTES_VI.md`
 
 ## 🎯 Features
 
@@ -133,9 +146,9 @@ Leaf Crème/
 ## 📝 Documentation
 
 - `RulesLeafCreme.md` - Design rules và guidelines cho frontend
-- `START_HERE_MOMO.md` - **BẮT ĐẦU TẠI ĐÂY** để setup thanh toán MoMo
-- `QUICK_START_MOMO_QR.md` - Setup MoMo QR đơn giản trong 5 phút
-- `MOMO_INTEGRATION_GUIDE.md` - Hướng dẫn MoMo Business API (nâng cao)
+- `docs/START_HERE_MOMO.md` - **BẮT ĐẦU TẠI ĐÂY** để setup thanh toán MoMo
+- `docs/QUICK_START_MOMO_QR.md` - Setup MoMo QR đơn giản trong 5 phút
+- `docs/MOMO_INTEGRATION_GUIDE.md` - Hướng dẫn MoMo Business API (nâng cao)
 - `ENV_SETUP.md` - Hướng dẫn cấu hình biến môi trường
 - API Documentation: http://localhost:8000/docs (Swagger UI)
 
@@ -151,13 +164,27 @@ Hệ thống hỗ trợ 2 phương thức thanh toán:
 - **Quét QR tự động điền số tiền & nội dung** - Khách chỉ cần xác nhận
 - Setup trong 5 phút, không cần đăng ký doanh nghiệp
 - Xác nhận thủ công qua app MoMo
-- **Bắt đầu:** `START_HERE_MOMO.md` → `QUICK_START_MOMO_QR.md`
+- **Bắt đầu:** `docs/START_HERE_MOMO.md` → `docs/QUICK_START_MOMO_QR.md`
 
 **Cấu hình MoMo:**
 1. Chụp ảnh QR MoMo của bạn
 2. Tạo file `.env` với MOMO_QR_PHONE
 3. Restart backend  
 4. Test thử - QR sẽ tự động điền số tiền!
+
+## 🗄️ Migration (SQL)
+
+Hiện repo có migration SQL ở `migrations/`.
+
+- Nếu cần chạy thủ công: mở file `.sql` và chạy trong Adminer/psql theo môi trường DB của bạn.
+
+### Leafie / n8n memory (chat history)
+
+Nếu bạn dùng n8n workflow để lưu/đọc “memory” từ Postgres và gặp lỗi:
+`relation "public.chat_messages" does not exist`
+
+- Chạy migration: `migrations/create_chat_messages.sql`
+- Hoặc tạo bảng tương đương trong DB mà credential n8n đang trỏ tới (đảm bảo cùng DB/schema `public`)
 
 ## 🐛 Troubleshooting
 

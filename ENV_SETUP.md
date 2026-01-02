@@ -20,6 +20,13 @@ FRONTEND_BASE_URL=http://localhost:5173
 BACKEND_BASE_URL=http://localhost:8000
 
 # =========================================================
+# Leafie / n8n (Chatbot)
+# =========================================================
+# Backend chỉ làm proxy, logic AI nằm trong n8n workflow
+# Ví dụ: https://<your-n8n-domain>/webhook/<id>
+N8N_WEBHOOK_URL=
+
+# =========================================================
 # VNPay Payment Gateway
 # =========================================================
 VNPAY_TMN_CODE=your_vnpay_tmn_code

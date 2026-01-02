@@ -91,7 +91,9 @@ export default function PaymentQRPage() {
               {/* Mô tả */}
               <div className="mb-6">
                 <p className="text-sm text-gray-500 mb-2">Mô tả</p>
-                <p className="text-gray-700">Nạp tiền qua Ví Trả Sau</p>
+                <p className="text-gray-700">
+                  Thanh toán đơn {paymentInfo.transfer_content}
+                </p>
               </div>
 
               {/* Số tiền - BIG */}
