@@ -1,11 +1,15 @@
-// Admin Voucher Service - API calls for voucher management
+// Admin Voucher Service
+// Backend voucher CRUD endpoints do not exist yet in this repository.
+// These methods are explicitly demo/dev-only and disabled by default.
 import { Voucher } from '../../types/admin'
 
-// Mock data storage key
-const STORAGE_KEY = 'leaf_creme_mock_vouchers'
+const DEMO_STORAGE_KEY = 'leaf_creme_demo_vouchers'
+export const DEMO_VOUCHER_MODE_ENABLED = import.meta.env.VITE_ENABLE_DEMO_VOUCHERS === 'true'
 
-// Initial mock data - SYNC WITH BACKEND DATABASE
-const INITIAL_MOCK_VOUCHERS: Voucher[] = [
+const DEMO_ONLY_ERROR =
+  'Voucher management is demo/dev-only. Set VITE_ENABLE_DEMO_VOUCHERS=true to use local demo data.'
+
+const INITIAL_DEMO_VOUCHERS: Voucher[] = [
   {
     id: '1',
     code: 'WELCOME',
@@ -14,66 +18,28 @@ const INITIAL_MOCK_VOUCHERS: Voucher[] = [
     appliesTo: 'all',
     minOrderValue: 0,
     usageLimit: 5,
-    expiresAt: '2026-01-14T23:59:59',
+    expiresAt: '2026-12-31T23:59:59',
     status: 'active',
-  },
-  {
-    id: '2',
-    code: 'WELCOME10',
-    type: 'percent',
-    discountValue: 10,
-    appliesTo: 'all',
-    minOrderValue: 100000,
-    usageLimit: 100,
-    expiresAt: '2024-12-31T23:59:59',
-    status: 'active',
-  },
-  {
-    id: '3',
-    code: 'SAVE50K',
-    type: 'fixed_amount',
-    discountValue: 50000,
-    appliesTo: 'all',
-    minOrderValue: 200000,
-    usageLimit: 50,
-    expiresAt: '2024-11-30T23:59:59',
-    status: 'active',
-  },
-  {
-    id: '4',
-    code: 'MOUSSE20',
-    type: 'percent',
-    discountValue: 20,
-    appliesTo: 'category',
-    targetId: 'Mousse',
-    minOrderValue: 150000,
-    expiresAt: '2024-10-31T23:59:59',
-    status: 'inactive',
   },
 ]
 
-// Get mock vouchers from localStorage or use initial data
-function getMockVouchers(): Voucher[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-    // First time: save initial data
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_MOCK_VOUCHERS))
-    return INITIAL_MOCK_VOUCHERS
-  } catch {
-    return INITIAL_MOCK_VOUCHERS
+function assertDemoVoucherModeEnabled(): void {
+  if (!DEMO_VOUCHER_MODE_ENABLED) {
+    throw new Error(DEMO_ONLY_ERROR)
   }
 }
 
-// Save mock vouchers to localStorage
-function saveMockVouchers(vouchers: Voucher[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(vouchers))
-  } catch (error) {
-    console.error('Failed to save vouchers to localStorage:', error)
+function getDemoVouchers(): Voucher[] {
+  const stored = localStorage.getItem(DEMO_STORAGE_KEY)
+  if (stored) {
+    return JSON.parse(stored)
   }
+  localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_VOUCHERS))
+  return INITIAL_DEMO_VOUCHERS
+}
+
+function saveDemoVouchers(vouchers: Voucher[]): void {
+  localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(vouchers))
 }
 
 export async function getVouchers(filters?: {
@@ -81,74 +47,56 @@ export async function getVouchers(filters?: {
   type?: string
   search?: string
 }): Promise<Voucher[]> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.get('/admin/vouchers', { params: filters })
-  // return response.data
+  assertDemoVoucherModeEnabled()
 
-  const MOCK_VOUCHERS = getMockVouchers()
-  let filtered = [...MOCK_VOUCHERS]
-
+  let filtered = [...getDemoVouchers()]
   if (filters?.status) {
-    filtered = filtered.filter((v) => v.status === filters.status)
+    filtered = filtered.filter((voucher) => voucher.status === filters.status)
   }
-
   if (filters?.type) {
-    filtered = filtered.filter((v) => v.type === filters.type)
+    filtered = filtered.filter((voucher) => voucher.type === filters.type)
   }
-
   if (filters?.search) {
     const searchLower = filters.search.toLowerCase()
-    filtered = filtered.filter((v) => v.code.toLowerCase().includes(searchLower))
+    filtered = filtered.filter((voucher) => voucher.code.toLowerCase().includes(searchLower))
   }
-
   return filtered
 }
 
 export async function getVoucherById(id: string): Promise<Voucher> {
-  // TODO: Replace with real API call
-  const MOCK_VOUCHERS = getMockVouchers()
-  const voucher = MOCK_VOUCHERS.find((v) => v.id === id)
+  assertDemoVoucherModeEnabled()
+  const voucher = getDemoVouchers().find((item) => item.id === id)
   if (!voucher) throw new Error('Voucher not found')
   return voucher
 }
 
 export async function createVoucher(data: Omit<Voucher, 'id'>): Promise<Voucher> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.post('/admin/vouchers', data)
-  // return response.data
-
-  const MOCK_VOUCHERS = getMockVouchers()
+  assertDemoVoucherModeEnabled()
+  const vouchers = getDemoVouchers()
   const newVoucher: Voucher = {
     ...data,
     id: Date.now().toString(),
   }
-  MOCK_VOUCHERS.push(newVoucher)
-  saveMockVouchers(MOCK_VOUCHERS)
+  vouchers.push(newVoucher)
+  saveDemoVouchers(vouchers)
   return newVoucher
 }
 
 export async function updateVoucher(id: string, data: Partial<Voucher>): Promise<Voucher> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.put(`/admin/vouchers/${id}`, data)
-  // return response.data
-
-  const MOCK_VOUCHERS = getMockVouchers()
-  const index = MOCK_VOUCHERS.findIndex((v) => v.id === id)
+  assertDemoVoucherModeEnabled()
+  const vouchers = getDemoVouchers()
+  const index = vouchers.findIndex((item) => item.id === id)
   if (index === -1) throw new Error('Voucher not found')
-
-  MOCK_VOUCHERS[index] = { ...MOCK_VOUCHERS[index], ...data }
-  saveMockVouchers(MOCK_VOUCHERS)
-  return MOCK_VOUCHERS[index]
+  vouchers[index] = { ...vouchers[index], ...data }
+  saveDemoVouchers(vouchers)
+  return vouchers[index]
 }
 
 export async function deleteVoucher(id: string): Promise<void> {
-  // TODO: Replace with real API call
-  // await apiClient.delete(`/admin/vouchers/${id}`)
-
-  const MOCK_VOUCHERS = getMockVouchers()
-  const index = MOCK_VOUCHERS.findIndex((v) => v.id === id)
+  assertDemoVoucherModeEnabled()
+  const vouchers = getDemoVouchers()
+  const index = vouchers.findIndex((item) => item.id === id)
   if (index === -1) throw new Error('Voucher not found')
-  MOCK_VOUCHERS.splice(index, 1)
-  saveMockVouchers(MOCK_VOUCHERS)
+  vouchers.splice(index, 1)
+  saveDemoVouchers(vouchers)
 }
-

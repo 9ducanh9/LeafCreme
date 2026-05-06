@@ -1,214 +1,274 @@
-# Leaf Creme - Bakery Management System
+# LeafCreme
 
-Hệ thống quản lý và bán hàng cho tiệm bánh Leaf Creme.
+LeafCreme is a full-stack bakery operations and commerce system built for a small cake business that needs more than a basic storefront. The project combines product catalog management, batch-based inventory control, FEFO stock allocation, order handling, and payment workflows in a single codebase.
 
-## 🚀 Quick Start
+This repository is positioned as a portfolio flagship because it is not just a CRUD app. The core value is operational correctness: the system models how a real bakery tracks perishable stock, fulfills orders against the right batch, and keeps sales, inventory, and payments aligned.
 
-### Chạy cả Backend và Frontend cùng lúc
+## Project Overview
 
-**Windows:**
-```bash
-start-all.bat
-```
+**Goal:** help a bakery sell online while managing short-shelf-life inventory with traceability.
 
-Script này sẽ tự động:
-- Khởi động Backend server (port 8000)
-- Khởi động Frontend server (port 3000)
-- Mở 2 cửa sổ terminal riêng biệt
+**What makes it different from a typical storefront project:**
+- Batch-level inventory instead of simple product counts
+- FEFO allocation for perishable products
+- Multiple order types: POS, online, and pre-order
+- Payment workflows that update order/payment state together
+- Admin tooling for products, batches, orders, inventory, reporting, and alerts
 
-### Chạy riêng lẻ
+## Business Problem
 
-#### Backend (FastAPI)
-```bash
-# Windows
-start-backend.bat
+Small food businesses often run sales and operations in disconnected tools: a storefront for orders, spreadsheets for stock, and manual notes for expiry dates. That creates avoidable waste, poor fulfillment visibility, and fragile payment reconciliation.
 
-# Hoặc manual
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --port 8000
-```
+LeafCreme addresses that by treating inventory as batches with expiry dates and routing order fulfillment through FEFO rules. The result is a system that is closer to actual bakery operations than a generic e-commerce demo.
 
-Backend sẽ chạy tại: http://localhost:8000
-API Documentation: http://localhost:8000/docs
+## Implemented Features
 
-#### Frontend (React + Vite)
-```bash
-# Windows
-cd frontend
-start-frontend.bat
+### Customer-facing
+- Product browsing, category pages, and product detail flows
+- Shopping cart and checkout
+- User registration, login, profile editing, and avatar upload
+- Order placement and order history flows
+- Payment flows for:
+  - cash / manual payment records
+  - MoMo Business API flow
+  - MoMo QR flow with manual confirmation
+- Leafie AI assistant proxy flow via backend to n8n
 
-# Hoặc manual
-cd frontend
-npm install  # Lần đầu tiên
-npm run dev
-```
+### Admin / operations
+- Product and variant management
+- Batch management for products, components, and gift boxes
+- Inventory visibility by batch
+- Order list, order detail, status updates, and deletion
+- Sales reporting based on real backend sales data
+- Alerts/inventory monitoring surfaces
+- User management endpoints for admin/manager roles
 
-Frontend sẽ chạy tại: http://localhost:3000
-
-## 📋 Requirements
-
-### Backend
-- Python 3.11+
-- PostgreSQL database (khuyến nghị chạy bằng Docker Compose)
-- Virtual environment với các packages trong `requirements.txt`
+## Architecture / Tech Stack
 
 ### Frontend
-- Node.js 18+
-- npm hoặc yarn
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- Material UI
+- Recharts
 
-## 🔧 Setup
+### Backend
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- JWT authentication
+- Python services for FEFO allocation and payment helpers
 
-### 0. Chạy Postgres nhanh bằng Docker (khuyến nghị)
+### External / integration points
+- MoMo payment integration
+- n8n webhook integration for Leafie assistant
+- Docker Compose for local PostgreSQL + Adminer
+
+## Key Business Logic
+
+### 1. FEFO stock allocation
+Implemented in [fefo.py](/D:/Leaf%20Creme/app/services/fefo.py:1).
+
+When an order is created, the system allocates stock by earliest expiry first, not just by any available inventory. This is the highest-value business rule in the project because it maps directly to how a bakery reduces spoilage.
+
+### 2. Batch-based inventory
+Implemented through [batches.py](/D:/Leaf%20Creme/app/routers/batches.py:1).
+
+Inventory is tracked per batch for:
+- finished products
+- components
+- gift boxes
+
+Each batch stores identifiers, quantities, expiry dates, and status, which allows operational visibility beyond a single aggregate stock number.
+
+### 3. Order flow
+Implemented through [orders.py](/D:/Leaf%20Creme/app/routers/orders.py:1).
+
+The order pipeline supports:
+- POS orders
+- online orders
+- pre-orders
+
+Order creation validates items, allocates inventory, applies vouchers when available in backend order logic, creates line items, and updates payment/order state.
+
+### 4. Payments
+Implemented through [payments.py](/D:/Leaf%20Creme/app/routers/payments.py:1).
+
+The payment layer supports:
+- direct/manual payment records
+- MoMo redirect/API flow
+- MoMo QR generation with admin confirmation
+
+Successful payment updates can move an order from pending to paid when the total paid amount reaches the order total.
+
+## Real Features vs Demo-Only Areas
+
+This distinction matters. The repository contains both real backend-backed functionality and some intentionally bounded demo/admin surfaces.
+
+### Real / backend-backed today
+- Authentication and JWT-based session flow
+- Product, variant, order, user, batch, inventory, and payment APIs
+- FEFO allocation during order creation
+- Sales report endpoint used by admin dashboard revenue views
+- User profile update and avatar upload
+- Leafie backend proxy endpoint
+
+### Demo-only or intentionally limited today
+- Admin voucher management UI
+  - frontend now treats it as demo/dev-only unless explicitly enabled
+  - there is no dedicated voucher CRUD backend API for admin use
+- Customer voucher validation UI
+  - backend applies vouchers during order creation, but there is no standalone public validation endpoint
+- Category management UI
+  - local/demo-only writes, no dedicated backend category CRUD
+- Some admin dashboard analytics breakdowns
+  - revenue trend and summary use real backend data
+  - product/category/best-seller breakdowns remain limited until additional report endpoints exist
+- Contact form
+  - hidden as a fake flow and replaced by direct contact channels
+- Password change UI
+  - hidden until a real backend endpoint exists
+
+## Repository Structure
+
+```text
+app/
+  core/           backend config, auth, dependencies
+  routers/        FastAPI route modules
+  services/       FEFO and payment helper logic
+  models.py       SQLAlchemy models
+  main.py         FastAPI application entrypoint
+
+frontend/
+  src/
+    pages/        customer and admin pages
+    services/     API clients and frontend service layer
+    contexts/     auth/cart/toast state
+    components/   reusable UI and admin components
+
+migrations/       SQL migrations and supporting schema scripts
+docs/             setup notes and payment integration docs
+```
+
+## Setup Instructions
+
+### 1. Infrastructure
+
+Start PostgreSQL locally:
 
 ```bash
 docker compose up -d
 ```
 
-- Postgres: `localhost:5432` (db: `bakery`, user/pass: `postgres`)
-- Adminer (UI quản trị DB): `http://localhost:8080`
+This provides:
+- PostgreSQL on `localhost:5432`
+- Adminer on `http://localhost:8080`
 
-### 1. Backend Setup
+### 2. Backend
 
 ```bash
-# Tạo virtual environment
 python -m venv venv
-
-# Activate (Windows)
 venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Tạo file .env với database connection:
-# DATABASE_URL=postgresql://user:password@localhost:5432/dbname
-# SECRET_KEY=your-secret-key-here
 ```
 
-**Lưu ý quan trọng:** Backend sẽ báo lỗi nếu thiếu `DATABASE_URL` (xem `app/db.py`).
+Create `.env` in the project root:
 
-### 2. Frontend Setup
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/bakery
+APP_ENV=development
+SECRET_KEY=replace-with-a-long-random-secret
+FRONTEND_BASE_URL=http://localhost:3000
+BACKEND_BASE_URL=http://localhost:8000
+```
+
+Optional integrations:
+
+```env
+N8N_WEBHOOK_URL=https://your-n8n-webhook
+MOMO_PARTNER_CODE=
+MOMO_ACCESS_KEY=
+MOMO_SECRET_KEY=
+MOMO_QR_PHONE=
+MOMO_QR_ACCOUNT_NAME=
+MOMO_QR_IMAGE_PATH=
+```
+
+Run backend:
+
+```bash
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Backend URLs:
+- API: `http://localhost:8000`
+- Swagger docs: `http://localhost:8000/docs`
+
+### 3. Frontend
 
 ```bash
 cd frontend
 npm install
 ```
 
-## 🌐 URLs
+Create `frontend/.env`:
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-## 📁 Project Structure
-
-```
-Leaf Crème/
-├── app/                 # Backend (FastAPI)
-│   ├── routers/         # API endpoints
-│   ├── models.py        # Database models
-│   ├── services/        # Business logic
-│   └── main.py          # FastAPI app
-├── frontend/            # Frontend (React + TypeScript)
-│   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── pages/       # Page components
-│   │   ├── services/    # API services
-│   │   └── contexts/    # React contexts
-└── docs/                # Tài liệu nội bộ (note từng file, hướng dẫn MoMo)
+```env
+VITE_API_BASE_URL=http://localhost:8000
 ```
 
-Xem mô tả **từng file** tại: `docs/FILE_NOTES_VI.md`
+Optional frontend flags:
 
-## 🎯 Features
+```env
+VITE_LEAFIE_BACKEND_URL=http://localhost:8000/leafie/ask
+VITE_ENABLE_DEMO_VOUCHERS=false
+VITE_ENABLE_DEMO_CATEGORY_MANAGEMENT=false
+```
 
-### Frontend
-- ✅ Homepage với hero banner, best sellers, categories
-- ✅ Product browsing và search
-- ✅ Shopping cart
-- ✅ Checkout và order placement
-- ✅ User authentication (login/register)
-- ✅ User profile management
-- ✅ Category listing pages
-- ✅ Multiple payment methods (Cash on Delivery, MoMo QR)
+Run frontend:
 
-### Backend
-- ✅ RESTful API với FastAPI
-- ✅ Authentication & Authorization (JWT)
-- ✅ Product management
-- ✅ Order management với FEFO allocation
-- ✅ Inventory management
-- ✅ Batch tracking
-- ✅ Payment processing (MoMo QR integration với auto-fill)
+```bash
+npm run dev
+```
 
-## 📝 Documentation
+Frontend runs on `http://localhost:3000`.
 
-- `RulesLeafCreme.md` - Design rules và guidelines cho frontend
-- `docs/START_HERE_MOMO.md` - **BẮT ĐẦU TẠI ĐÂY** để setup thanh toán MoMo
-- `docs/QUICK_START_MOMO_QR.md` - Setup MoMo QR đơn giản trong 5 phút
-- `docs/MOMO_INTEGRATION_GUIDE.md` - Hướng dẫn MoMo Business API (nâng cao)
-- `ENV_SETUP.md` - Hướng dẫn cấu hình biến môi trường
-- API Documentation: http://localhost:8000/docs (Swagger UI)
+### 4. Quick local launch
 
-## 💳 Payment Integration
+Windows helper scripts are included:
+- `start-backend.bat`
+- `start-all.bat`
 
-Hệ thống hỗ trợ 2 phương thức thanh toán:
+## Demo / Screenshots
 
-### 1. Thanh toán khi nhận hàng (COD)
-- Khách hàng thanh toán trực tiếp khi nhận hàng
-- Không cần cấu hình thêm
+Add screenshots or GIFs here before using this repository in applications.
 
-### 2. Thanh toán MoMo ⭐
-- **Quét QR tự động điền số tiền & nội dung** - Khách chỉ cần xác nhận
-- Setup trong 5 phút, không cần đăng ký doanh nghiệp
-- Xác nhận thủ công qua app MoMo
-- **Bắt đầu:** `docs/START_HERE_MOMO.md` → `docs/QUICK_START_MOMO_QR.md`
+Suggested assets:
+- `[Screenshot Placeholder] Customer storefront / home page`
+- `[Screenshot Placeholder] Product detail + cart`
+- `[Screenshot Placeholder] Checkout + payment flow`
+- `[Screenshot Placeholder] Admin order management`
+- `[Screenshot Placeholder] Batch inventory / FEFO-oriented operations`
+- `[Screenshot Placeholder] Admin dashboard`
 
-**Cấu hình MoMo:**
-1. Chụp ảnh QR MoMo của bạn
-2. Tạo file `.env` với MOMO_QR_PHONE
-3. Restart backend  
-4. Test thử - QR sẽ tự động điền số tiền!
+## Current Limitations
 
-## 🗄️ Migration (SQL)
+- Frontend production build still has unrelated TypeScript issues in some admin surfaces; local dev workflow is the most reliable way to evaluate the UI right now.
+- Admin reporting is partially real, partially limited by missing backend analytics endpoints.
+- Voucher and category management are not complete production features yet.
+- Contact and password-change flows are intentionally hidden/disabled until backend support exists.
+- Leafie depends on external n8n configuration; without it, the assistant endpoint returns a configuration error.
 
-Hiện repo có migration SQL ở `migrations/`.
+## Future Improvements
 
-- Nếu cần chạy thủ công: mở file `.sql` và chạy trong Adminer/psql theo môi trường DB của bạn.
+- Add dedicated voucher CRUD and customer-side voucher validation APIs
+- Add full category CRUD on the backend
+- Expand analytics endpoints for product, category, and bestseller reporting
+- Finish frontend TypeScript cleanup so the production build passes cleanly
+- Add automated tests for FEFO allocation, order creation, and payment state transitions
+- Add seeded demo data and polished screenshot assets for faster reviewer evaluation
 
-### Leafie / n8n memory (chat history)
+## Why This Project Matters In A Portfolio
 
-Nếu bạn dùng n8n workflow để lưu/đọc “memory” từ Postgres và gặp lỗi:
-`relation "public.chat_messages" does not exist`
-
-- Chạy migration: `migrations/create_chat_messages.sql`
-- Hoặc tạo bảng tương đương trong DB mà credential n8n đang trỏ tới (đảm bảo cùng DB/schema `public`)
-
-## 🐛 Troubleshooting
-
-### Backend không chạy được
-- Kiểm tra virtual environment đã được activate
-- Kiểm tra database connection trong `.env`
-- Kiểm tra port 8000 có bị chiếm không
-
-### Frontend không chạy được
-- Chạy `npm install` trong thư mục `frontend`
-- Kiểm tra port 3000 có bị chiếm không
-- Kiểm tra Node.js version (cần 18+)
-
-### CORS errors
-- Backend đã cấu hình CORS để cho phép frontend
-- Kiểm tra `CORS_ORIGINS` trong `.env` hoặc `app/main.py`
-
-## 📞 Support
-
-Nếu gặp vấn đề, kiểm tra:
-1. Logs trong terminal
-2. Browser console (F12)
-3. API documentation tại `/docs`
-
-
-
-
+LeafCreme demonstrates more than framework familiarity. It shows backend modeling, operational business rules, payment integration, role-aware APIs, and the discipline to separate real features from demo-only surfaces. That combination makes it a stronger flagship project than a standard CRUD storefront.

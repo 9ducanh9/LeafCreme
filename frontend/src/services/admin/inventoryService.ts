@@ -1,10 +1,6 @@
 // Inventory service for admin panel
+// Uses real backend APIs only (no local/mock fallback).
 import { apiClient } from '../api'
-
-// Mock data storage key
-const STORAGE_KEY_PRODUCTS = 'leaf_creme_mock_inventory_products'
-const STORAGE_KEY_COMPONENTS = 'leaf_creme_mock_inventory_components'
-const STORAGE_KEY_GIFTBOXES = 'leaf_creme_mock_inventory_giftboxes'
 
 export interface ProductInventoryItem {
   lohang_id: number
@@ -39,103 +35,20 @@ export interface GiftBoxInventoryItem {
   ngay_het_han: string
 }
 
-// Helper functions for mock data
-function getMockProductInventory(): ProductInventoryItem[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_PRODUCTS)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-    return []
-  } catch {
-    return []
-  }
-}
-
-function getMockComponentInventory(): ComponentInventoryItem[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_COMPONENTS)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-    return []
-  } catch {
-    return []
-  }
-}
-
-function getMockGiftBoxInventory(): GiftBoxInventoryItem[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_GIFTBOXES)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-    return []
-  } catch {
-    return []
-  }
-}
-
 export async function getProductInventory(bienthe_id?: number): Promise<ProductInventoryItem[]> {
-  try {
-    const data = await apiClient.get<ProductInventoryItem[]>('/batches/inventory/products', {
-      bienthe_id: bienthe_id || null,
-    })
-    // Save to localStorage as cache
-    if (data && data.length > 0) {
-      localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(data))
-    }
-    return data
-  } catch (error: unknown) {
-    console.warn('Failed to fetch product inventory from API, using cached data:', error)
-    // Fallback to mock/cached data
-    const cached = getMockProductInventory()
-    if (bienthe_id) {
-      return cached.filter(item => item.bienthe_id === bienthe_id)
-    }
-    return cached
-  }
+  return apiClient.get<ProductInventoryItem[]>('/batches/inventory/products', {
+    bienthe_id: bienthe_id || null,
+  })
 }
 
 export async function getComponentInventory(linh_kien_id?: number): Promise<ComponentInventoryItem[]> {
-  try {
-    const data = await apiClient.get<ComponentInventoryItem[]>('/batches/inventory/components', {
-      linh_kien_id: linh_kien_id || null,
-    })
-    // Save to localStorage as cache
-    if (data && data.length > 0) {
-      localStorage.setItem(STORAGE_KEY_COMPONENTS, JSON.stringify(data))
-    }
-    return data
-  } catch (error: unknown) {
-    console.warn('Failed to fetch component inventory from API, using cached data:', error)
-    // Fallback to mock/cached data
-    const cached = getMockComponentInventory()
-    if (linh_kien_id) {
-      return cached.filter(item => item.linh_kien_id === linh_kien_id)
-    }
-    return cached
-  }
+  return apiClient.get<ComponentInventoryItem[]>('/batches/inventory/components', {
+    linh_kien_id: linh_kien_id || null,
+  })
 }
 
 export async function getGiftBoxInventory(hop_qua_id?: number): Promise<GiftBoxInventoryItem[]> {
-  try {
-    const data = await apiClient.get<GiftBoxInventoryItem[]>('/batches/inventory/gift-boxes', {
-      hop_qua_id: hop_qua_id || null,
-    })
-    // Save to localStorage as cache
-    if (data && data.length > 0) {
-      localStorage.setItem(STORAGE_KEY_GIFTBOXES, JSON.stringify(data))
-    }
-    return data
-  } catch (error: unknown) {
-    console.warn('Failed to fetch gift box inventory from API, using cached data:', error)
-    // Fallback to mock/cached data
-    const cached = getMockGiftBoxInventory()
-    if (hop_qua_id) {
-      return cached.filter(item => item.hop_qua_id === hop_qua_id)
-    }
-    return cached
-  }
+  return apiClient.get<GiftBoxInventoryItem[]>('/batches/inventory/gift-boxes', {
+    hop_qua_id: hop_qua_id || null,
+  })
 }
-

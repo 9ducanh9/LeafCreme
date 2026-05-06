@@ -1,5 +1,5 @@
 // API client configuration and base utilities
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '../config/runtimeConfig'
 
 export interface ApiError {
   error: string
@@ -40,27 +40,11 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${trimmedToken}`
     }
 
-    // Debug logging (only in development)
-    if (import.meta.env.DEV) {
-      console.log(`🌐 ${options.method || 'GET'} ${endpoint}`, {
-        url,
-        hasToken: !!token,
-      })
-    }
-
     try {
       const response = await fetch(url, {
         ...options,
         headers,
       })
-      
-      // Log response (only in development)
-      if (import.meta.env.DEV) {
-        console.log(`📥 Response for ${endpoint}:`, {
-          status: response.status,
-          statusText: response.statusText,
-        })
-      }
 
       if (!response.ok) {
         // Handle 401 Unauthorized - clear invalid tokens

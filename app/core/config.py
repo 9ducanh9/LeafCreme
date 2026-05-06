@@ -2,20 +2,52 @@
 Configuration settings cho application
 """
 import os
+from typing import List
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
+def _parse_csv(value: str) -> List[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 class Settings:
+    APP_ENV: str = os.getenv("APP_ENV", os.getenv("ENV", "development")).lower()
+    IS_DEVELOPMENT: bool = APP_ENV in {"dev", "development", "local"}
+
     # JWT Settings
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production-minimum-32-characters")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
+    if not SECRET_KEY:
+        if IS_DEVELOPMENT:
+            SECRET_KEY = "dev-only-insecure-secret-key-change-before-production"
+        else:
+            raise RuntimeError("Missing required SECRET_KEY environment variable.")
+
+    if not IS_DEVELOPMENT and len(SECRET_KEY) < 32:
+        raise RuntimeError("SECRET_KEY must be at least 32 characters outside development.")
+
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
-    FRONTEND_BASE_URL: str = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
-    BACKEND_BASE_URL: str = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
+    FRONTEND_BASE_URL: str = os.getenv(
+        "FRONTEND_BASE_URL",
+        "http://localhost:5173" if IS_DEVELOPMENT else ""
+    )
+    BACKEND_BASE_URL: str = os.getenv(
+        "BACKEND_BASE_URL",
+        "http://localhost:8000" if IS_DEVELOPMENT else ""
+    )
+
+    _default_dev_origins = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000,"
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173"
+    )
+    CORS_ORIGINS_RAW: str = os.getenv("CORS_ORIGINS", _default_dev_origins if IS_DEVELOPMENT else "")
+    CORS_ORIGINS: List[str] = _parse_csv(CORS_ORIGINS_RAW)
 
     VNPAY_TMN_CODE: str = os.getenv("VNPAY_TMN_CODE", "")
     VNPAY_HASH_SECRET: str = os.getenv("VNPAY_HASH_SECRET", "")
@@ -41,4 +73,3 @@ class Settings:
 
 
 settings = Settings()
-

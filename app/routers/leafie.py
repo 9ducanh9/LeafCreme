@@ -14,10 +14,10 @@ from pathlib import Path
 # Try to find .env file in project root (parent of app directory)
 env_path = Path(__file__).parent.parent.parent / ".env"
 if env_path.exists():
-    load_dotenv(dotenv_path=env_path, override=True)
+    load_dotenv(dotenv_path=env_path, override=False)
 else:
     # Fallback to default behavior (current directory)
-    load_dotenv(override=True)
+    load_dotenv(override=False)
 
 
 router = APIRouter(prefix="/leafie", tags=["leafie"])

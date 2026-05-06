@@ -1,24 +1,9 @@
 // Contact page - warm and inviting
-import { useState, FormEvent } from 'react'
 import Card from '../components/ui/Card'
-import Button from '../components/ui/Button'
 
 export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    message: '',
-  })
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    // Handle form submission here
-    console.log('Form submitted:', formData)
-  }
-
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-12 md:py-16">
-      {/* Header */}
       <div className="max-w-2xl mx-auto text-center mb-12">
         <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-4 leading-tight">
           Cứ nhắn gì đi
@@ -30,7 +15,6 @@ export default function ContactPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 max-w-5xl mx-auto">
-        {/* Contact Info Card */}
         <Card className="h-fit">
           <h2 className="font-heading text-xl font-medium text-text-primary mb-6">
             Thông tin liên hệ
@@ -45,7 +29,6 @@ export default function ContactPage() {
                 (Mở cửa từ 8:00 đến 20:00, kể cả cuối tuần)
               </p>
             </div>
-            
             <div>
               <p className="text-sm text-text-muted mb-1">Điện thoại</p>
               <p>028 1234 5678</p>
@@ -53,7 +36,6 @@ export default function ContactPage() {
                 Nhắn tin hoặc gọi, chúng tôi đều nhận
               </p>
             </div>
-
             <div>
               <p className="text-sm text-text-muted mb-1">Email</p>
               <p>hello@leafcreme.vn</p>
@@ -61,79 +43,45 @@ export default function ContactPage() {
                 Thường trả lời trong vòng 24 giờ
               </p>
             </div>
-
             <div className="pt-4 border-t border-border">
               <p className="text-sm text-text-muted mb-2">Mạng xã hội</p>
               <p className="leading-relaxed">
-                Nếu bạn dùng Instagram hoặc Facebook, 
+                Nếu bạn dùng Instagram hoặc Facebook,
                 tìm chúng tôi ở đó cũng được nhé.
               </p>
             </div>
           </div>
         </Card>
 
-        {/* Contact Form Card */}
         <Card>
           <h2 className="font-heading text-xl font-medium text-text-primary mb-6">
-            Hoặc để lại lời nhắn
+            Gửi tin nhắn trực tiếp
           </h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="name" className="block text-sm text-text-secondary mb-2">
-                Tên bạn
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-brown/30 focus:border-accent-brown transition-default"
-                placeholder="Gọi bạn là..."
-              />
+          <div className="space-y-6">
+            <div className="rounded-lg border border-border bg-background-secondary/30 p-4 text-sm text-text-secondary leading-relaxed">
+              Form liên hệ trên website chưa được kết nối backend. Để tránh gửi thất lạc,
+              vui lòng dùng điện thoại hoặc email đang hoạt động bên dưới.
             </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm text-text-secondary mb-2">
-                Email của bạn
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-brown/30 focus:border-accent-brown transition-default"
-                placeholder="Để chúng tôi có thể trả lời bạn"
-              />
+            <div className="space-y-3">
+              <a
+                href="tel:02812345678"
+                className="w-full px-6 py-3 rounded-button font-medium transition-soft inline-flex items-center justify-center whitespace-nowrap bg-gradient-to-r from-[#C59B72] to-[#D4A574] text-white hover:from-[#B88A5F] hover:to-[#C59B72] border border-[#D4A574] shadow-md hover:shadow-lg"
+              >
+                Gọi: 028 1234 5678
+              </a>
+              <a
+                href="mailto:hello@leafcreme.vn"
+                className="w-full px-6 py-3 rounded-button font-medium transition-soft inline-flex items-center justify-center whitespace-nowrap bg-gradient-to-r from-[#F5C96A] to-[#F7D794] text-[#473C2F] hover:opacity-90 border border-[#F5C96A] shadow-sm"
+              >
+                Email: hello@leafcreme.vn
+              </a>
             </div>
-
-            <div>
-              <label htmlFor="message" className="block text-sm text-text-secondary mb-2">
-                Bạn muốn nói gì?
-              </label>
-              <textarea
-                id="message"
-                rows={5}
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-brown/30 focus:border-accent-brown transition-default resize-none"
-                placeholder="Đặt bánh, hỏi về menu, hay chỉ chào hỏi..."
-              />
-            </div>
-
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-            >
-              Gửi lời nhắn
-            </Button>
             <p className="text-xs text-text-muted text-center">
-              Chúng tôi sẽ đọc và trả lời sớm nhất có thể
+              Kênh liên hệ trực tiếp đang hoạt động và được phản hồi thủ công.
             </p>
-          </form>
+          </div>
         </Card>
       </div>
     </div>
   )
 }
-

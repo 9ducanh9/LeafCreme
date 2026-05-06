@@ -37,13 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isAuthenticated()) {
         try {
           const userData = await getCurrentUser()
-          console.log('✅ User loaded:', {
-            id: userData.nguoidung_id,
-            username: userData.ten_dang_nhap,
-            hasAvatar: !!userData.avatar_url,
-            avatarUrl: userData.avatar_url,
-            role: userData.vaitro?.ten_vai_tro
-          })
           setUser(userData)
         } catch (error: unknown) {
           // Token might be invalid or expired, clear it silently

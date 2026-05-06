@@ -4,14 +4,13 @@ Authentication router: Login, Register, Refresh Token
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, date
+from datetime import datetime, date
 from app.db import get_db
 from app.models import NguoiDung, VaiTro
 from app.core.security import (
     verify_password, get_password_hash,
     create_access_token, create_refresh_token, decode_token
 )
-from app.core.config import settings
 from app.core.dependencies import get_current_user
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
@@ -196,11 +195,6 @@ def login(
     refresh_token = create_refresh_token(data={"sub": user.nguoidung_id})
     
     vaitro_ten = user.vaitro.ten_vai_tro if user.vaitro else "N/A"
-    
-    # Debug: Log token creation
-    import logging
-    logger = logging.getLogger("bakeryonl.api")
-    logger.info(f"Login successful for user {user.ten_dang_nhap} (ID: {user.nguoidung_id})")
     
     return {
         "access_token": access_token,

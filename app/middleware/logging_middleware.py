@@ -13,14 +13,15 @@ logger = logging.getLogger("bakeryonl.api")
 logger.setLevel(logging.INFO)
 
 # Console handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
+if not logger.handlers:
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -46,7 +47,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         client_ip = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "unknown")
-        query_params = str(request.query_params) if request.query_params else ""
         
         # Log request
         logger.info(

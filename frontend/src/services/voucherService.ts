@@ -1,5 +1,6 @@
 // Voucher service for validating and applying vouchers
-import { getVouchers } from './admin/voucherService'
+// Real backend "validate voucher" endpoint is not implemented in this repository.
+import { getVouchers, DEMO_VOUCHER_MODE_ENABLED } from './admin/voucherService'
 import type { Voucher } from '../types/admin'
 import { CartItem } from '../types/cart'
 
@@ -10,22 +11,25 @@ export interface VoucherValidationResult {
   error?: string
 }
 
-/**
- * Validate voucher code and calculate discount
- */
+const VOUCHER_DISABLED_MESSAGE =
+  'Tính năng mã giảm giá hiện đang ở chế độ demo/dev-only và chưa có backend xác thực riêng.'
+
 export async function validateVoucher(
   code: string,
   subtotal: number,
   cartItems: CartItem[]
 ): Promise<VoucherValidationResult> {
+  if (!DEMO_VOUCHER_MODE_ENABLED) {
+    return {
+      valid: false,
+      discountAmount: 0,
+      error: VOUCHER_DISABLED_MESSAGE,
+    }
+  }
+
   try {
-    // Get all vouchers (from localStorage mock data or API)
     const vouchers = await getVouchers({ status: 'active' })
-    
-    // Find voucher by code (case insensitive)
-    const voucher = vouchers.find(
-      (v) => v.code.toUpperCase() === code.toUpperCase().trim()
-    )
+    const voucher = vouchers.find((item) => item.code.toUpperCase() === code.toUpperCase().trim())
 
     if (!voucher) {
       return {
@@ -35,7 +39,6 @@ export async function validateVoucher(
       }
     }
 
-    // Check if voucher is active
     if (voucher.status !== 'active') {
       return {
         valid: false,
@@ -44,7 +47,6 @@ export async function validateVoucher(
       }
     }
 
-    // Check expiration date
     const now = new Date()
     const expiresAt = new Date(voucher.expiresAt)
     if (now > expiresAt) {
@@ -55,7 +57,6 @@ export async function validateVoucher(
       }
     }
 
-    // Check minimum order value
     if (voucher.minOrderValue && subtotal < voucher.minOrderValue) {
       return {
         valid: false,
@@ -64,7 +65,6 @@ export async function validateVoucher(
       }
     }
 
-    // Check if voucher applies to cart items
     if (voucher.appliesTo !== 'all') {
       const cartProductIds = cartItems.map((item) => item.productId)
       const cartCategories: string[] = []
@@ -88,11 +88,9 @@ export async function validateVoucher(
       }
     }
 
-    // Calculate discount amount
     let discountAmount = 0
     if (voucher.type === 'percent') {
       discountAmount = (subtotal * voucher.discountValue) / 100
-      // Cap at subtotal (can't discount more than order total)
       discountAmount = Math.min(discountAmount, subtotal)
     } else if (voucher.type === 'fixed_amount') {
       discountAmount = Math.min(voucher.discountValue, subtotal)
@@ -103,8 +101,7 @@ export async function validateVoucher(
       voucher,
       discountAmount,
     }
-  } catch (error) {
-    console.error('Error validating voucher:', error)
+  } catch {
     return {
       valid: false,
       discountAmount: 0,
@@ -112,4 +109,3 @@ export async function validateVoucher(
     }
   }
 }
-

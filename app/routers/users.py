@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional, List
 from datetime import date
-import os
 import uuid
 from pathlib import Path
 from app.db import get_db
@@ -355,10 +354,8 @@ async def upload_user_avatar(
             # Xóa file cũ nếu tồn tại
             if old_file_path.exists() and old_file_path.is_file():
                 old_file_path.unlink()
-                print(f"Đã xóa avatar cũ: {old_file_path}")
-        except Exception as e:
-            # Log lỗi nhưng không dừng quá trình upload
-            print(f"Lỗi khi xóa avatar cũ: {e}")
+        except Exception:
+            pass
     
     # Generate unique filename
     file_ext = Path(file.filename).suffix if file.filename else '.jpg'

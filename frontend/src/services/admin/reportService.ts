@@ -1,5 +1,6 @@
-// Admin Report Service - API calls for dashboard/reporting data
+// Admin Report Service - backend-backed where available, explicit gaps where not available
 import { RevenueData, ProductRevenue, BestSeller, DashboardStats } from '../../types/admin'
+import { apiClient } from '../api'
 
 export interface CategoryRevenue {
   category: string
@@ -7,100 +8,88 @@ export interface CategoryRevenue {
   quantity: number
 }
 
-// Mock data for development (replace with real API calls later)
-const generateDailyRevenue = (): RevenueData[] => {
-  const data: RevenueData[] = []
-  const today = new Date()
-  for (let i = 13; i >= 0; i--) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    data.push({
-      date: date.toISOString().split('T')[0],
-      revenue: Math.floor(Math.random() * 5000000) + 2000000, // 2M - 7M VND
-    })
-  }
-  return data
+export const REPORTS_DEMO_ONLY_MESSAGE =
+  'Reporting breakdown APIs are not implemented in backend yet (demo/dev-only).'
+
+interface SalesReportRow {
+  ngay: string
+  so_don_hang: number
+  tong_doanh_thu: number
+  so_luong_ban: number
 }
 
-const generateMonthlyRevenue = (): RevenueData[] => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  return months.map((month) => ({
-    date: month,
-    revenue: Math.floor(Math.random() * 50000000) + 30000000, // 30M - 80M VND
+function formatDateToYmd(date: Date): string {
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getDateRange(days: number): { fromDate: string; toDate: string } {
+  const to = new Date()
+  const from = new Date()
+  from.setDate(to.getDate() - days + 1)
+  return {
+    fromDate: formatDateToYmd(from),
+    toDate: formatDateToYmd(to),
+  }
+}
+
+async function getSalesReport(fromDate: string, toDate: string): Promise<SalesReportRow[]> {
+  return apiClient.get<SalesReportRow[]>('/reports/sales', {
+    from_date: fromDate,
+    to_date: toDate,
+  })
+}
+
+export async function getDailyRevenue(): Promise<RevenueData[]> {
+  const { fromDate, toDate } = getDateRange(14)
+  const rows = await getSalesReport(fromDate, toDate)
+  return rows.map((row) => ({
+    date: row.ngay,
+    revenue: Number(row.tong_doanh_thu),
   }))
 }
 
-const MOCK_PRODUCT_REVENUE: ProductRevenue[] = [
-  { productName: 'Tiramisu Classic', revenue: 12500000, quantity: 50 },
-  { productName: 'Mousse Chocolate', revenue: 9800000, quantity: 49 },
-  { productName: 'Bánh kem sinh nhật', revenue: 8750000, quantity: 25 },
-  { productName: 'Bông lan phô mai', revenue: 7200000, quantity: 36 },
-  { productName: 'Crepe Cake', revenue: 5600000, quantity: 28 },
-]
-
-const MOCK_BEST_SELLERS: BestSeller[] = [
-  { productName: 'Tiramisu Classic', quantity: 85, revenue: 21250000 },
-  { productName: 'Mousse Chocolate', quantity: 72, revenue: 14400000 },
-  { productName: 'Bánh kem sinh nhật', quantity: 45, revenue: 20250000 },
-  { productName: 'Bông lan phô mai', quantity: 58, revenue: 17400000 },
-  { productName: 'Crepe Cake', quantity: 42, revenue: 8400000 },
-]
-
-const MOCK_CATEGORY_REVENUE: CategoryRevenue[] = [
-  { category: 'Bánh kem', revenue: 25000000, quantity: 120 },
-  { category: 'Bông lan', revenue: 18000000, quantity: 95 },
-  { category: 'Mousse', revenue: 15000000, quantity: 75 },
-  { category: 'Tiramisu', revenue: 22000000, quantity: 88 },
-]
-
-export async function getDailyRevenue(): Promise<RevenueData[]> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.get('/admin/reports/revenue/daily')
-  // return response.data
-  return generateDailyRevenue()
-}
-
 export async function getMonthlyRevenue(): Promise<RevenueData[]> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.get('/admin/reports/revenue/monthly')
-  // return response.data
-  return generateMonthlyRevenue()
+  const today = new Date()
+  const start = new Date(today.getFullYear(), today.getMonth() - 11, 1)
+  const rows = await getSalesReport(formatDateToYmd(start), formatDateToYmd(today))
+
+  const monthly = new Map<string, number>()
+  rows.forEach((row) => {
+    const monthKey = row.ngay.slice(0, 7)
+    monthly.set(monthKey, (monthly.get(monthKey) || 0) + Number(row.tong_doanh_thu))
+  })
+
+  return Array.from(monthly.entries()).map(([date, revenue]) => ({
+    date,
+    revenue,
+  }))
 }
 
 export async function getRevenueByProduct(): Promise<ProductRevenue[]> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.get('/admin/reports/revenue/by-product')
-  // return response.data
-  return MOCK_PRODUCT_REVENUE
+  return []
 }
 
-export async function getBestSellers(limit: number = 5): Promise<BestSeller[]> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.get('/admin/reports/best-sellers', { params: { limit } })
-  // return response.data
-  return MOCK_BEST_SELLERS.slice(0, limit)
+export async function getBestSellers(_limit: number = 5): Promise<BestSeller[]> {
+  return []
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.get('/admin/reports/dashboard-stats')
-  // return response.data
+  const { fromDate, toDate } = getDateRange(30)
+  const rows = await getSalesReport(fromDate, toDate)
 
-  const dailyRevenue = await getDailyRevenue()
-  const totalRevenue = dailyRevenue.reduce((sum, d) => sum + d.revenue, 0)
-  const bestSellers = await getBestSellers(1)
+  const totalRevenue = rows.reduce((sum, row) => sum + Number(row.tong_doanh_thu), 0)
+  const totalOrders = rows.reduce((sum, row) => sum + Number(row.so_don_hang), 0)
 
   return {
     totalRevenue,
-    totalOrders: 156, // Mock value
-    bestSeller: bestSellers[0]?.productName || 'N/A',
+    totalOrders,
+    bestSeller: 'N/A',
   }
 }
 
 export async function getRevenueByCategory(): Promise<CategoryRevenue[]> {
-  // TODO: Replace with real API call
-  // const response = await apiClient.get('/admin/reports/revenue/by-category')
-  // return response.data
-  return MOCK_CATEGORY_REVENUE
+  return []
 }
-

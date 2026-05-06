@@ -1,66 +1,70 @@
-// Category Service - Manage product categories
-const STORAGE_KEY = 'leaf_creme_categories'
+// Category Service
+// Dedicated backend category CRUD endpoints do not exist yet in this repository.
+// Local category writes are demo/dev-only and disabled by default.
+const DEMO_STORAGE_KEY = 'leaf_creme_demo_categories'
+const DEMO_CATEGORY_WRITE_ENABLED = import.meta.env.VITE_ENABLE_DEMO_CATEGORY_MANAGEMENT === 'true'
+const DEMO_CATEGORY_WRITE_ERROR =
+  'Category management is demo/dev-only. Set VITE_ENABLE_DEMO_CATEGORY_MANAGEMENT=true to enable local demo edits.'
 
-// Default categories
 const DEFAULT_CATEGORIES = ['Bánh kem', 'Bông lan', 'Mousse', 'Tiramisu']
 
-// Get categories from localStorage or use default
 export function getCategories(): string[] {
+  if (!DEMO_CATEGORY_WRITE_ENABLED) {
+    return DEFAULT_CATEGORIES
+  }
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(DEMO_STORAGE_KEY)
     if (stored) {
       return JSON.parse(stored)
     }
-    // First time: save default categories
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CATEGORIES))
+    localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(DEFAULT_CATEGORIES))
     return DEFAULT_CATEGORIES
   } catch {
     return DEFAULT_CATEGORIES
   }
 }
 
-// Save categories to localStorage
 function saveCategories(categories: string[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(categories))
-  } catch (error) {
-    console.error('Failed to save categories to localStorage:', error)
-  }
+    localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(categories))
+  } catch {}
 }
 
-// Add a new category
 export function addCategory(category: string): void {
+  if (!DEMO_CATEGORY_WRITE_ENABLED) {
+    throw new Error(DEMO_CATEGORY_WRITE_ERROR)
+  }
   if (!category.trim()) return
-  
+
   const categories = getCategories()
   const normalizedCategory = category.trim()
-  
-  // Check if category already exists (case-insensitive)
-  if (categories.some(c => c.toLowerCase() === normalizedCategory.toLowerCase())) {
+  if (categories.some((item) => item.toLowerCase() === normalizedCategory.toLowerCase())) {
     throw new Error('Danh mục đã tồn tại')
   }
-  
+
   categories.push(normalizedCategory)
   saveCategories(categories)
 }
 
-// Delete a category
 export function deleteCategory(category: string): void {
+  if (!DEMO_CATEGORY_WRITE_ENABLED) {
+    throw new Error(DEMO_CATEGORY_WRITE_ERROR)
+  }
   const categories = getCategories()
-  const filtered = categories.filter(c => c !== category)
+  const filtered = categories.filter((item) => item !== category)
   saveCategories(filtered)
 }
 
-// Check if category is in use (has products)
 export function isCategoryInUse(category: string): boolean {
+  if (!DEMO_CATEGORY_WRITE_ENABLED) {
+    return true
+  }
   try {
     const products = JSON.parse(localStorage.getItem('leaf_creme_mock_products') || '[]') as unknown
     if (!Array.isArray(products)) return false
-    return (products as Array<{ category?: string }>).some((p) => p.category === category)
+    return (products as Array<{ category?: string }>).some((item) => item.category === category)
   } catch {
     return false
   }
 }
-
-
-

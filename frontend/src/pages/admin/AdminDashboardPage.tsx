@@ -73,7 +73,6 @@ export default function AdminDashboardPage() {
         getDashboardStats(),
         getAlertsSummary(),
       ])
-      console.log('Dashboard data loaded:', { revenue, products, sellers, categories, dashboardStats, alerts })
       setRevenueData(revenue)
       setProductRevenue(products)
       setBestSellers(sellers)
@@ -959,15 +958,6 @@ export default function AdminDashboardPage() {
         </Grid>
       </Grid>
 
-      {/* Debug info - remove in production */}
-      {import.meta.env.DEV && (
-        <Box mt={3} p={2} bgcolor="#f5f5f5" borderRadius={1}>
-          <Typography variant="caption" color="text.secondary">
-            Debug: Revenue Data: {revenueData.length} | Products: {productRevenue.length} | 
-            Sellers: {bestSellers.length} | Categories: {categoryRevenue.length}
-          </Typography>
-        </Box>
-      )}
     </Box>
   )
 }

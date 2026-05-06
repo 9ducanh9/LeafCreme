@@ -64,23 +64,12 @@ def decode_token(token: str) -> Optional[Dict]:
     logger = logging.getLogger("bakeryonl.api")
     
     try:
-        # Debug: Log token info
-        logger.debug(f"Decoding token: length={len(token)}, preview={token[:50]}...")
-        logger.debug(f"Using SECRET_KEY: length={len(settings.SECRET_KEY)}, algorithm={settings.ALGORITHM}")
-        
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        logger.debug(f"Token decoded successfully: user_id={payload.get('sub')}, type={payload.get('type')}")
         return payload
     except JWTError as e:
-        # Log error for debugging
         logger.warning(f"JWT decode error: {str(e)}")
-        logger.warning(f"Token preview: {token[:50]}...")
-        logger.warning(f"SECRET_KEY length: {len(settings.SECRET_KEY)}")
         return None
     except Exception as e:
-        # Catch any other exceptions
         logger.error(f"Unexpected error decoding token: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
         return None
 

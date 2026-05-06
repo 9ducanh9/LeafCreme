@@ -6,9 +6,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.db import get_db
-from app.models import NguoiDung, VaiTro
+from app.models import NguoiDung
 from app.core.security import decode_token
-from app.core.config import settings
 
 security = HTTPBearer()
 
@@ -21,21 +20,9 @@ def get_current_user(
     Dependency để lấy current user từ JWT token
     """
     token = credentials.credentials
-    
-    # Debug logging
-    import logging
-    logger = logging.getLogger("bakeryonl.api")
-    
-    # Debug: Log token info
-    logger.info(f"Received token for /auth/me: length={len(token)}, preview={token[:50]}...")
-    
     payload = decode_token(token)
     
     if payload is None:
-        logger.error(f"❌ Token decode failed!")
-        logger.error(f"   Token preview: {token[:50]}... (length: {len(token)})")
-        logger.error(f"   SECRET_KEY length: {len(settings.SECRET_KEY)}")
-        logger.error(f"   Algorithm: {settings.ALGORITHM}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
@@ -43,7 +30,6 @@ def get_current_user(
         )
     
     if payload.get("type") != "access":
-        logger.warning(f"Token type mismatch - expected 'access', got '{payload.get('type')}'")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
@@ -131,25 +117,14 @@ def require_role(*allowed_roles: str):
     Usage: Depends(require_role("admin", "manager"))
     """
     def role_checker(current_user: NguoiDung = Depends(get_current_active_user)) -> NguoiDung:
-        import logging
-        logger = logging.getLogger("bakeryonl.api")
-        
         # Lấy tên vai trò từ relationship
         vaitro_ten = current_user.vaitro.ten_vai_tro if current_user.vaitro else None
         
-        # Debug logging
-        logger.info(f"🔐 Role check for user {current_user.nguoidung_id} ({current_user.email})")
-        logger.info(f"   User role: '{vaitro_ten}'")
-        logger.info(f"   Required roles: {allowed_roles}")
-        
         if vaitro_ten not in allowed_roles:
-            logger.warning(f"❌ Access denied! User role '{vaitro_ten}' not in {allowed_roles}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Bạn không có quyền truy cập. Yêu cầu: {', '.join(allowed_roles)}. Hiện tại: {vaitro_ten or 'không có role'}"
             )
-        
-        logger.info(f"✅ Access granted!")
         return current_user
     
     return role_checker

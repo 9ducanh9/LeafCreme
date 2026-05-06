@@ -58,7 +58,6 @@ export default function AdminGiftBoxPage() {
       if (statusFilter === 'inactive') filters.dang_hoat_dong = false
       
       const data = await getGiftBoxes(filters)
-      console.log('Gift boxes loaded:', data)
       setGiftBoxes(data)
     } catch (error: unknown) {
       console.error('Error loading gift boxes:', error)

@@ -1,20 +1,26 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
 import os
+from pathlib import Path
 
-load_dotenv()
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+ENV_PATH = BASE_DIR / ".env"
+
+load_dotenv(dotenv_path=ENV_PATH, override=False)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
     raise ValueError(
-        "DATABASE_URL không được tìm thấy trong environment variables!\n"
-        "Vui lòng tạo file .env với nội dung:\n"
+        "DATABASE_URL khong duoc tim thay sau khi load environment variables.\n"
+        f"Da kiem tra file .env tai: {ENV_PATH}\n"
+        "Vui long dam bao file ton tai va chua bien DATABASE_URL, vi du:\n"
         "DATABASE_URL=postgresql+psycopg2://user:password@host:port/dbname"
     )
 
-# Tự động dùng psycopg2 nếu chưa có trong URL
+# Tu dong dung psycopg2 neu chua co trong URL.
 if not DATABASE_URL.startswith("postgresql+psycopg2://"):
     if DATABASE_URL.startswith("postgresql://"):
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
@@ -26,11 +32,12 @@ engine = create_engine(
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,
-    echo=False  # Set True để xem SQL queries (debug)
+    echo=False,
 )
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()

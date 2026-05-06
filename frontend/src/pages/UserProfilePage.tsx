@@ -9,11 +9,14 @@ import { useAuth } from '../contexts/AuthContext'
 import { updateUserProfile, UserUpdateData, uploadAvatar } from '../services/userService'
 import { ArrowLeft, User as UserIcon, Lock, Package } from 'lucide-react'
 import { MAX_AVATAR_SIZE, ALLOWED_IMAGE_TYPES } from '../constants/fileUpload'
+import { API_BASE_URL } from '../config/runtimeConfig'
+
+type ProfileTab = 'profile' | 'password'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
   const { user, refreshUser, loading: authLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'orders'>('profile')
+  const [activeTab, setActiveTab] = useState<ProfileTab>('profile')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -31,13 +34,6 @@ export default function UserProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [passwordData, setPasswordData] = useState({
-    mat_khau_cu: '',
-    mat_khau_moi: '',
-    xac_nhan_mat_khau_moi: '',
-  })
-
-  // Load user data into form
   useEffect(() => {
     if (user) {
       setProfileData({
@@ -62,13 +58,6 @@ export default function UserProfilePage() {
     })
   }
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPasswordData({
-      ...passwordData,
-      [e.target.name]: e.target.value,
-    })
-  }
-
   const handleAvatarClick = () => {
     if (!uploadingAvatar && !loading && fileInputRef.current) {
       fileInputRef.current.click()
@@ -79,26 +68,22 @@ export default function UserProfilePage() {
     const file = e.target.files?.[0]
     if (!file || !user) return
 
-    // Validate file type
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       setError('Vui lòng chọn file ảnh (JPG, PNG, GIF, WebP)')
       return
     }
 
-    // Validate file size
     if (file.size > MAX_AVATAR_SIZE) {
       setError('Kích thước ảnh không được vượt quá 5MB')
       return
     }
 
-    // Create preview
     const reader = new FileReader()
     reader.onloadend = () => {
       setAvatarPreview(reader.result as string)
     }
     reader.readAsDataURL(file)
 
-    // Upload avatar
     setUploadingAvatar(true)
     setError(null)
     try {
@@ -125,7 +110,6 @@ export default function UserProfilePage() {
     setLoading(true)
 
     try {
-      // Format ngay_sinh to YYYY-MM-DD if provided
       const updateData: UserUpdateData = {
         ...profileData,
         ngay_sinh: profileData.ngay_sinh || undefined,
@@ -143,46 +127,14 @@ export default function UserProfilePage() {
     }
   }
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSuccess(null)
-
-    // Validation
-    if (passwordData.mat_khau_moi !== passwordData.xac_nhan_mat_khau_moi) {
-      setError('Mật khẩu mới và xác nhận mật khẩu không khớp')
-      return
-    }
-
-    if (passwordData.mat_khau_moi.length < 6) {
-      setError('Mật khẩu mới phải có ít nhất 6 ký tự')
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      // TODO: Implement when backend endpoint is available
-      setError('Tính năng đổi mật khẩu đang được phát triển')
-    } catch (err: unknown) {
-      const detail =
-        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
-      setError((typeof detail === 'string' && detail) || 'Có lỗi xảy ra khi đổi mật khẩu.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const getInitials = (name: string) => {
     return name
       .split(' ')
-      .map(n => n[0])
+      .map((part) => part[0])
       .join('')
       .toUpperCase()
       .slice(0, 2)
   }
-
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
   if (authLoading) {
     return (
@@ -205,7 +157,6 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen bg-background py-8 md:py-12">
       <div className="max-w-[1440px] mx-auto px-6">
-        {/* Back to Home Button */}
         <button
           onClick={() => navigate('/')}
           className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-default mb-8 whitespace-nowrap"
@@ -215,7 +166,6 @@ export default function UserProfilePage() {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8">
-          {/* Sidebar */}
           <div className="lg:col-span-1">
             <Card className="p-4 md:p-6">
               <div className="mb-6">
@@ -265,11 +215,9 @@ export default function UserProfilePage() {
             </Card>
           </div>
 
-          {/* Main Content */}
           <div className="lg:col-span-3">
             {activeTab === 'profile' ? (
               <Card className="p-8 md:p-10">
-                {/* Header */}
                 <div className="mb-8">
                   <p className="text-xs font-normal text-text-secondary/70 mb-2">
                     Cài đặt tài khoản
@@ -282,7 +230,6 @@ export default function UserProfilePage() {
                   </p>
                 </div>
 
-                {/* Error & Success Messages */}
                 {error && (
                   <div className="mb-6">
                     <ErrorMessage message={error} />
@@ -295,9 +242,7 @@ export default function UserProfilePage() {
                 )}
 
                 <form onSubmit={handleProfileSubmit}>
-                  {/* Avatar & Form Layout */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                    {/* Avatar Section */}
                     <div className="md:col-span-1 flex flex-col items-center">
                       <div className="relative mb-6">
                         <button
@@ -320,7 +265,7 @@ export default function UserProfilePage() {
                               }
                               alt="Avatar"
                               className="w-full h-full object-cover group-hover:opacity-80 transition-default"
-                              onError={e => {
+                              onError={(e) => {
                                 const target = e.target as HTMLImageElement
                                 target.style.display = 'none'
                               }}
@@ -356,14 +301,10 @@ export default function UserProfilePage() {
                       />
                     </div>
 
-                    {/* Form Fields */}
                     <div className="md:col-span-2 space-y-8">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label
-                            htmlFor="ho_ten"
-                            className="block text-sm font-semibold text-text-primary mb-2"
-                          >
+                          <label htmlFor="ho_ten" className="block text-sm font-semibold text-text-primary mb-2">
                             Họ và tên <span className="text-accent-brown font-bold">*</span>
                           </label>
                           <input
@@ -379,10 +320,7 @@ export default function UserProfilePage() {
                         </div>
 
                         <div className="space-y-2">
-                          <label
-                            htmlFor="email"
-                            className="block text-sm font-semibold text-text-primary mb-2"
-                          >
+                          <label htmlFor="email" className="block text-sm font-semibold text-text-primary mb-2">
                             Email <span className="text-accent-brown font-bold">*</span>
                           </label>
                           <input
@@ -398,10 +336,7 @@ export default function UserProfilePage() {
                         </div>
 
                         <div className="space-y-2">
-                          <label
-                            htmlFor="so_dien_thoai"
-                            className="block text-sm font-semibold text-text-primary mb-2"
-                          >
+                          <label htmlFor="so_dien_thoai" className="block text-sm font-semibold text-text-primary mb-2">
                             Số điện thoại
                           </label>
                           <input
@@ -429,10 +364,7 @@ export default function UserProfilePage() {
                         </div>
 
                         <div className="space-y-2">
-                          <label
-                            htmlFor="gioi_tinh"
-                            className="block text-sm font-semibold text-text-primary mb-2"
-                          >
+                          <label htmlFor="gioi_tinh" className="block text-sm font-semibold text-text-primary mb-2">
                             Giới tính
                           </label>
                           <select
@@ -452,10 +384,7 @@ export default function UserProfilePage() {
                       </div>
 
                       <div className="space-y-2">
-                        <label
-                          htmlFor="dia_chi"
-                          className="block text-sm font-semibold text-text-primary mb-2"
-                        >
+                        <label htmlFor="dia_chi" className="block text-sm font-semibold text-text-primary mb-2">
                           Địa chỉ
                         </label>
                         <textarea
@@ -471,7 +400,6 @@ export default function UserProfilePage() {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="pt-8 mt-8 border-t border-border/60 flex items-center justify-end gap-4">
                     <button
                       type="button"
@@ -493,7 +421,6 @@ export default function UserProfilePage() {
               </Card>
             ) : (
               <Card className="p-8 md:p-10">
-                {/* Header */}
                 <div className="mb-8">
                   <p className="text-xs font-normal text-text-secondary/70 mb-2">
                     Bảo mật
@@ -502,113 +429,13 @@ export default function UserProfilePage() {
                     Đổi mật khẩu
                   </h1>
                   <p className="text-sm text-text-secondary leading-relaxed max-w-2xl">
-                    Cập nhật mật khẩu của bạn để bảo vệ tài khoản.
+                    Chức năng đổi mật khẩu chưa được triển khai backend trong dự án này.
                   </p>
                 </div>
-
-                {/* Error & Success Messages */}
-                {error && (
-                  <div className="mb-6">
-                    <ErrorMessage message={error} />
-                  </div>
-                )}
-                {success && (
-                  <div className="mb-6 p-4 bg-accent-yellow/20 border border-accent-yellow rounded-card text-text-primary">
-                    {success}
-                  </div>
-                )}
-
-                <form onSubmit={handlePasswordSubmit} className="max-w-lg">
-                  <div className="space-y-8">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="mat_khau_cu"
-                        className="block text-sm font-semibold text-text-primary mb-2"
-                      >
-                        Mật khẩu hiện tại <span className="text-accent-brown font-bold">*</span>
-                      </label>
-                      <input
-                        id="mat_khau_cu"
-                        name="mat_khau_cu"
-                        type="password"
-                        value={passwordData.mat_khau_cu}
-                        onChange={handlePasswordChange}
-                        required
-                        className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50"
-                        disabled={loading}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="mat_khau_moi"
-                        className="block text-sm font-semibold text-text-primary mb-2"
-                      >
-                        Mật khẩu mới <span className="text-accent-brown font-bold">*</span>
-                      </label>
-                      <input
-                        id="mat_khau_moi"
-                        name="mat_khau_moi"
-                        type="password"
-                        value={passwordData.mat_khau_moi}
-                        onChange={handlePasswordChange}
-                        required
-                        minLength={6}
-                        className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50"
-                        disabled={loading}
-                      />
-                      <p className="text-xs text-text-secondary/70 mt-1">
-                        Mật khẩu phải có ít nhất 6 ký tự
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="xac_nhan_mat_khau_moi"
-                        className="block text-sm font-semibold text-text-primary mb-2"
-                      >
-                        Xác nhận mật khẩu mới <span className="text-accent-brown font-bold">*</span>
-                      </label>
-                      <input
-                        id="xac_nhan_mat_khau_moi"
-                        name="xac_nhan_mat_khau_moi"
-                        type="password"
-                        value={passwordData.xac_nhan_mat_khau_moi}
-                        onChange={handlePasswordChange}
-                        required
-                        minLength={6}
-                        className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="pt-8 mt-8 border-t border-border/60 flex items-center justify-end gap-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPasswordData({
-                          mat_khau_cu: '',
-                          mat_khau_moi: '',
-                          xac_nhan_mat_khau_moi: '',
-                        })
-                        setError(null)
-                      }}
-                      disabled={loading}
-                      className="px-8 py-3.5 rounded-button border border-border text-text-secondary hover:bg-background hover:border-accent-brown/30 hover:text-text-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="px-8 py-3.5 rounded-button bg-accent-brown text-white font-semibold hover:bg-accent-brown/90 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? 'Đang đổi...' : 'Đổi mật khẩu'}
-                    </button>
-                  </div>
-                </form>
+                <div className="rounded-lg border border-border bg-background-secondary/30 p-4 text-sm text-text-secondary leading-relaxed">
+                  Để tránh gây hiểu lầm, biểu mẫu đổi mật khẩu đã được ẩn cho đến khi endpoint thật sẵn sàng.
+                  Hiện tại bạn có thể quay lại tab thông tin cá nhân hoặc liên hệ quản trị viên để hỗ trợ đổi mật khẩu.
+                </div>
               </Card>
             )}
           </div>
