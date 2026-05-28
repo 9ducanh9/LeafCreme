@@ -263,7 +263,7 @@ export async function updateProductVariant(
       if (data.name !== undefined && data.name !== null && data.name.trim() !== '') {
         variantUpdatePayload.huong_vi = data.name
       }
-      if (data.size !== undefined && data.size !== null && data.size !== '') {
+      if (data.size !== undefined && data.size !== null) {
         variantUpdatePayload.kich_thuoc = data.size
       }
       if (data.price !== undefined && data.price !== null && data.price > 0) {
@@ -279,8 +279,6 @@ export async function updateProductVariant(
       const variant = await apiClient.put<BackendVariant>(`/products/variants/${variantId}`, variantUpdatePayload)
 
       // Update product
-      const product = await apiClient.get<Product>(`/products/${variant.sanpham_id}`)
-      
       // Convert full URL back to relative path if needed
       let imagePath = data.image
       if (imagePath) {
@@ -325,8 +323,6 @@ export async function updateProductVariant(
     const productId = parseInt(id)
     if (!isNaN(productId)) {
       // Get existing product first
-      const existingProduct = await apiClient.get<Product>(`/products/${productId}`)
-      
       // Convert full URL back to relative path if needed
       let imagePath = data.image
       if (imagePath) {

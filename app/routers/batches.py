@@ -16,9 +16,11 @@ from ..models import (
 )
 from ..core.dependencies import get_current_active_user, require_role
 from ..models import NguoiDung
+from ..services.inventory_ledger_service import InventoryLedgerService
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/batches", tags=["batches"])
+inventory_ledger = InventoryLedgerService()
 
 
 # =========================================================
@@ -221,6 +223,17 @@ def create_product_batch(
         so_luong_da_ban=0
     )
     db.add(inventory)
+    inventory_ledger.log_product_movement(
+        db,
+        lohang_sanpham_id=batch.lohang_id,
+        loai_giao_dich="nhap",
+        so_luong=batch.so_luong,
+        so_luong_truoc=0,
+        so_luong_sau=batch.so_luong,
+        ly_do="Product batch import",
+        nguoidung_id=current_user.nguoidung_id,
+        gia_tri=batch.gia_don_vi * batch.so_luong,
+    )
     db.commit()
     db.refresh(batch)
     
@@ -410,6 +423,17 @@ def create_component_batch(
         so_luong_da_su_dung=0
     )
     db.add(inventory)
+    inventory_ledger.log_component_movement(
+        db,
+        lohang_linhkien_id=batch.lohang_id,
+        loai_giao_dich="nhap",
+        so_luong=batch.so_luong,
+        so_luong_truoc=0,
+        so_luong_sau=batch.so_luong,
+        ly_do="Component batch import",
+        nguoidung_id=current_user.nguoidung_id,
+        gia_tri=batch.gia_don_vi * batch.so_luong,
+    )
     db.commit()
     db.refresh(batch)
     
@@ -575,6 +599,17 @@ def create_gift_box_batch(
         so_luong_da_ban=0
     )
     db.add(inventory)
+    inventory_ledger.log_gift_box_movement(
+        db,
+        lohang_hopqua_id=batch.lohang_id,
+        loai_giao_dich="nhap",
+        so_luong=batch.so_luong,
+        so_luong_truoc=0,
+        so_luong_sau=batch.so_luong,
+        ly_do="Gift box batch import",
+        nguoidung_id=current_user.nguoidung_id,
+        gia_tri=batch.gia_don_vi * batch.so_luong,
+    )
     db.commit()
     db.refresh(batch)
     

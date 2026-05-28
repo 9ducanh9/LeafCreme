@@ -97,9 +97,8 @@ class VoucherService:
                         detail=f"Voucher '{code}' có cấu hình không hợp lệ"
                     )
 
-            if voucher.loai_giam == "phan_tram":
+            if voucher.loai_giam in ("phantram", "phan_tram"):
                 tien_giam = order_total * (voucher.gia_tri_giam / 100)
-                tien_giam = min(tien_giam, voucher.gia_tri_giam)
             else:
                 tien_giam = voucher.gia_tri_giam
 

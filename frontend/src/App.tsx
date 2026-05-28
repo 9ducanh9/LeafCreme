@@ -37,6 +37,8 @@ import AdminSalesDetailPage from './pages/admin/AdminSalesDetailPage'
 import AdminInventoryPage from './pages/admin/AdminInventoryPage'
 import AdminBatchCreatePage from './pages/admin/AdminBatchCreatePage'
 import AdminAlertsPage from './pages/admin/AdminAlertsPage'
+import AdminStockLedgerPage from './pages/admin/AdminStockLedgerPage'
+import AdminBatchTracePage from './pages/admin/AdminBatchTracePage'
 
 function App() {
   return (
@@ -111,6 +113,9 @@ function App() {
                   <Route path="sales" element={<AdminSalesPage />} />
                   <Route path="sales/:id" element={<AdminSalesDetailPage />} />
                   <Route path="inventory" element={<AdminInventoryPage />} />
+                  <Route path="stock-ledger" element={<AdminStockLedgerPage />} />
+                  <Route path="batch-trace" element={<AdminBatchTracePage />} />
+                  <Route path="batch-trace/:batchType/:batchId" element={<AdminBatchTracePage />} />
                   <Route path="batches" element={<AdminBatchCreatePage />} />
                   <Route path="alerts" element={<AdminAlertsPage />} />
                 </Route>

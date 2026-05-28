@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
-    String, Integer, DateTime, Date, ForeignKey, Text, Boolean, func, Numeric, UniqueConstraint
+    String, Integer, DateTime, Date, ForeignKey, Text, Boolean, func, Numeric, UniqueConstraint, CheckConstraint
 )
 from sqlalchemy.dialects.postgresql import ENUM, JSONB, ARRAY
 from datetime import datetime, date
@@ -383,6 +383,24 @@ class ChiTietDonHang(Base):
         return self.trang_thai_don_hang
 
 
+class PhanBoChiTietDonHang(Base):
+    __tablename__ = "phanbolo_chitietdonhang"
+
+    phanbo_id: Mapped[int] = mapped_column(primary_key=True)
+    chitiet_id: Mapped[int] = mapped_column(ForeignKey("chitietdonhang.chitiet_id", ondelete="CASCADE"))
+    loai_lohang: Mapped[str] = mapped_column(String(20), nullable=False)
+    lohang_sanpham_id: Mapped[int | None] = mapped_column(ForeignKey("lohangsanpham.lohang_id"), nullable=True)
+    lohang_linhkien_id: Mapped[int | None] = mapped_column(ForeignKey("lohanglinhkien.lohang_id"), nullable=True)
+    lohang_hopqua_id: Mapped[int | None] = mapped_column(ForeignKey("lohanghopqua.lohang_id"), nullable=True)
+    so_luong: Mapped[int] = mapped_column(nullable=False)
+    ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint("loai_lohang IN ('sanpham', 'linhkien', 'hopqua')", name="ck_phanbolo_loai_lohang"),
+        CheckConstraint("so_luong > 0", name="ck_phanbolo_so_luong_positive"),
+    )
+
+
 # =========================================================
 # 19. THANH TOÁN
 # =========================================================
@@ -482,6 +500,7 @@ class LichSuKhoLinhKien(Base):
     gia_tri: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     ly_do: Mapped[str | None] = mapped_column(Text, nullable=True)
     bom_id: Mapped[int | None] = mapped_column(ForeignKey("congthuchopqua.bom_id"), nullable=True)
+    donhang_id: Mapped[int | None] = mapped_column(ForeignKey("donhang.donhang_id"), nullable=True)
     nguoidung_id: Mapped[int | None] = mapped_column(ForeignKey("nguoidung.nguoidung_id"), nullable=True)
     ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

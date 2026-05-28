@@ -17,10 +17,12 @@ from app.core.config import settings
 from app.schemas import ThongTinGiaoDich, validate_thong_tin_giao_dich
 from app.services.momo import create_payment_request, verify_signature, parse_momo_datetime
 from app.services.momo_qr import create_momo_payment_info
+from app.services.orders import OrderService
 import requests
 import uuid
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+order_service = OrderService()
 
 
 # =========================================================
@@ -427,6 +429,8 @@ async def momo_ipn(request: Request, db: Session = Depends(get_db)):
 
         if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
             order.trang_thai = "thanh_toan"
+    else:
+        order_service.fail_unpaid_order(db, order.donhang_id, "MoMo payment failed")
 
     db.commit()
 
@@ -613,6 +617,7 @@ def confirm_momo_qr_payment(
             payment.thong_tin_giao_dich["rejected_at"] = datetime.utcnow().isoformat()
             if payload.transaction_note:
                 payment.thong_tin_giao_dich["reject_reason"] = payload.transaction_note
+        order_service.fail_unpaid_order(db, order.donhang_id, "MoMo QR payment rejected")
 
     db.commit()
     db.refresh(payment)
@@ -822,6 +827,12 @@ def update_payment_status(
             
             if total_paid < order.tien_thanh_toan and order.trang_thai == "thanh_toan":
                 order.trang_thai = "cho"
+        elif payload.trang_thai in ["that_bai", "huy"] and old_status != "thanh_cong":
+            order_service.fail_unpaid_order(
+                db,
+                order.donhang_id,
+                f"Payment status changed to {payload.trang_thai}",
+            )
     
     if payload.ma_giao_dich is not None:
         # Kiểm tra unique
@@ -923,6 +934,8 @@ def verify_payment(
         
         if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
             order.trang_thai = "thanh_toan"
+    elif payment.trang_thai == "that_bai":
+        order_service.fail_unpaid_order(db, order.donhang_id, "Payment verification failed")
     
     db.commit()
     db.refresh(payment)

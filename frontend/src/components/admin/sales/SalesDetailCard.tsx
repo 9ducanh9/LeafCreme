@@ -26,7 +26,7 @@ interface SalesDetailCardProps {
 
 export default function SalesDetailCard({ order, onStatusChange }: SalesDetailCardProps) {
   const getStatusColor = (status: Order['status']) => {
-    const colors: Record<Order['status'], 'default' | 'primary' | 'warning' | 'success' | 'error'> = {
+    const colors: Record<Order['status'], 'default' | 'primary' | 'info' | 'warning' | 'success' | 'error'> = {
       pending: 'warning',
       processing: 'info',
       delivering: 'primary',

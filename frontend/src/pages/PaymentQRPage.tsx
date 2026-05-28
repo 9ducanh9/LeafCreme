@@ -1,7 +1,6 @@
 // Payment QR Page - Giống MoMo Gateway
 import { useEffect, useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
-import { formatPrice } from '../utils/formatPrice'
 import type { MomoQRPaymentInfo } from '../services/paymentService'
 
 export default function PaymentQRPage() {

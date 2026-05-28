@@ -20,12 +20,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Grid,
   Card,
   CardContent,
 } from '@mui/material'
@@ -67,9 +65,6 @@ export default function AdminAlertsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('chua_xu_ly')
   
   // Dialog states
-  const [noteDialogOpen, setNoteDialogOpen] = useState(false)
-  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null)
-  const [noteText, setNoteText] = useState('')
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
 
   const loadData = useCallback(async () => {
@@ -126,24 +121,6 @@ export default function AdminAlertsPage() {
     }
   }
 
-  const handleOpenNoteDialog = (alert: Alert) => {
-    setSelectedAlert(alert)
-    setNoteText(alert.ghi_chu || '')
-    setNoteDialogOpen(true)
-  }
-
-  const handleSaveNote = async () => {
-    if (!selectedAlert) return
-    try {
-      await updateAlert(selectedAlert.canhbao_id, { ghi_chu: noteText })
-      setNoteDialogOpen(false)
-      await loadData()
-      setSuccessMessage('Đã lưu ghi chú')
-    } catch (err) {
-      console.error('Error saving note:', err)
-      setError('Không thể lưu ghi chú')
-    }
-  }
 
   const handleDeleteAlert = async (alertId: number) => {
     try {
@@ -249,48 +226,51 @@ export default function AdminAlertsPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ bgcolor: '#FFF3E0', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">Chưa xử lý</Typography>
-                <Typography variant="h4" sx={{ color: '#E65100', fontWeight: 700 }}>
-                  {summary.pending}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ bgcolor: '#FFF8E1', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">Đang xử lý</Typography>
-                <Typography variant="h4" sx={{ color: '#F57F17', fontWeight: 700 }}>
-                  {summary.processing}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ bgcolor: '#E8F5E9', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">Đã xử lý</Typography>
-                <Typography variant="h4" sx={{ color: '#2E7D32', fontWeight: 700 }}>
-                  {summary.resolved}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ bgcolor: '#F5F5F5', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">Tổng cộng</Typography>
-                <Typography variant="h4" sx={{ color: '#616161', fontWeight: 700 }}>
-                  {summary.total}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        <Box
+          sx={{
+            mb: 3,
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, minmax(0, 1fr))',
+              md: 'repeat(4, minmax(0, 1fr))',
+            },
+            gap: 2,
+          }}
+        >
+          <Card sx={{ bgcolor: '#FFF3E0', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">Ch??a x??? l??</Typography>
+              <Typography variant="h4" sx={{ color: '#E65100', fontWeight: 700 }}>
+                {summary.pending}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ bgcolor: '#FFF8E1', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">??ang x??? l??</Typography>
+              <Typography variant="h4" sx={{ color: '#F57F17', fontWeight: 700 }}>
+                {summary.processing}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ bgcolor: '#E8F5E9', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">???? x??? l??</Typography>
+              <Typography variant="h4" sx={{ color: '#2E7D32', fontWeight: 700 }}>
+                {summary.resolved}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ bgcolor: '#F5F5F5', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">T???ng c???ng</Typography>
+              <Typography variant="h4" sx={{ color: '#616161', fontWeight: 700 }}>
+                {summary.total}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
       )}
 
       {/* Filters */}
@@ -504,28 +484,6 @@ export default function AdminAlertsPage() {
           </Table>
         </TableContainer>
       )}
-
-      {/* Note Dialog */}
-      <Dialog open={noteDialogOpen} onClose={() => setNoteDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Ghi chú cảnh báo</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
-            placeholder="Nhập ghi chú..."
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setNoteDialogOpen(false)}>Hủy</Button>
-          <Button onClick={handleSaveNote} variant="contained" sx={{ bgcolor: '#C59B72' }}>
-            Lưu
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Confirm Clear Dialog */}
       <Dialog open={confirmClearOpen} onClose={() => setConfirmClearOpen(false)}>

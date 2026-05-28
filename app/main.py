@@ -16,7 +16,8 @@ from app.db import get_db
 from app.core.config import settings
 from app.routers import (
     products, batches, orders, auth, users,
-    suppliers, payments, reports, analytics, gift_boxes, lookup, components, leafie, alerts
+    suppliers, payments, reports, analytics, gift_boxes, lookup, components, leafie, alerts,
+    inventory_trace,
 )
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.security_middleware import SecurityMiddleware
@@ -86,6 +87,7 @@ app.include_router(lookup.router)
 app.include_router(components.router)
 app.include_router(leafie.router)
 app.include_router(alerts.router)
+app.include_router(inventory_trace.router)
 
 
 @app.get("/", tags=["root"])

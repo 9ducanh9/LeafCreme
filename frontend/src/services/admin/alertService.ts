@@ -1,5 +1,5 @@
 // Alert Service - API calls for inventory alerts
-import api from '../api'
+import { apiClient } from '../api'
 
 export interface Alert {
   canhbao_id: number
@@ -60,14 +60,12 @@ export async function getAlerts(filters?: AlertFilters): Promise<Alert[]> {
   const queryString = params.toString()
   const url = queryString ? `/alerts?${queryString}` : '/alerts'
   
-  const response = await api.get(url)
-  return response.data
+  return await apiClient.get<Alert[]>(url)
 }
 
 // Get alerts summary for dashboard
 export async function getAlertsSummary(): Promise<AlertSummary> {
-  const response = await api.get('/alerts/summary')
-  return response.data
+  return await apiClient.get<AlertSummary>('/alerts/summary')
 }
 
 // Generate new alerts based on current stock
@@ -75,27 +73,24 @@ export async function generateAlerts(
   lowStockThreshold: number = 10,
   expiringDays: number = 7
 ): Promise<GenerateAlertsResult> {
-  const response = await api.post(
+  return await apiClient.post<GenerateAlertsResult>(
     `/alerts/generate?low_stock_threshold=${lowStockThreshold}&expiring_days=${expiringDays}`
   )
-  return response.data
 }
 
 // Update alert status
 export async function updateAlert(alertId: number, data: AlertUpdate): Promise<Alert> {
-  const response = await api.patch(`/alerts/${alertId}`, data)
-  return response.data
+  return await apiClient.patch<Alert>(`/alerts/${alertId}`, data)
 }
 
 // Delete single alert
 export async function deleteAlert(alertId: number): Promise<void> {
-  await api.delete(`/alerts/${alertId}`)
+  await apiClient.delete(`/alerts/${alertId}`)
 }
 
 // Clear all resolved alerts
 export async function clearResolvedAlerts(): Promise<{ deleted_count: number }> {
-  const response = await api.delete('/alerts/resolved/clear')
-  return response.data
+  return await apiClient.delete<{ deleted_count: number }>('/alerts/resolved/clear')
 }
 
 // Helper function to get Vietnamese labels

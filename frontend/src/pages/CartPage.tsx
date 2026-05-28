@@ -9,7 +9,7 @@ import { useToast } from '../contexts/ToastContext'
 import { scanLookup } from '../services/lookupService'
 import CartItem from '../components/cart/CartItem'
 import CartSummary from '../components/cart/CartSummary'
-import { ArrowLeft, ShoppingBag, Cake } from 'lucide-react'
+import { ArrowLeft, Cake } from 'lucide-react'
 
 export default function CartPage() {
   const navigate = useNavigate()
