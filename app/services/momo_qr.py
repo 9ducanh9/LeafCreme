@@ -83,11 +83,11 @@ def create_momo_payment_info(
         "amount": amount,
         "transfer_content": order_code,
         "instructions": [
-            f"1. Mở app MoMo",
+            "1. Mở app MoMo",
             f"2. Quét mã QR hoặc chuyển đến: {phone_number}",
             f"3. Nhập số tiền: {amount:,} VNĐ",
             f"4. Nhập nội dung: {order_code}",
-            f"5. Xác nhận chuyển tiền",
+            "5. Xác nhận chuyển tiền",
         ]
     }
     

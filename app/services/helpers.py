@@ -218,9 +218,7 @@ def get_status_color(status: str) -> str:
         "thanh_toan": "blue",
         "da_nhan": "green",
         "huy": "red",
-        "dang_xu_ly": "orange",
-        # Thanh toán
-        "dang_xu_ly": "orange",
+        "dang_xu_ly": "orange",  # shared by order + payment status, same color either way
         "thanh_cong": "green",
         "that_bai": "red",
         # Đổi trả
@@ -246,8 +244,7 @@ def format_status_vietnam(status: str) -> str:
         "thanh_toan": "Đã thanh toán",
         "da_nhan": "Đã nhận",
         "huy": "Đã hủy",
-        "dang_xu_ly": "Đang xử lý",
-        "dang_xu_ly": "Đang xử lý",
+        "dang_xu_ly": "Đang xử lý",  # shared by order + payment status
         "thanh_cong": "Thành công",
         "that_bai": "Thất bại",
         "yeu_cau": "Yêu cầu",

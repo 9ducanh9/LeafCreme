@@ -1,0 +1,14 @@
+# Phase 0 baseline: catch real bugs (undefined names, syntax issues) without
+# blocking CI on pre-existing style findings in a codebase that predates this
+# lint config. Widen `select` incrementally as each module gets refactored.
+target-version = "py312"
+line-length = 120
+
+[lint]
+select = [
+    "E9",   # syntax errors
+    "F",    # pyflakes: unused imports, undefined names, etc.
+]
+ignore = [
+    "F401",  # unused imports — noisy in router files that re-export models; revisit in Phase 1
+]

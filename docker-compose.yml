@@ -9,8 +9,42 @@ services:
     ports: ["5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bakery"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   adminer:
     image: adminer
     ports: ["8080:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    container_name: bakery-api
+    env_file:
+      - .env
+    environment:
+      # Overrides .env so the container reaches the `db` service by name
+      # instead of localhost, without editing .env itself.
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/bakery
+    ports: ["8000:8000"]
+    volumes:
+      # Product/avatar/MoMo-QR images live outside the image so they survive
+      # rebuilds and don't bloat the image layer — mount the real folder.
+      - ./uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    # Applies migrations before the app starts, once per `docker compose up`.
+    # Kept out of the Dockerfile CMD so `docker run` (e.g. in CI, or a
+    # platform that runs a separate release step) stays in control of when
+    # migrations happen.
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
 volumes:
   pgdata:

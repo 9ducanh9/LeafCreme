@@ -27,11 +27,14 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return response
         
-        # Thêm security headers (KHÔNG BAO GIỜ override CORS headers)
-        # CORS headers: Access-Control-Allow-*, Vary
-        cors_headers = ["access-control-allow-origin", "access-control-allow-methods", 
-                       "access-control-allow-headers", "access-control-allow-credentials",
-                       "access-control-expose-headers", "vary"]
+        # Thêm security headers (KHÔNG BAO GIỜ override CORS headers).
+        # TODO(phase-1): this list was meant to guard against clobbering CORS
+        # headers but is never actually checked below — the fixed header names
+        # set beneath don't collide with any of these anyway, so it's a no-op
+        # today, not a live bug. Either wire it in or remove it in Phase 1.
+        _cors_headers = ["access-control-allow-origin", "access-control-allow-methods",
+                        "access-control-allow-headers", "access-control-allow-credentials",
+                        "access-control-expose-headers", "vary"]
         
         # Chỉ thêm security headers nếu chưa có và không phải CORS header
         if "X-Content-Type-Options" not in response.headers:

@@ -195,6 +195,13 @@ MOMO_QR_ACCOUNT_NAME=
 MOMO_QR_IMAGE_PATH=
 ```
 
+Apply database migrations (schema is now Alembic-managed — see
+`alembic/versions/`; `app/models.py` is not applied to the DB directly):
+
+```bash
+alembic upgrade head
+```
+
 Run backend:
 
 ```bash
@@ -239,6 +246,26 @@ Frontend runs on `http://localhost:3000`.
 Windows helper scripts are included:
 - `start-backend.bat`
 - `start-all.bat`
+
+### 5. Tests
+
+Needs a reachable Postgres (`docker compose up -d db` first) — the suite
+runs against real Postgres, not SQLite, because the schema depends on
+JSONB, native ENUM, and TEXT[] types.
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+### 6. Docker (API + Postgres + Adminer together)
+
+```bash
+docker compose up --build
+```
+
+CI (`.github/workflows/ci.yml`) runs lint → migrate → test → docker build
+on every push/PR against `main`.
 
 ## Demo / Screenshots
 
