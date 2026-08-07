@@ -13,7 +13,7 @@
   
   body {
     @apply bg-background text-text-primary font-body;
-    /* Christmas theme background with warm gradients */
+    /* Warm brand-color background gradients, evergreen (not tied to any season) */
     background-image: 
       radial-gradient(circle at 20% 50%, rgba(245, 201, 106, 0.08) 0%, transparent 50%),
       radial-gradient(circle at 80% 80%, rgba(197, 155, 114, 0.08) 0%, transparent 50%),
@@ -172,7 +172,7 @@
     animation: dot-bounce 1.4s ease-in-out infinite;
   }
 
-  /* Christmas animations */
+  /* Sparkle/twinkle utility animations (used for subtle accents, and by seasonal decorations) */
   @keyframes sparkle {
     0%, 100% {
       opacity: 0.3;

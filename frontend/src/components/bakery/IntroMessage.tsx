@@ -18,10 +18,10 @@ export default function IntroMessage() {
 
             {/* Text Content - Right Side */}
             <div className="p-8 md:p-12 lg:p-16 flex flex-col justify-center max-w-2xl mx-auto md:mx-0 relative">
-              {/* Christmas decoration */}
+              {/* Subtle sparkle accent */}
               <div className="absolute top-4 right-4 text-[#D4A574] text-2xl animate-sparkle">✨</div>
               <h2 className="font-heading text-2xl md:text-3xl font-medium text-text-primary mb-6 leading-tight">
-                Khoảng lặng giữa ngày <span className="text-[#D4A574]">🎄</span>
+                Khoảng lặng giữa ngày
               </h2>
               <div className="space-y-4 text-text-secondary leading-relaxed">
                 <p>

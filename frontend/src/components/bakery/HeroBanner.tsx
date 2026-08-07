@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import Button from '../ui/Button'
+import { getImageUrl } from '../../utils/getImageUrl'
 
 type HeroSlide = {
   id: number
@@ -17,8 +18,8 @@ type HeroSlide = {
 const slides: HeroSlide[] = [
   {
     id: 1,
-    imageUrl:
-      'https://images.pexels.com/photos/291528/pexels-photo-291528.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    // Use a real local gift-box photo until a purpose-shot bakery hero photo is available.
+    imageUrl: getImageUrl('giftboxes/3_Hộp_Quà_Cảm_Ơn.jpg'),
     title: 'Gift boxes that speak for you.',
     subtitle:
       'Set quà tặng gọn, đẹp, đủ ngọt ngào để thay lời chúc trong mọi dịp nhỏ – từ cảm ơn, sinh nhật đến kỷ niệm.',
@@ -58,14 +59,8 @@ export default function HeroBanner() {
               alt={slide.title}
               className="w-full h-full object-cover"
             />
-            {/* overlay với Christmas gradient */}
+            {/* Dark overlay for text legibility over the photo */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/50" />
-            {/* Christmas sparkles overlay */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-10 left-20 text-white/30 text-2xl animate-pulse">✨</div>
-              <div className="absolute top-20 right-30 text-white/20 text-xl animate-pulse" style={{ animationDelay: '0.5s' }}>❄</div>
-              <div className="absolute bottom-20 left-1/3 text-white/25 text-lg animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
-            </div>
           </div>
         ))}
 
@@ -86,7 +81,6 @@ export default function HeroBanner() {
               >
                 {slides[activeIndex].ctaLabel}
                 <ArrowRight className="w-4 h-4" />
-                <span className="ml-1 text-sm">✨</span>
               </Button>
             </div>
           </div>

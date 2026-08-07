@@ -83,10 +83,10 @@ export default function BestSellers() {
         <div className="text-center mb-12 relative">
           <div className="absolute top-0 right-0 text-[#D4A574] text-2xl animate-sparkle">✨</div>
           <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight flex items-center justify-center gap-2">
-            Best Sellers Season <span className="text-[#C59B72] text-2xl">🎁</span>
+            Best Sellers
           </h2>
           <p className="text-text-secondary text-base md:text-lg leading-relaxed">
-            Bốn sản phẩm được yêu thích nhất mùa này, được chọn lọc kỹ lưỡng từ bếp Leaf Creme. <span className="text-[#D4A574]">❄</span>
+            Bốn sản phẩm được yêu thích nhất, được chọn lọc kỹ lưỡng từ bếp Leaf Creme.
           </p>
         </div>
 

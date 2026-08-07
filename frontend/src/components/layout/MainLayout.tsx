@@ -7,7 +7,8 @@ import { LeafieChatPanel } from '../leafie'
 import CartDrawer from '../cart/CartDrawer'
 import { useLeafieContext } from '../../contexts/LeafieContext'
 import { useCart } from '../../contexts/CartContext'
-import ChristmasSnowflakes from './ChristmasSnowflakes'
+import { useActiveSeason } from '../../hooks/useActiveSeason'
+import FloatingEmojiOverlay from './FloatingEmojiOverlay'
 
 interface MainLayoutProps {
   children: ReactNode
@@ -21,6 +22,7 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
   // Get Leafie chat state from context (must be called unconditionally for Hooks rules)
   const { isOpen, messages, loading, closeChat, sendMessage, clearHistory } = useLeafieContext()
   const { isCartDrawerOpen, closeCartDrawer } = useCart()
+  const activeSeason = useActiveSeason()
   
   // Don't render Header/Footer for admin routes (AdminLayout handles its own layout)
   if (isAdminRoute) {
@@ -29,9 +31,11 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
   
   return (
     <div className="min-h-screen flex flex-col bg-background relative">
-      {/* Global Christmas snowflakes */}
-      <ChristmasSnowflakes />
-      
+      {/* Evergreen by default — only renders when a season in config/seasons.ts matches today. */}
+      {activeSeason?.decoration && (
+        <FloatingEmojiOverlay emoji={activeSeason.decoration.emoji} color={activeSeason.decoration.color} />
+      )}
+
       <Header />
       <main className="flex-1 relative z-10">
         {children}

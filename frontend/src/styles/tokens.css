@@ -4,31 +4,28 @@
  */
 
 :root {
-  /* Colors - Background - Christmas Theme */
-  --color-bg-main: #FFF8F0; /* Warm cream with Christmas feel */
+  /* Colors - Background (evergreen brand palette) */
+  --color-bg-main: #FFF8F0; /* Warm cream */
   --color-bg-alt: #FFF5E6; /* Slightly warmer for variety */
   
-  /* Colors - Surface - Christmas Theme */
+  /* Colors - Surface */
   --color-surface: #FFFFFF;
   --color-surface-warm: #FFFEF9; /* Warmer white for cards */
   
-  /* Colors - Border - Christmas Theme */
+  /* Colors - Border */
   --color-border: #E8E5DD;
   --color-border-warm: #E5DFD4; /* Warmer border */
-  --color-border-christmas: #D4A574; /* Gold border for Christmas */
   
   /* Colors - Text */
   --color-text-primary: #473C2F;
   --color-text-secondary: #7A6F63;
   
-  /* Colors - Accents - Christmas Theme */
+  /* Colors - Accents (evergreen brand palette). Seasonal accent colors
+     live in config/seasons.ts, applied inline by FloatingEmojiOverlay —
+     not as CSS variables here, since only one season is ever active. */
   --color-accent-yellow: #F5C96A; /* Gold */
   --color-accent-pink: #F7B4B8; /* Soft pink */
   --color-accent-brown: #C59B72; /* Bakery brown */
-  --color-christmas-red: #C41E3A; /* Christmas red */
-  --color-christmas-green: #2D5016; /* Deep green */
-  --color-christmas-gold: #D4A574; /* Gold accent */
-  --color-christmas-gold-light: #F5C96A; /* Light gold */
   
   /* Border Radius */
   --radius-card: 16px;

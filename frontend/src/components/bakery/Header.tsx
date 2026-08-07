@@ -66,13 +66,8 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-gradient-to-r from-[#FFF5E6] via-[#FFFEF9] to-[#FFF5E6] border-b-2 border-[#D4A574] backdrop-blur-sm shadow-sm relative">
-      {/* Christmas sparkles decoration */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-2 left-10 text-[#D4A574] text-lg animate-pulse">✨</div>
-        <div className="absolute top-3 right-20 text-[#C59B72] text-sm animate-pulse" style={{ animationDelay: '0.5s' }}>❄</div>
-        <div className="absolute top-4 left-1/4 text-[#F5C96A] text-xs animate-pulse" style={{ animationDelay: '1s' }}>⭐</div>
-      </div>
-      
+      {/* Seasonal decoration, if any, comes from the global FloatingEmojiOverlay
+          in MainLayout — no need for a second one scoped to just the header. */}
       <div className="max-w-[1440px] mx-auto px-6 py-4 relative z-10">
         {/* Cụm trái: logo + nav, cụm phải: cart + user */}
         <div className="flex items-center gap-8">
@@ -159,7 +154,7 @@ export default function Header() {
 
           {/* Right side: Chatbot, Cart and User (được đẩy sang phải) */}
           <div className="flex items-center gap-4 ml-auto">
-            {/* Leafie Chatbot Icon - Christmas style */}
+            {/* Leafie Chatbot Icon */}
             <button
               onClick={() => openChat()}
               className="relative p-2 hover:opacity-70 transition-default group"
@@ -213,17 +208,6 @@ export default function Header() {
                   ) : (
                     <UserIcon className="w-10 h-10 text-text-primary" />
                   )}
-                  {/* Christmas Santa Hat */}
-                  <div className="absolute -top-1.5 -left-1" style={{ width: '22px', height: '22px', transform: 'rotate(-25deg)' }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      {/* Hat body */}
-                      <path d="M4 16 L12 4 L20 16 Z" fill="#DC2626" stroke="#FFF" strokeWidth="0.5"/>
-                      {/* White trim */}
-                      <ellipse cx="12" cy="16" rx="8" ry="1.5" fill="#FFF"/>
-                      {/* Pom-pom */}
-                      <circle cx="12" cy="3" r="2" fill="#FFF"/>
-                    </svg>
-                  </div>
                 </button>
 
                 {showUserMenu && (

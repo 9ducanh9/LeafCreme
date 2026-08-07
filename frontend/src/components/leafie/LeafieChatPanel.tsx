@@ -1,9 +1,10 @@
-// Leafie chat panel - Discord style with Christmas theme
+// Leafie chat panel - Discord style
 import { useState, useRef, useEffect } from 'react'
 import { X, Send, Leaf, Trash2, MoreVertical } from 'lucide-react'
 import LeafieMessageList from './LeafieMessageList'
 import ConfirmDialog from '../ui/ConfirmDialog'
-import ChristmasSnowflakes from './ChristmasSnowflakes'
+import FloatingEmojiOverlay from '../layout/FloatingEmojiOverlay'
+import { useActiveSeason } from '../../hooks/useActiveSeason'
 import type { LeafieMessage } from '../../types/leafie'
 
 interface LeafieChatPanelProps {
@@ -33,6 +34,7 @@ export default function LeafieChatPanel({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true)
+  const activeSeason = useActiveSeason()
 
   // Check if user is near bottom (within 100px)
   const isNearBottom = (): boolean => {
@@ -161,14 +163,16 @@ export default function LeafieChatPanel({
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* Christmas snowflakes overlay */}
-        {isOpen && <ChristmasSnowflakes />}
+        {/* Evergreen by default — only renders when a season in config/seasons.ts matches today. */}
+        {isOpen && activeSeason?.decoration && (
+          <FloatingEmojiOverlay emoji={activeSeason.decoration.emoji} color={activeSeason.decoration.color} count={10} />
+        )}
 
         {/* Header - Discord style */}
         <div className="flex-shrink-0 flex items-center justify-between px-4 md:px-6 py-3 border-b border-[#E8E5DD] bg-gradient-to-r from-[#FFF5E6] to-[#F8F6F0]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#F5C96A]/40 to-[#C59B72]/30 flex items-center justify-center shadow-sm border-2 border-[#C59B72]/30 relative overflow-hidden">
-              {/* Christmas sparkle effect */}
+              {/* Subtle shimmer effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent animate-pulse" />
               <Leaf className="w-5 h-5 md:w-6 md:h-6 text-[#C59B72]" strokeWidth={2.5} />
             </div>

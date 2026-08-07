@@ -1,4 +1,4 @@
-// Message list component - Discord style with Christmas theme
+// Message list component - Discord style
 import { useState, useEffect } from 'react'
 import { User, Leaf } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'

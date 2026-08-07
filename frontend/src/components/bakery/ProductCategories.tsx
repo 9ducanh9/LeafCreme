@@ -97,7 +97,7 @@ export default function ProductCategories() {
         <div className="text-center mb-12 relative">
           <div className="absolute top-0 left-0 text-[#D4A574] text-xl animate-twinkle">⭐</div>
           <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight flex items-center justify-center gap-2">
-            Explore our main lines <span className="text-[#C59B72] text-2xl">🎄</span>
+            Explore our main lines
           </h2>
           <p className="text-text-secondary text-base md:text-lg leading-relaxed">
             Bốn dòng bánh chính từ bếp Leaf Creme.
