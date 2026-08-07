@@ -51,7 +51,7 @@ def get_sales_report(
         and_(
             func.date(DonHang.ngay_tao) >= from_date,
             func.date(DonHang.ngay_tao) <= to_date,
-            DonHang.trang_thai.in_(["thanh_toan", "da_nhan"])
+            DonHang.trang_thai == "hoan_thanh"
         )
     ).all()
     

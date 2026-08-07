@@ -70,7 +70,7 @@ class InventoryService:
             self.ledger.log_product_movement(
                 db,
                 lohang_sanpham_id=lot.lohang_id,
-                loai_giao_dich="xuat",
+                loai_giao_dich="xuat_ban",
                 so_luong=take,
                 so_luong_truoc=before,
                 so_luong_sau=after,
@@ -126,7 +126,7 @@ class InventoryService:
             self.ledger.log_gift_box_movement(
                 db,
                 lohang_hopqua_id=lot.lohang_id,
-                loai_giao_dich="xuat",
+                loai_giao_dich="xuat_ban",
                 so_luong=take,
                 so_luong_truoc=before,
                 so_luong_sau=after,
@@ -178,7 +178,7 @@ class InventoryService:
         self.ledger.log_component_movement(
             db,
             lohang_linhkien_id=lot.lohang_id,
-            loai_giao_dich="xuat",
+            loai_giao_dich="xuat_bom",
             so_luong=so_luong,
             so_luong_truoc=before,
             so_luong_sau=after,

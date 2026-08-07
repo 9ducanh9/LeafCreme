@@ -31,7 +31,7 @@ order_service = OrderService()
 class PaymentCreate(BaseModel):
     """Tạo thanh toán mới"""
     donhang_id: int = Field(..., description="ID đơn hàng")
-    phuong_thuc: str = Field(..., description="Phương thức: tien_mat, chuyen_khoan, the, vi_dien_tu")
+    phuong_thuc: str = Field(..., description="Phương thức: tien_mat, chuyen_khoan, the_tin_dung, vi_dien_tu")
     so_tien: Decimal = Field(..., gt=0, description="Số tiền thanh toán")
     ma_giao_dich: Optional[str] = Field(None, max_length=100, description="Mã giao dịch từ cổng thanh toán")
     thong_tin_giao_dich: Optional[ThongTinGiaoDich] = Field(
@@ -42,7 +42,7 @@ class PaymentCreate(BaseModel):
 
 class PaymentUpdate(BaseModel):
     """Cập nhật thanh toán"""
-    trang_thai: Optional[str] = Field(None, description="Trạng thái: dang_xu_ly, thanh_cong, that_bai, huy")
+    trang_thai: Optional[str] = Field(None, description="Trạng thái: dang_xu_ly, thanh_cong, that_bai, da_hoan_tien")
     ma_giao_dich: Optional[str] = Field(None, max_length=100)
     thong_tin_giao_dich: Optional[ThongTinGiaoDich] = None
     ngay_thanh_toan: Optional[datetime] = None
@@ -427,8 +427,8 @@ async def momo_ipn(request: Request, db: Session = Depends(get_db)):
             func.sum(ThanhToan.so_tien)
         ).scalar() or Decimal("0")
 
-        if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
-            order.trang_thai = "thanh_toan"
+        if total_paid >= order.tien_thanh_toan and order.trang_thai in ["cho", "cho_coc", "dang_xu_ly"]:
+            order.trang_thai = "hoan_thanh"
     else:
         order_service.fail_unpaid_order(db, order.donhang_id, "MoMo payment failed")
 
@@ -607,8 +607,8 @@ def confirm_momo_qr_payment(
             func.sum(ThanhToan.so_tien)
         ).scalar() or Decimal("0")
 
-        if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
-            order.trang_thai = "thanh_toan"
+        if total_paid >= order.tien_thanh_toan and order.trang_thai in ["cho", "cho_coc", "dang_xu_ly"]:
+            order.trang_thai = "hoan_thanh"
     else:
         # Admin xác nhận KHÔNG nhận được tiền
         payment.trang_thai = "that_bai"
@@ -679,8 +679,10 @@ def create_payment(
 ):
     """Tạo thanh toán mới"""
     # Validate phương thức
-    valid_methods = ["tien_mat", "chuyen_khoan", "the", "vi_dien_tu"]
-    if payload.phuong_thuc not in valid_methods:
+    method_aliases = {"the": "the_tin_dung"}
+    phuong_thuc = method_aliases.get(payload.phuong_thuc, payload.phuong_thuc)
+    valid_methods = ["tien_mat", "chuyen_khoan", "the_tin_dung", "vi_dien_tu"]
+    if phuong_thuc not in valid_methods:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Phương thức không hợp lệ. Chọn: {', '.join(valid_methods)}"
@@ -736,12 +738,12 @@ def create_payment(
     # Tạo thanh toán
     payment = ThanhToan(
         donhang_id=payload.donhang_id,
-        phuong_thuc=payload.phuong_thuc,
+        phuong_thuc=phuong_thuc,
         so_tien=payload.so_tien,
-        trang_thai="thanh_cong" if payload.phuong_thuc == "tien_mat" else "dang_xu_ly",
+        trang_thai="thanh_cong" if phuong_thuc == "tien_mat" else "dang_xu_ly",
         ma_giao_dich=payload.ma_giao_dich,
         thong_tin_giao_dich=thong_tin_gd_dict,
-        ngay_thanh_toan=datetime.utcnow() if payload.phuong_thuc == "tien_mat" else None
+        ngay_thanh_toan=datetime.utcnow() if phuong_thuc == "tien_mat" else None
     )
     
     db.add(payment)
@@ -751,8 +753,8 @@ def create_payment(
         new_total_paid = total_paid + payload.so_tien
         if new_total_paid >= order.tien_thanh_toan:
             # Đã thanh toán đủ
-            if order.trang_thai == "cho":
-                order.trang_thai = "thanh_toan"
+            if order.trang_thai in ["cho", "cho_coc", "dang_xu_ly"]:
+                order.trang_thai = "hoan_thanh"
     
     db.commit()
     db.refresh(payment)
@@ -791,18 +793,20 @@ def update_payment_status(
     
     # Validate trạng thái
     if payload.trang_thai:
-        valid_statuses = ["dang_xu_ly", "thanh_cong", "that_bai", "huy"]
-        if payload.trang_thai not in valid_statuses:
+        status_aliases = {"huy": "da_hoan_tien"}
+        next_status = status_aliases.get(payload.trang_thai, payload.trang_thai)
+        valid_statuses = ["dang_xu_ly", "thanh_cong", "that_bai", "da_hoan_tien"]
+        if next_status not in valid_statuses:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Trạng thái không hợp lệ. Chọn: {', '.join(valid_statuses)}"
             )
         
         old_status = payment.trang_thai
-        payment.trang_thai = payload.trang_thai
+        payment.trang_thai = next_status
         
         # Nếu chuyển sang thanh_cong, cập nhật ngày thanh toán và trạng thái đơn hàng
-        if payload.trang_thai == "thanh_cong" and old_status != "thanh_cong":
+        if next_status == "thanh_cong" and old_status != "thanh_cong":
             payment.ngay_thanh_toan = payload.ngay_thanh_toan or datetime.utcnow()
             
             # Kiểm tra xem đã thanh toán đủ chưa
@@ -813,11 +817,11 @@ def update_payment_status(
                 func.sum(ThanhToan.so_tien)
             ).scalar() or Decimal("0")
             
-            if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
-                order.trang_thai = "thanh_toan"
+            if total_paid >= order.tien_thanh_toan and order.trang_thai in ["cho", "cho_coc", "dang_xu_ly"]:
+                order.trang_thai = "hoan_thanh"
         
         # Nếu hủy thanh toán đã thành công, cần cập nhật lại đơn hàng
-        elif payload.trang_thai in ["that_bai", "huy"] and old_status == "thanh_cong":
+        elif next_status in ["that_bai", "da_hoan_tien"] and old_status == "thanh_cong":
             total_paid = db.query(ThanhToan).filter(
                 ThanhToan.donhang_id == order.donhang_id,
                 ThanhToan.trang_thai == "thanh_cong"
@@ -825,13 +829,13 @@ def update_payment_status(
                 func.sum(ThanhToan.so_tien)
             ).scalar() or Decimal("0")
             
-            if total_paid < order.tien_thanh_toan and order.trang_thai == "thanh_toan":
+            if total_paid < order.tien_thanh_toan and order.trang_thai == "hoan_thanh":
                 order.trang_thai = "cho"
-        elif payload.trang_thai in ["that_bai", "huy"] and old_status != "thanh_cong":
+        elif next_status in ["that_bai", "da_hoan_tien"] and old_status != "thanh_cong":
             order_service.fail_unpaid_order(
                 db,
                 order.donhang_id,
-                f"Payment status changed to {payload.trang_thai}",
+                f"Payment status changed to {next_status}",
             )
     
     if payload.ma_giao_dich is not None:
@@ -932,8 +936,8 @@ def verify_payment(
             func.sum(ThanhToan.so_tien)
         ).scalar() or Decimal("0")
         
-        if total_paid >= order.tien_thanh_toan and order.trang_thai == "cho":
-            order.trang_thai = "thanh_toan"
+        if total_paid >= order.tien_thanh_toan and order.trang_thai in ["cho", "cho_coc", "dang_xu_ly"]:
+            order.trang_thai = "hoan_thanh"
     elif payment.trang_thai == "that_bai":
         order_service.fail_unpaid_order(db, order.donhang_id, "Payment verification failed")
     

@@ -43,7 +43,7 @@ class OrderService:
         self.ledger = InventoryLedgerService()
 
     def generate_order_code(self, loai_don: str) -> str:
-        prefix = {"pos": "POS", "online": "ONL", "dattruoc": "PRE"}.get(loai_don, "ORD")
+        prefix = {"pos": "POS", "online": "ONL", "dattruoc": "PRE", "dat_truoc": "PRE"}.get(loai_don, "ORD")
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         return f"{prefix}-{timestamp}"
 
@@ -133,7 +133,9 @@ class OrderService:
         ))
 
     def create_order(self, db: Session, payload, loai_don: str, current_user: NguoiDung) -> dict:
-        if loai_don not in ["pos", "online", "dattruoc"]:
+        if loai_don == "dattruoc":
+            loai_don = "dat_truoc"
+        if loai_don not in ["pos", "online", "dat_truoc"]:
             raise DomainError(status_code=400, detail="Loại đơn không hợp lệ. Chọn: pos, online, dattruoc")
 
         for item in payload.items:
@@ -151,7 +153,7 @@ class OrderService:
                 tien_giam_gia=Decimal("0"),
                 tien_thanh_toan=Decimal("0"),
                 tien_dat_coc=payload.tien_dat_coc or Decimal("0"),
-                trang_thai="cho" if loai_don == "dattruoc" else ("dang_xu_ly" if loai_don == "online" else "thanh_toan"),
+                trang_thai="cho_coc" if loai_don == "dat_truoc" else ("dang_xu_ly" if loai_don == "online" else "hoan_thanh"),
                 ten_khach_hang=payload.ten_khach_hang,
                 so_dien_thoai_khach=payload.so_dien_thoai_khach,
                 dia_chi_giao_hang=payload.dia_chi_giao_hang,
@@ -228,8 +230,6 @@ class OrderService:
                     donhang_id=order.donhang_id,
                     nguoidung_id=current_user.nguoidung_id,
                 )
-                if gift_allocations:
-                    gift_detail.lohang_hopqua_id = gift_allocations[0].batch_id
                 for allocation in gift_allocations:
                     self._add_allocation(db, gift_detail.chitiet_id, allocation)
 
@@ -334,14 +334,21 @@ class OrderService:
         if not trang_thai:
             raise DomainError(status_code=400, detail="Thiếu trạng thái mới (trang_thai hoặc new_status)")
 
-        valid_statuses = ["cho", "dang_xu_ly", "thanh_toan", "da_nhan", "huy"]
+        status_aliases = {
+            "thanh_toan": "hoan_thanh",
+            "da_nhan": "hoan_thanh",
+            "huy": "da_huy",
+        }
+        trang_thai = status_aliases.get(trang_thai, trang_thai)
+
+        valid_statuses = ["cho", "cho_coc", "dang_xu_ly", "dang_giao", "hoan_thanh", "da_huy"]
         if trang_thai not in valid_statuses:
             raise DomainError(status_code=400, detail=f"Trạng thái không hợp lệ. Chọn: {', '.join(valid_statuses)}")
 
         order.trang_thai = trang_thai
         if note:
             order.ghi_chu = (order.ghi_chu or "") + f"\n[{datetime.utcnow().strftime('%Y-%m-%d %H:%M')}] {note}"
-        if trang_thai == "da_nhan" and not order.ngay_nhan:
+        if trang_thai == "hoan_thanh" and not order.ngay_nhan:
             order.ngay_nhan = datetime.utcnow()
 
         db.commit()
@@ -368,7 +375,7 @@ class OrderService:
                         self.ledger.log_product_movement(
                             db,
                             lohang_sanpham_id=allocation.lohang_sanpham_id,
-                            loai_giao_dich="nhap",
+                            loai_giao_dich="tra_hang",
                             so_luong=allocation.so_luong,
                             so_luong_truoc=before,
                             so_luong_sau=stock.so_luong_hien_tai,
@@ -387,7 +394,7 @@ class OrderService:
                         self.ledger.log_gift_box_movement(
                             db,
                             lohang_hopqua_id=allocation.lohang_hopqua_id,
-                            loai_giao_dich="nhap",
+                            loai_giao_dich="tra_hang",
                             so_luong=allocation.so_luong,
                             so_luong_truoc=before,
                             so_luong_sau=stock.so_luong_hien_tai,
@@ -406,7 +413,7 @@ class OrderService:
                         self.ledger.log_component_movement(
                             db,
                             lohang_linhkien_id=allocation.lohang_linhkien_id,
-                            loai_giao_dich="nhap",
+                            loai_giao_dich="tra_hang",
                             so_luong=allocation.so_luong,
                             so_luong_truoc=before,
                             so_luong_sau=stock.so_luong_hien_tai,
@@ -429,7 +436,7 @@ class OrderService:
                 self.ledger.log_product_movement(
                     db,
                     lohang_sanpham_id=item.lohang_sanpham_id,
-                    loai_giao_dich="nhap",
+                    loai_giao_dich="tra_hang",
                     so_luong=item.so_luong,
                     so_luong_truoc=before,
                     so_luong_sau=stock.so_luong_hien_tai,
@@ -447,7 +454,7 @@ class OrderService:
 
     def fail_unpaid_order(self, db: Session, order_id: int, reason: str) -> None:
         order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
-        if not order or order.trang_thai == "huy":
+        if not order or order.trang_thai in ["da_huy", "huy"]:
             return
 
         successful_paid = db.query(func.sum(ThanhToan.so_tien)).filter(
@@ -459,7 +466,7 @@ class OrderService:
 
         self._restore_order_inventory(db, order, None, reason)
         self._restore_voucher_usage(db, order_id)
-        order.trang_thai = "huy"
+        order.trang_thai = "da_huy"
         order.ghi_chu = (order.ghi_chu or "") + f"\n[PAYMENT FAILED - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}] {reason}"
         dispatcher.dispatch(db, payment_failed(order_id, {"reason": reason}))
         dispatcher.dispatch(db, inventory_restored(order_id, {"reason": reason}))
@@ -473,10 +480,10 @@ class OrderService:
         if vaitro_ten not in ["admin", "manager"]:
             if order.nguoidung_id != current_user.nguoidung_id:
                 raise DomainError(status_code=403, detail="Bạn chỉ có thể hủy đơn hàng của mình")
-            if order.trang_thai in ["thanh_toan", "hoan_thanh"]:
+            if order.trang_thai in ["hoan_thanh", "dang_giao"]:
                 raise DomainError(status_code=400, detail="Không thể hủy đơn hàng đã thanh toán hoặc hoàn thành")
 
-        if order.trang_thai == "huy":
+        if order.trang_thai in ["da_huy", "huy"]:
             raise DomainError(status_code=400, detail="Đơn hàng đã bị hủy")
 
         try:
@@ -484,7 +491,7 @@ class OrderService:
             self._restore_voucher_usage(db, order_id)
             dispatcher.dispatch(db, order_cancelled(order_id, {"reason": ly_do}))
             dispatcher.dispatch(db, inventory_restored(order_id, {"reason": ly_do}))
-            order.trang_thai = "huy"
+            order.trang_thai = "da_huy"
             order.ghi_chu = (order.ghi_chu or "") + f"\n[HỦY ĐƠN - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}] {ly_do}"
             db.commit()
             db.refresh(order)

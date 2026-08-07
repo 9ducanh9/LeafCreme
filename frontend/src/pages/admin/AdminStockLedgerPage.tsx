@@ -33,11 +33,13 @@ const batchTypes: Array<{ value: BatchType; label: string }> = [
 ]
 
 const movementTypes: Array<{ value: MovementType; label: string }> = [
-  { value: 'nhap', label: 'Nhập' },
-  { value: 'xuat', label: 'Xuất' },
-  { value: 'dieu_chuyen', label: 'Điều chuyển' },
+  { value: 'nhap_hang', label: 'Nhập hàng' },
+  { value: 'xuat_ban', label: 'Xuất bán' },
+  { value: 'xuat_bom', label: 'Xuất BOM' },
+  { value: 'xuat_huy', label: 'Xuất hủy' },
+  { value: 'dieu_chinh', label: 'Điều chỉnh' },
   { value: 'kiem_ke', label: 'Kiểm kê' },
-  { value: 'huy', label: 'Hủy' },
+  { value: 'tra_hang', label: 'Trả hàng' },
 ]
 
 const formatDateTime = (value?: string) => {
@@ -46,8 +48,8 @@ const formatDateTime = (value?: string) => {
 }
 
 const getMovementColor = (movementType: MovementType) => {
-  if (movementType === 'nhap') return 'success'
-  if (movementType === 'xuat' || movementType === 'huy') return 'error'
+  if (movementType === 'nhap_hang' || movementType === 'tra_hang') return 'success'
+  if (movementType === 'xuat_ban' || movementType === 'xuat_bom' || movementType === 'xuat_huy') return 'error'
   if (movementType === 'kiem_ke') return 'warning'
   return 'default'
 }

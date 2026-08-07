@@ -1,7 +1,7 @@
 import { apiClient } from '../api'
 
 export type BatchType = 'sanpham' | 'linhkien' | 'hopqua'
-export type MovementType = 'nhap' | 'xuat' | 'dieu_chuyen' | 'kiem_ke' | 'huy'
+export type MovementType = 'nhap_hang' | 'xuat_ban' | 'xuat_huy' | 'dieu_chinh' | 'kiem_ke' | 'tra_hang' | 'xuat_bom'
 
 export interface StockLedgerRow {
   ledger_id: number
@@ -86,16 +86,20 @@ export const getBatchTypeLabel = (batchType: BatchType) => {
 
 export const getMovementTypeLabel = (movementType: MovementType) => {
   switch (movementType) {
-    case 'nhap':
-      return 'Nhập'
-    case 'xuat':
-      return 'Xuất'
-    case 'dieu_chuyen':
-      return 'Điều chuyển'
+    case 'nhap_hang':
+      return 'Nhập hàng'
+    case 'xuat_ban':
+      return 'Xuất bán'
+    case 'xuat_bom':
+      return 'Xuất BOM'
+    case 'xuat_huy':
+      return 'Xuất hủy'
+    case 'dieu_chinh':
+      return 'Điều chỉnh'
     case 'kiem_ke':
       return 'Kiểm kê'
-    case 'huy':
-      return 'Hủy'
+    case 'tra_hang':
+      return 'Trả hàng'
     default:
       return movementType
   }

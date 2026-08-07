@@ -62,7 +62,7 @@ def _apply_ledger_filters(query, model, batch_column, batch_id, movement_type, o
 def get_inventory_ledger(
     item_type: Optional[str] = Query(None, pattern="^(sanpham|linhkien|hopqua)$"),
     batch_id: Optional[int] = Query(None, ge=1),
-    movement_type: Optional[str] = Query(None, pattern="^(nhap|xuat|dieu_chuyen|kiem_ke|huy)$"),
+    movement_type: Optional[str] = Query(None, pattern="^(nhap_hang|xuat_ban|xuat_huy|dieu_chinh|kiem_ke|tra_hang|xuat_bom)$"),
     order_id: Optional[int] = Query(None, ge=1),
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,

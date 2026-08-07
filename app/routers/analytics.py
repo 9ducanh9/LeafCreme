@@ -52,7 +52,7 @@ def get_best_sellers(
             .join(LoHangSanPham, LoHangSanPham.lohang_id == ChiTietDonHang.lohang_sanpham_id)
             .join(BienTheSanPham, BienTheSanPham.bienthe_id == LoHangSanPham.bienthe_sanpham_id)
             .filter(
-                DonHang.trang_thai.in_(["thanh_toan", "da_nhan"]),
+                DonHang.trang_thai == "hoan_thanh",
                 ChiTietDonHang.lohang_sanpham_id.isnot(None)  # Chỉ lấy sản phẩm, không lấy hộp quà
             )
             .group_by(BienTheSanPham.sanpham_id)

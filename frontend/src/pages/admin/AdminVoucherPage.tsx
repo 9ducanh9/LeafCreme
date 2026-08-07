@@ -1,6 +1,6 @@
 // Admin Voucher Management Page
 import { useState, useEffect, useCallback } from 'react'
-import { Box, Button, Typography } from '@mui/material'
+import { Alert, Box, Button, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import VoucherTable from '../../components/admin/vouchers/VoucherTable'
 import VoucherFilters from '../../components/admin/vouchers/VoucherFilters'
@@ -10,6 +10,7 @@ import {
   createVoucher,
   updateVoucher,
   deleteVoucher,
+  DEMO_VOUCHER_MODE_ENABLED,
 } from '../../services/admin/voucherService'
 import { Voucher } from '../../types/admin'
 import { useToast } from '../../contexts/ToastContext'
@@ -31,6 +32,11 @@ export default function AdminVoucherPage() {
   const [search, setSearch] = useState('')
 
   const loadVouchers = useCallback(async () => {
+    if (!DEMO_VOUCHER_MODE_ENABLED) {
+      setVouchers([])
+      return
+    }
+
     try {
       const data = await getVouchers({ status, type, search })
       setVouchers(data)
@@ -44,6 +50,7 @@ export default function AdminVoucherPage() {
   }, [loadVouchers])
 
   const handleCreate = () => {
+    if (!DEMO_VOUCHER_MODE_ENABLED) return
     setEditingVoucher(null)
     setFormOpen(true)
   }
@@ -97,6 +104,7 @@ export default function AdminVoucherPage() {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleCreate}
+          disabled={!DEMO_VOUCHER_MODE_ENABLED}
           sx={{ 
             bgcolor: '#C59B72',
             color: 'white',
@@ -121,6 +129,13 @@ export default function AdminVoucherPage() {
           Tạo mã giảm giá
         </Button>
       </Box>
+
+      {!DEMO_VOUCHER_MODE_ENABLED && (
+        <Alert severity="info" sx={{ mb: 3, borderRadius: '12px' }}>
+          Quản lý mã giảm giá hiện là chức năng demo/dev-only. Backend chưa có API CRUD voucher thật.
+          Nếu cần xem demo local, bật <code>VITE_ENABLE_DEMO_VOUCHERS=true</code> trong frontend env rồi reload.
+        </Alert>
+      )}
 
       <VoucherFilters
         status={status}

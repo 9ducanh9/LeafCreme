@@ -62,9 +62,9 @@ export default function ProductTable({ variants, onEdit, onDelete }: ProductTabl
               </TableCell>
             </TableRow>
           ) : (
-            variants.map((variant) => (
+            variants.map((variant, index) => (
               <TableRow 
-                key={variant.id}
+                key={`${variant.id}-${index}`}
                 sx={{
                   cursor: 'pointer',
                   transition: 'background-color 0.15s ease',

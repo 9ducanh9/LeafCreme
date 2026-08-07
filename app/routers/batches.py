@@ -33,7 +33,7 @@ class ProductBatchCreate(BaseModel):
     ngay_het_han: datetime
     so_luong: int = Field(..., gt=0)
     gia_don_vi: Decimal = Field(..., gt=0)
-    trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|hethan|huy)$")
+    trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|tamdung|hethan|daxuathet)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
 
@@ -43,7 +43,7 @@ class ProductBatchUpdate(BaseModel):
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
     gia_don_vi: Optional[Decimal] = Field(None, gt=0)
-    trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|hethan|huy)$")
+    trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
 
@@ -78,7 +78,7 @@ class ComponentBatchCreate(BaseModel):
     ngay_het_han: datetime
     so_luong: int = Field(..., gt=0)
     gia_don_vi: Decimal = Field(..., gt=0)
-    trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|hethan|huy)$")
+    trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|tamdung|hethan|daxuathet)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
 
@@ -88,7 +88,7 @@ class ComponentBatchUpdate(BaseModel):
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
     gia_don_vi: Optional[Decimal] = Field(None, gt=0)
-    trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|hethan|huy)$")
+    trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
 
@@ -123,7 +123,7 @@ class GiftBoxBatchCreate(BaseModel):
     ngay_het_han: datetime
     so_luong: int = Field(..., gt=0)
     gia_don_vi: Decimal = Field(..., gt=0)
-    trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|hethan|huy)$")
+    trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|tamdung|hethan|daxuathet)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
 
@@ -133,7 +133,7 @@ class GiftBoxBatchUpdate(BaseModel):
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
     gia_don_vi: Optional[Decimal] = Field(None, gt=0)
-    trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|hethan|huy)$")
+    trang_thai: Optional[str] = Field(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
 
@@ -226,7 +226,7 @@ def create_product_batch(
     inventory_ledger.log_product_movement(
         db,
         lohang_sanpham_id=batch.lohang_id,
-        loai_giao_dich="nhap",
+        loai_giao_dich="nhap_hang",
         so_luong=batch.so_luong,
         so_luong_truoc=0,
         so_luong_sau=batch.so_luong,
@@ -250,7 +250,7 @@ def list_product_batches(
     limit: int = Query(100, ge=1, le=1000),
     bienthe_id: Optional[int] = Query(None, gt=0),
     ncc_id: Optional[int] = Query(None, gt=0),
-    trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|hethan|huy)$"),
+    trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
     search: Optional[str] = Query(None, description="Tìm kiếm theo mã lô hoặc mã QR"),
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_active_user)
@@ -426,7 +426,7 @@ def create_component_batch(
     inventory_ledger.log_component_movement(
         db,
         lohang_linhkien_id=batch.lohang_id,
-        loai_giao_dich="nhap",
+        loai_giao_dich="nhap_hang",
         so_luong=batch.so_luong,
         so_luong_truoc=0,
         so_luong_sau=batch.so_luong,
@@ -449,7 +449,7 @@ def list_component_batches(
     limit: int = Query(100, ge=1, le=1000),
     linh_kien_id: Optional[int] = Query(None, gt=0),
     ncc_id: Optional[int] = Query(None, gt=0),
-    trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|hethan|huy)$"),
+    trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_active_user)
@@ -602,7 +602,7 @@ def create_gift_box_batch(
     inventory_ledger.log_gift_box_movement(
         db,
         lohang_hopqua_id=batch.lohang_id,
-        loai_giao_dich="nhap",
+        loai_giao_dich="nhap_hang",
         so_luong=batch.so_luong,
         so_luong_truoc=0,
         so_luong_sau=batch.so_luong,
@@ -625,7 +625,7 @@ def list_gift_box_batches(
     limit: int = Query(100, ge=1, le=1000),
     hop_qua_id: Optional[int] = Query(None, gt=0),
     ncc_id: Optional[int] = Query(None, gt=0),
-    trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|hethan|huy)$"),
+    trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_active_user)

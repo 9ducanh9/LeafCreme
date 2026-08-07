@@ -26,7 +26,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 class ProductCreate(BaseModel):
     ten: str = Field(..., min_length=1, max_length=200)
     sku: str = Field(..., min_length=1, max_length=50)
-    loai: str = Field(default="don", pattern="^(don|bien_the|hop_qua)$")
+    loai: str = Field(default="don", pattern="^(don|bien_the)$")
     gia_co_ban: Decimal = Field(..., gt=0)
     mo_ta: Optional[str] = None
     hinh_anh_url: Optional[str] = Field(None, max_length=500)
@@ -42,7 +42,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     ten: Optional[str] = Field(None, min_length=1, max_length=200)
     sku: Optional[str] = Field(None, min_length=1, max_length=50)
-    loai: Optional[str] = Field(None, pattern="^(don|bien_the|hop_qua)$")
+    loai: Optional[str] = Field(None, pattern="^(don|bien_the)$")
     gia_co_ban: Optional[Decimal] = Field(None, gt=0)
     mo_ta: Optional[str] = None
     hinh_anh_url: Optional[str] = Field(None, max_length=500)
@@ -120,7 +120,7 @@ def list_products(
     limit: int = Query(100, ge=1, le=1000),
     search: Optional[str] = Query(None, description="Tìm kiếm theo tên hoặc SKU"),
     danh_muc: Optional[str] = Query(None, description="Lọc theo danh mục"),
-    loai: Optional[str] = Query(None, pattern="^(don|bien_the|hop_qua)$"),
+    loai: Optional[str] = Query(None, pattern="^(don|bien_the)$"),
     dang_hoat_dong: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
     current_user: Optional[NguoiDung] = Depends(get_optional_user)
