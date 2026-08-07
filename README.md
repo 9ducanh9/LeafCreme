@@ -102,6 +102,12 @@ The payment layer supports:
 
 Successful payment updates can move an order from pending to paid when the total paid amount reaches the order total.
 
+### 5. Order and inventory lifecycle
+
+Order creation allocates the exact source lots through FEFO and records one allocation per lot. Each allocation produces an inventory-ledger movement: `xuat_ban` for product or gift-box sales and `xuat_bom` for components consumed by a gift box. Cancelling an order, or failing an unpaid order, restores those same lots and records `tra_hang` movements.
+
+Pre-orders begin at `cho_coc`, online orders at `dang_xu_ly`, and paid/completed orders use `hoan_thanh`. Failed or cancelled orders use `da_huy`. Run `python scripts/verify_inventory_reliability.py` against a disposable PostgreSQL database to verify FEFO, BOM, ledger, and restoration behavior.
+
 ## Real Features vs Demo-Only Areas
 
 This distinction matters. The repository contains both real backend-backed functionality and some intentionally bounded demo/admin surfaces.
@@ -147,8 +153,9 @@ frontend/
     contexts/     auth/cart/toast state
     components/   reusable UI and admin components
 
-migrations/       SQL migrations and supporting schema scripts
-docs/             setup notes and payment integration docs
+alembic/          versioned database schema migrations (source of truth)
+migrations/       historical SQL fragments; do not run for new environments
+docs/             current payment-operation guides
 ```
 
 ## Setup Instructions

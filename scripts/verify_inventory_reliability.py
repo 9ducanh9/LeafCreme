@@ -76,13 +76,13 @@ def require_schema() -> None:
 
     if not inspector.has_table("phanbolo_chitietdonhang"):
         raise RuntimeError(
-            "Missing table phanbolo_chitietdonhang. Run migrations/20260528_inventory_ledger_allocations.sql first."
+            "Missing table phanbolo_chitietdonhang. Run `alembic upgrade head` first."
         )
 
     component_ledger_columns = {column["name"] for column in inspector.get_columns("lichsukholinhkien")}
     if "donhang_id" not in component_ledger_columns:
         raise RuntimeError(
-            "Missing lichsukholinhkien.donhang_id. Run migrations/20260528_inventory_ledger_allocations.sql first."
+            "Missing lichsukholinhkien.donhang_id. Run `alembic upgrade head` first."
         )
 
     expected_enum_values = {
