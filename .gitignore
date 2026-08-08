@@ -51,3 +51,4 @@ test_db_connection.py
 # Debug/dev clutter that shouldn't be tracked
 server_log*.txt
 scratch/
+.ruff_cache/
