@@ -26,7 +26,7 @@ phuong_thuc_thanh_toan = ENUM("tien_mat", "chuyen_khoan", "the_tin_dung", "vi_di
 trang_thai_thanh_toan = ENUM("dang_xu_ly", "thanh_cong", "that_bai", "da_hoan_tien", name="trang_thai_thanh_toan", create_type=False)
 trang_thai_doi_tra = ENUM("yeu_cau", "da_duyet", "tu_choi", "da_hoan_thanh", name="trang_thai_doi_tra", create_type=False)
 loai_giao_dich_kho = ENUM("nhap_hang", "xuat_ban", "xuat_huy", "dieu_chinh", "kiem_ke", "tra_hang", "xuat_bom", name="loai_giao_dich_kho", create_type=False)
-loai_canh_bao = ENUM("ton_kho_thap", "sap_het_han", name="loai_canh_bao", create_type=False)
+loai_canh_bao = ENUM("het_han", "sap_het_han", "ton_kho_thap", "qua_han", name="loai_canh_bao", create_type=False)
 muc_do_nghiem_trong = ENUM("thap", "binh_thuong", "cao", name="muc_do_nghiem_trong", create_type=False)
 
 

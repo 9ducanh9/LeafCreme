@@ -1,5 +1,7 @@
-class DomainError(Exception):
-    def __init__(self, status_code: int, detail: str):
-        self.status_code = status_code
-        self.detail = detail
-        super().__init__(detail)
+# Re-exported from app.services.errors — kept here so existing
+# `from app.services.orders import DomainError` / `from .errors import
+# DomainError` imports keep working unchanged after the type moved to a
+# shared location for cross-domain reuse (see app/services/errors.py).
+from app.services.errors import DomainError
+
+__all__ = ["DomainError"]

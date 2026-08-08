@@ -1,23 +1,28 @@
 """
 Products Router: CRUD operations cho sản phẩm và biến thể
+
+Thin by design — see app.services.products.ProductService for the business
+logic (moved out as part of the Phase 1 service-layer migration).
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 from typing import Optional, List
 from decimal import Decimal
 from datetime import datetime
-from pathlib import Path
-import uuid
 
 from ..db import get_db
-from ..models import SanPham, BienTheSanPham
 from ..core.dependencies import get_current_active_user, require_role, get_optional_user
 from ..models import NguoiDung
+from ..services.products import ProductService, DomainError
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/products", tags=["products"])
+product_service = ProductService()
+
+
+def _raise_http(exc: DomainError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
 # =========================================================
@@ -126,27 +131,9 @@ def list_products(
     current_user: Optional[NguoiDung] = Depends(get_optional_user)
 ):
     """Danh sách sản phẩm với filters (public access)"""
-    query = db.query(SanPham)
-    
-    if search:
-        query = query.filter(
-            or_(
-                SanPham.ten.ilike(f"%{search}%"),
-                SanPham.sku.ilike(f"%{search}%")
-            )
-        )
-    
-    if danh_muc:
-        query = query.filter(SanPham.danh_muc == danh_muc)
-    
-    if loai:
-        query = query.filter(SanPham.loai == loai)
-    
-    if dang_hoat_dong is not None:
-        query = query.filter(SanPham.dang_hoat_dong == dang_hoat_dong)
-    
-    products = query.order_by(SanPham.sanpham_id.desc()).offset(skip).limit(limit).all()
-    return products
+    return product_service.list_products(
+        db, skip=skip, limit=limit, search=search, danh_muc=danh_muc, loai=loai, dang_hoat_dong=dang_hoat_dong,
+    )
 
 
 @router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
@@ -156,19 +143,10 @@ def create_product(
     current_user: NguoiDung = Depends(require_role("admin", "manager"))
 ):
     """Tạo sản phẩm mới (yêu cầu admin/manager)"""
-    # Kiểm tra SKU trùng
-    existing = db.query(SanPham).filter(SanPham.sku == product_data.sku).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"SKU '{product_data.sku}' đã tồn tại"
-        )
-    
-    product = SanPham(**product_data.model_dump())
-    db.add(product)
-    db.commit()
-    db.refresh(product)
-    return product
+    try:
+        return product_service.create_product(db, product_data)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.post("/upload-image", status_code=status.HTTP_200_OK)
@@ -177,41 +155,12 @@ async def upload_product_image(
     current_user: NguoiDung = Depends(require_role("admin", "manager")),
 ):
     """Upload ảnh sản phẩm - PHẢI ĐẶT TRƯỚC /{product_id} để tránh conflict"""
-    # Validate file type
-    if not file.content_type or not file.content_type.startswith('image/'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File phải là ảnh"
-        )
-    
-    # Validate file size (max 5MB)
     file_content = await file.read()
-    if len(file_content) > 5 * 1024 * 1024:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Kích thước file không được vượt quá 5MB"
-        )
-    
-    # Tạo thư mục uploads nếu chưa có
-    upload_dir = Path("uploads/product")
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Generate unique filename
-    file_ext = Path(file.filename).suffix if file.filename else '.jpg'
-    unique_filename = f"{uuid.uuid4().hex}{file_ext}"
-    file_path = upload_dir / unique_filename
-    
-    # Save file
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    
-    # Generate relative path
-    image_path = f"product/{unique_filename}"
-    
-    return JSONResponse({
-        "image_path": image_path,
-        "message": "Upload ảnh thành công"
-    })
+    try:
+        image_path = product_service.store_product_image(file.content_type, file.filename, file_content)
+    except DomainError as exc:
+        _raise_http(exc)
+    return JSONResponse({"image_path": image_path, "message": "Upload ảnh thành công"})
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
@@ -221,13 +170,10 @@ def get_product(
     current_user: Optional[NguoiDung] = Depends(get_optional_user)
 ):
     """Chi tiết sản phẩm (public access)"""
-    product = db.query(SanPham).filter(SanPham.sanpham_id == product_id).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sản phẩm với ID {product_id} không tồn tại"
-        )
-    return product
+    try:
+        return product_service.get_product(db, product_id)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
@@ -238,33 +184,10 @@ def update_product(
     current_user: NguoiDung = Depends(require_role("admin", "manager"))
 ):
     """Cập nhật sản phẩm (yêu cầu admin/manager)"""
-    product = db.query(SanPham).filter(SanPham.sanpham_id == product_id).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sản phẩm với ID {product_id} không tồn tại"
-        )
-    
-    update_data = product_data.model_dump(exclude_unset=True)
-    
-    # Kiểm tra SKU trùng nếu có thay đổi
-    if "sku" in update_data and update_data["sku"] != product.sku:
-        existing = db.query(SanPham).filter(
-            SanPham.sku == update_data["sku"],
-            SanPham.sanpham_id != product_id
-        ).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"SKU '{update_data['sku']}' đã tồn tại"
-            )
-    
-    for field, value in update_data.items():
-        setattr(product, field, value)
-    
-    db.commit()
-    db.refresh(product)
-    return product
+    try:
+        return product_service.update_product(db, product_id, product_data)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -274,16 +197,10 @@ def delete_product(
     current_user: NguoiDung = Depends(require_role("admin", "manager"))
 ):
     """Xóa sản phẩm (soft delete - set dang_hoat_dong=False)"""
-    product = db.query(SanPham).filter(SanPham.sanpham_id == product_id).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sản phẩm với ID {product_id} không tồn tại"
-        )
-    
-    # Soft delete
-    product.dang_hoat_dong = False
-    db.commit()
+    try:
+        product_service.delete_product(db, product_id)
+    except DomainError as exc:
+        _raise_http(exc)
     return None
 
 
@@ -297,30 +214,10 @@ def create_variant(
     current_user: NguoiDung = Depends(require_role("admin", "manager"))
 ):
     """Tạo biến thể mới (yêu cầu admin/manager)"""
-    # Kiểm tra sản phẩm tồn tại
-    product = db.query(SanPham).filter(SanPham.sanpham_id == variant_data.sanpham_id).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sản phẩm với ID {variant_data.sanpham_id} không tồn tại"
-        )
-    
-    # Kiểm tra SKU biến thể trùng nếu có
-    if variant_data.sku_bienthe:
-        existing = db.query(BienTheSanPham).filter(
-            BienTheSanPham.sku_bienthe == variant_data.sku_bienthe
-        ).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"SKU biến thể '{variant_data.sku_bienthe}' đã tồn tại"
-            )
-    
-    variant = BienTheSanPham(**variant_data.model_dump())
-    db.add(variant)
-    db.commit()
-    db.refresh(variant)
-    return variant
+    try:
+        return product_service.create_variant(db, variant_data)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.get("/variants/{variant_id}", response_model=VariantResponse)
@@ -330,15 +227,10 @@ def get_variant(
     current_user: NguoiDung = Depends(get_current_active_user)
 ):
     """Chi tiết biến thể"""
-    variant = db.query(BienTheSanPham).filter(
-        BienTheSanPham.bienthe_id == variant_id
-    ).first()
-    if not variant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Biến thể với ID {variant_id} không tồn tại"
-        )
-    return variant
+    try:
+        return product_service.get_variant(db, variant_id)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.put("/variants/{variant_id}", response_model=VariantResponse)
@@ -349,36 +241,10 @@ def update_variant(
     current_user: NguoiDung = Depends(require_role("admin", "manager"))
 ):
     """Cập nhật biến thể (yêu cầu admin/manager)"""
-    variant = db.query(BienTheSanPham).filter(
-        BienTheSanPham.bienthe_id == variant_id
-    ).first()
-    if not variant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Biến thể với ID {variant_id} không tồn tại"
-        )
-    
-    update_data = variant_data.model_dump(exclude_unset=True)
-    
-    # Kiểm tra SKU biến thể trùng nếu có thay đổi
-    if "sku_bienthe" in update_data and update_data["sku_bienthe"]:
-        if update_data["sku_bienthe"] != variant.sku_bienthe:
-            existing = db.query(BienTheSanPham).filter(
-                BienTheSanPham.sku_bienthe == update_data["sku_bienthe"],
-                BienTheSanPham.bienthe_id != variant_id
-            ).first()
-            if existing:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"SKU biến thể '{update_data['sku_bienthe']}' đã tồn tại"
-                )
-    
-    for field, value in update_data.items():
-        setattr(variant, field, value)
-    
-    db.commit()
-    db.refresh(variant)
-    return variant
+    try:
+        return product_service.update_variant(db, variant_id, variant_data)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.delete("/variants/{variant_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -388,18 +254,10 @@ def delete_variant(
     current_user: NguoiDung = Depends(require_role("admin", "manager"))
 ):
     """Xóa biến thể (soft delete - set dang_hoat_dong=False)"""
-    variant = db.query(BienTheSanPham).filter(
-        BienTheSanPham.bienthe_id == variant_id
-    ).first()
-    if not variant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Biến thể với ID {variant_id} không tồn tại"
-        )
-    
-    # Soft delete
-    variant.dang_hoat_dong = False
-    db.commit()
+    try:
+        product_service.delete_variant(db, variant_id)
+    except DomainError as exc:
+        _raise_http(exc)
     return None
 
 
@@ -410,16 +268,7 @@ def get_product_variants(
     current_user: Optional[NguoiDung] = Depends(get_optional_user)
 ):
     """Danh sách biến thể của sản phẩm (public access)"""
-    # Kiểm tra sản phẩm tồn tại
-    product = db.query(SanPham).filter(SanPham.sanpham_id == product_id).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sản phẩm với ID {product_id} không tồn tại"
-        )
-    
-    variants = db.query(BienTheSanPham).filter(
-        BienTheSanPham.sanpham_id == product_id
-    ).order_by(BienTheSanPham.bienthe_id).all()
-    
-    return variants
+    try:
+        return product_service.get_product_variants(db, product_id)
+    except DomainError as exc:
+        _raise_http(exc)

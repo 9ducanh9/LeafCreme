@@ -1,19 +1,26 @@
 """
 Suppliers router: Quản lý nhà cung cấp
+
+Thin by design — see app.services.suppliers.SupplierService for the
+business logic (moved out as part of the Phase 1 service-layer migration).
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, desc
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr
 
 from app.db import get_db
-from app.models import NhaCungCap
 from app.core.dependencies import get_current_user, require_role
-from app.schemas import ThongTinThanhToan, validate_thong_tin_thanh_toan
+from app.schemas import ThongTinThanhToan
+from app.services.suppliers import SupplierService, DomainError
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
+supplier_service = SupplierService()
+
+
+def _raise_http(exc: DomainError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
 # =========================================================
@@ -28,7 +35,7 @@ class SupplierCreate(BaseModel):
     email: Optional[EmailStr] = Field(None, max_length=100)
     dia_chi: Optional[str] = None
     thong_tin_thanh_toan: Optional[ThongTinThanhToan] = Field(
-        None, 
+        None,
         description="Thông tin thanh toán (tên ngân hàng, số tài khoản, etc.)"
     )
     ghi_chu: Optional[str] = None
@@ -61,7 +68,7 @@ class SupplierResponse(BaseModel):
     ghi_chu: Optional[str] = None
     dang_hoat_dong: bool
     ngay_tao: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -79,29 +86,7 @@ def list_suppliers(
     current_user = Depends(get_current_user)
 ):
     """Danh sách nhà cung cấp với filter và pagination"""
-    query = db.query(NhaCungCap)
-    
-    # Filter theo trạng thái
-    if dang_hoat_dong is not None:
-        query = query.filter(NhaCungCap.dang_hoat_dong == dang_hoat_dong)
-    
-    # Tìm kiếm
-    if search:
-        search_term = f"%{search}%"
-        query = query.filter(
-            or_(
-                NhaCungCap.ten_ncc.ilike(search_term),
-                NhaCungCap.ma_ncc.ilike(search_term),
-                NhaCungCap.email.ilike(search_term),
-                NhaCungCap.so_dien_thoai.ilike(search_term),
-                NhaCungCap.nguoi_lien_he.ilike(search_term)
-            )
-        )
-    
-    # Sắp xếp theo ngày tạo mới nhất
-    suppliers = query.order_by(desc(NhaCungCap.ngay_tao)).offset(skip).limit(limit).all()
-    
-    return suppliers
+    return supplier_service.list_suppliers(db, skip=skip, limit=limit, search=search, dang_hoat_dong=dang_hoat_dong)
 
 
 @router.get("/{supplier_id}", response_model=SupplierResponse)
@@ -111,15 +96,10 @@ def get_supplier(
     current_user = Depends(get_current_user)
 ):
     """Lấy thông tin chi tiết nhà cung cấp"""
-    supplier = db.query(NhaCungCap).filter(NhaCungCap.ncc_id == supplier_id).first()
-    
-    if not supplier:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Nhà cung cấp không tồn tại"
-        )
-    
-    return supplier
+    try:
+        return supplier_service.get_supplier(db, supplier_id)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.post("", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
@@ -129,44 +109,10 @@ def create_supplier(
     current_user = Depends(require_role("admin", "manager"))
 ):
     """Tạo nhà cung cấp mới (chỉ admin/manager)"""
-    # Kiểm tra mã nhà cung cấp unique
-    if payload.ma_ncc:
-        existing = db.query(NhaCungCap).filter(NhaCungCap.ma_ncc == payload.ma_ncc).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Mã nhà cung cấp '{payload.ma_ncc}' đã tồn tại"
-            )
-    
-    # Validate và chuẩn hóa thông tin thanh toán
-    thong_tin_tt = None
-    if payload.thong_tin_thanh_toan:
-        try:
-            thong_tin_tt = validate_thong_tin_thanh_toan(payload.thong_tin_thanh_toan.model_dump())
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Thông tin thanh toán không hợp lệ: {str(e)}"
-            )
-    
-    # Tạo nhà cung cấp mới
-    supplier = NhaCungCap(
-        ten_ncc=payload.ten_ncc,
-        ma_ncc=payload.ma_ncc,
-        nguoi_lien_he=payload.nguoi_lien_he,
-        so_dien_thoai=payload.so_dien_thoai,
-        email=payload.email,
-        dia_chi=payload.dia_chi,
-        thong_tin_thanh_toan=thong_tin_tt,
-        ghi_chu=payload.ghi_chu,
-        dang_hoat_dong=payload.dang_hoat_dong
-    )
-    
-    db.add(supplier)
-    db.commit()
-    db.refresh(supplier)
-    
-    return supplier
+    try:
+        return supplier_service.create_supplier(db, payload)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.put("/{supplier_id}", response_model=SupplierResponse)
@@ -177,60 +123,10 @@ def update_supplier(
     current_user = Depends(require_role("admin", "manager"))
 ):
     """Cập nhật thông tin nhà cung cấp (chỉ admin/manager)"""
-    supplier = db.query(NhaCungCap).filter(NhaCungCap.ncc_id == supplier_id).first()
-    
-    if not supplier:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Nhà cung cấp không tồn tại"
-        )
-    
-    # Kiểm tra mã nhà cung cấp unique (nếu thay đổi)
-    if payload.ma_ncc and payload.ma_ncc != supplier.ma_ncc:
-        existing = db.query(NhaCungCap).filter(
-            NhaCungCap.ma_ncc == payload.ma_ncc,
-            NhaCungCap.ncc_id != supplier_id
-        ).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Mã nhà cung cấp '{payload.ma_ncc}' đã tồn tại"
-            )
-    
-    # Cập nhật các trường
-    if payload.ten_ncc is not None:
-        supplier.ten_ncc = payload.ten_ncc
-    if payload.ma_ncc is not None:
-        supplier.ma_ncc = payload.ma_ncc
-    if payload.nguoi_lien_he is not None:
-        supplier.nguoi_lien_he = payload.nguoi_lien_he
-    if payload.so_dien_thoai is not None:
-        supplier.so_dien_thoai = payload.so_dien_thoai
-    if payload.email is not None:
-        supplier.email = payload.email
-    if payload.dia_chi is not None:
-        supplier.dia_chi = payload.dia_chi
-    if payload.ghi_chu is not None:
-        supplier.ghi_chu = payload.ghi_chu
-    if payload.dang_hoat_dong is not None:
-        supplier.dang_hoat_dong = payload.dang_hoat_dong
-    
-    # Cập nhật thông tin thanh toán
-    if payload.thong_tin_thanh_toan is not None:
-        try:
-            supplier.thong_tin_thanh_toan = validate_thong_tin_thanh_toan(
-                payload.thong_tin_thanh_toan.model_dump()
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Thông tin thanh toán không hợp lệ: {str(e)}"
-            )
-    
-    db.commit()
-    db.refresh(supplier)
-    
-    return supplier
+    try:
+        return supplier_service.update_supplier(db, supplier_id, payload)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.delete("/{supplier_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -241,25 +137,8 @@ def delete_supplier(
     current_user = Depends(require_role("admin", "manager"))
 ):
     """Xóa/vô hiệu hóa nhà cung cấp (chỉ admin/manager)"""
-    supplier = db.query(NhaCungCap).filter(NhaCungCap.ncc_id == supplier_id).first()
-    
-    if not supplier:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Nhà cung cấp không tồn tại"
-        )
-    
-    # TODO: Kiểm tra xem nhà cung cấp có đang được sử dụng trong lô hàng không
-    # Nếu có, chỉ vô hiệu hóa thay vì xóa
-    
-    if hard_delete:
-        # Xóa vĩnh viễn (nguy hiểm nếu có foreign key constraints)
-        db.delete(supplier)
-    else:
-        # Vô hiệu hóa (soft delete)
-        supplier.dang_hoat_dong = False
-    
-    db.commit()
-    
+    try:
+        supplier_service.delete_supplier(db, supplier_id, hard_delete=hard_delete)
+    except DomainError as exc:
+        _raise_http(exc)
     return None
-

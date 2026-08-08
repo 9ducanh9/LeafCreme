@@ -1,21 +1,26 @@
 """
 User management router: CRUD operations cho người dùng
+
+Thin by design — see app.services.users.UserService for the business logic
+(moved out as part of the Phase 1 service-layer migration).
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 from typing import Optional, List
 from datetime import date
-import uuid
-from pathlib import Path
 from app.db import get_db
-from app.models import NguoiDung, VaiTro
+from app.models import NguoiDung
 from app.core.dependencies import get_current_active_user, require_role, get_current_user
-from app.core.security import get_password_hash
+from app.services.users import UserService, DomainError
 from pydantic import BaseModel, EmailStr, Field
 
 router = APIRouter(prefix="/users", tags=["users"])
+user_service = UserService()
+
+
+def _raise_http(exc: DomainError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
 # =========================================================
@@ -59,7 +64,7 @@ class UserResponse(BaseModel):
     lan_dang_nhap_cuoi: Optional[str]
     ngay_tao: str
     vaitro: dict
-    
+
     class Config:
         from_attributes = True
 
@@ -78,42 +83,9 @@ def list_users(
     db: Session = Depends(get_db)
 ):
     """Danh sách người dùng (chỉ admin/manager)"""
-    query = db.query(NguoiDung)
-    
-    # Filter by search
-    if search:
-        query = query.filter(
-            or_(
-                NguoiDung.ho_ten.ilike(f"%{search}%"),
-                NguoiDung.email.ilike(f"%{search}%"),
-                NguoiDung.ten_dang_nhap.ilike(f"%{search}%")
-            )
-        )
-    
-    # Filter by role
-    if vaitro_id:
-        query = query.filter(NguoiDung.vaitro_id == vaitro_id)
-    
-    # Filter by status
-    if dang_hoat_dong is not None:
-        query = query.filter(NguoiDung.dang_hoat_dong == dang_hoat_dong)
-    
-    users = query.offset(skip).limit(limit).all()
-    
-    return [
-        {
-            **{k: v for k, v in user.__dict__.items() if k != 'avatar_url'},
-            "avatar_url": user.avatar_url,
-            "lan_dang_nhap_cuoi": user.lan_dang_nhap_cuoi.isoformat() if user.lan_dang_nhap_cuoi else None,
-            "ngay_tao": user.ngay_tao.isoformat(),
-            "vaitro": {
-                "vaitro_id": user.vaitro.vaitro_id,
-                "ten_vai_tro": user.vaitro.ten_vai_tro,
-                "mo_ta": user.vaitro.mo_ta
-            } if user.vaitro else {}
-        }
-        for user in users
-    ]
+    return user_service.list_users(
+        db, skip=skip, limit=limit, search=search, vaitro_id=vaitro_id, dang_hoat_dong=dang_hoat_dong,
+    )
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -123,24 +95,10 @@ def get_user(
     db: Session = Depends(get_db)
 ):
     """Lấy thông tin một user (chỉ admin/manager)"""
-    user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Người dùng không tồn tại"
-        )
-    
-    return {
-        **{k: v for k, v in user.__dict__.items() if k != 'avatar_url'},
-        "avatar_url": user.avatar_url,
-        "lan_dang_nhap_cuoi": user.lan_dang_nhap_cuoi.isoformat() if user.lan_dang_nhap_cuoi else None,
-        "ngay_tao": user.ngay_tao.isoformat(),
-        "vaitro": {
-            "vaitro_id": user.vaitro.vaitro_id,
-            "ten_vai_tro": user.vaitro.ten_vai_tro,
-            "mo_ta": user.vaitro.mo_ta
-        } if user.vaitro else {}
-    }
+    try:
+        return user_service.get_user(db, user_id)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -150,54 +108,10 @@ def create_user(
     db: Session = Depends(get_db)
 ):
     """Tạo user mới (chỉ admin)"""
-    # Kiểm tra username/email đã tồn tại
-    existing = db.query(NguoiDung).filter(
-        (NguoiDung.ten_dang_nhap == user_data.ten_dang_nhap) |
-        (NguoiDung.email == user_data.email)
-    ).first()
-    
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tên đăng nhập hoặc email đã tồn tại"
-        )
-    
-    # Kiểm tra vai trò
-    vaitro = db.query(VaiTro).filter(VaiTro.vaitro_id == user_data.vaitro_id).first()
-    if not vaitro:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vai trò không tồn tại"
-        )
-    
-    new_user = NguoiDung(
-        ten_dang_nhap=user_data.ten_dang_nhap,
-        email=user_data.email,
-        mat_khau_ma_hoa=get_password_hash(user_data.mat_khau),
-        vaitro_id=user_data.vaitro_id,
-        ho_ten=user_data.ho_ten,
-        so_dien_thoai=user_data.so_dien_thoai,
-        dia_chi=user_data.dia_chi,
-        ngay_sinh=user_data.ngay_sinh,
-        gioi_tinh=user_data.gioi_tinh,
-        dang_hoat_dong=True
-    )
-    
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    return {
-        **{k: v for k, v in new_user.__dict__.items() if k != 'avatar_url'},
-        "avatar_url": new_user.avatar_url,
-        "lan_dang_nhap_cuoi": None,
-        "ngay_tao": new_user.ngay_tao.isoformat(),
-        "vaitro": {
-            "vaitro_id": vaitro.vaitro_id,
-            "ten_vai_tro": vaitro.ten_vai_tro,
-            "mo_ta": vaitro.mo_ta
-        }
-    }
+    try:
+        return user_service.create_user(db, user_data)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -208,72 +122,10 @@ def update_user(
     db: Session = Depends(get_db)
 ):
     """Cập nhật user (user tự update profile của mình, hoặc admin/manager update bất kỳ user nào)"""
-    user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Người dùng không tồn tại"
-        )
-    
-    # Kiểm tra quyền: User chỉ có thể tự update profile của mình (trừ admin/manager)
-    is_admin = current_user.vaitro.ten_vai_tro == "admin" if current_user.vaitro else False
-    is_manager = current_user.vaitro.ten_vai_tro == "manager" if current_user.vaitro else False
-    
-    if not (is_admin or is_manager) and current_user.nguoidung_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bạn chỉ có thể cập nhật thông tin của chính mình"
-        )
-    
-    # Update fields
-    update_data = user_data.model_dump(exclude_unset=True)
-    
-    # Xử lý avatar_url từ request
-    if "avatar_url" in update_data and not update_data["avatar_url"]:
-        # Nếu avatar_url là null hoặc empty string, set thành None để xóa avatar
-        update_data["avatar_url"] = None
-    
-    # Kiểm tra email unique (nếu đổi email)
-    if "email" in update_data and update_data["email"] != user.email:
-        existing = db.query(NguoiDung).filter(NguoiDung.email == update_data["email"]).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email đã được sử dụng"
-            )
-    
-    # Kiểm tra vai trò (chỉ admin mới đổi được)
-    if "vaitro_id" in update_data:
-        if not is_admin:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Chỉ admin mới có quyền đổi vai trò"
-            )
-        vaitro = db.query(VaiTro).filter(VaiTro.vaitro_id == update_data["vaitro_id"]).first()
-        if not vaitro:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Vai trò không tồn tại"
-            )
-    
-    # Cập nhật
-    for field, value in update_data.items():
-        setattr(user, field, value)
-    
-    db.commit()
-    db.refresh(user)
-    
-    return {
-        **{k: v for k, v in user.__dict__.items() if k != 'avatar_url'},
-        "avatar_url": user.avatar_url,
-        "lan_dang_nhap_cuoi": user.lan_dang_nhap_cuoi.isoformat() if user.lan_dang_nhap_cuoi else None,
-        "ngay_tao": user.ngay_tao.isoformat(),
-        "vaitro": {
-            "vaitro_id": user.vaitro.vaitro_id,
-            "ten_vai_tro": user.vaitro.ten_vai_tro,
-            "mo_ta": user.vaitro.mo_ta
-        } if user.vaitro else {}
-    }
+    try:
+        return user_service.update_user(db, user_id, user_data, current_user)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -283,22 +135,10 @@ def delete_user(
     db: Session = Depends(get_db)
 ):
     """Xóa user (chỉ admin, không cho xóa chính mình)"""
-    if current_user.nguoidung_id == user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Không thể xóa chính mình"
-        )
-    
-    user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Người dùng không tồn tại"
-        )
-    
-    db.delete(user)
-    db.commit()
-    
+    try:
+        user_service.delete_user(db, user_id, current_user)
+    except DomainError as exc:
+        _raise_http(exc)
     return None
 
 
@@ -310,73 +150,11 @@ async def upload_user_avatar(
     db: Session = Depends(get_db)
 ):
     """Upload avatar cho user (chỉ user tự upload cho mình)"""
-    # Kiểm tra user có tồn tại không
-    user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Người dùng không tồn tại"
-        )
-    
-    # Kiểm tra quyền (chỉ user tự upload cho mình)
-    if current_user.nguoidung_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bạn chỉ có thể upload avatar cho chính mình"
-        )
-    
-    # Validate file type
-    if not file.content_type or not file.content_type.startswith('image/'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File phải là ảnh"
-        )
-    
-    # Validate file size (max 5MB)
     file_content = await file.read()
-    if len(file_content) > 5 * 1024 * 1024:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Kích thước file không được vượt quá 5MB"
+    try:
+        avatar_url = user_service.upload_avatar(
+            db, user_id, current_user, file.content_type, file.filename, file_content,
         )
-    
-    # Tạo thư mục uploads nếu chưa có
-    upload_dir = Path("uploads/avatars")
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Xóa avatar cũ nếu có
-    if user.avatar_url:
-        try:
-            # Lấy tên file từ avatar_url (format: /uploads/avatars/filename)
-            old_avatar_path = user.avatar_url.replace("/uploads/avatars/", "")
-            old_file_path = upload_dir / old_avatar_path
-            
-            # Xóa file cũ nếu tồn tại
-            if old_file_path.exists() and old_file_path.is_file():
-                old_file_path.unlink()
-        except Exception:
-            pass
-    
-    # Generate unique filename
-    file_ext = Path(file.filename).suffix if file.filename else '.jpg'
-    unique_filename = f"{user_id}_{uuid.uuid4().hex}{file_ext}"
-    file_path = upload_dir / unique_filename
-    
-    # Save file mới
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    
-    # Generate URL mới (trong production nên dùng cloud storage)
-    avatar_url = f"/uploads/avatars/{unique_filename}"
-    
-    # Update user với đường dẫn mới (database column name: avatar_url)
-    user.avatar_url = avatar_url
-    db.commit()
-    db.refresh(user)
-    
-    return JSONResponse({
-        "avatar_url": avatar_url,
-        "message": "Upload avatar thành công"
-    })
-
-
+    except DomainError as exc:
+        _raise_http(exc)
+    return JSONResponse({"avatar_url": avatar_url, "message": "Upload avatar thành công"})
