@@ -45,7 +45,7 @@ export default function HeroBanner() {
   return (
     <section className="relative w-full">
       {/* Image + dark overlay */}
-      <div className="relative w-full h-[280px] md:h-[340px] lg:h-[400px] overflow-hidden">
+      <div className="relative w-full h-[380px] md:h-[460px] lg:h-[560px] overflow-hidden">
         {slides.map((slide, index) => (
           <div
             key={slide.id}
@@ -59,24 +59,25 @@ export default function HeroBanner() {
               alt={slide.title}
               className="w-full h-full object-cover"
             />
-            {/* Dark overlay for text legibility over the photo */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/50" />
+            {/* Left-to-right scrim keeps the text block legible while letting
+                the photo read clean and unobstructed on the right. */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent md:from-black/60 md:via-black/20 md:to-transparent" />
           </div>
         ))}
 
         {/* Text overlay trực tiếp trên ảnh */}
         <div className="absolute inset-0">
           <div className="max-w-[1440px] h-full mx-auto px-4 md:px-6 flex items-center">
-            <div className="max-w-md">
-              <h1 className="font-heading text-2xl md:text-3xl font-medium tracking-tight text-[#FDFBF7] leading-tight">
+            <div className="max-w-md lg:max-w-lg">
+              <h1 className="font-heading text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight text-[#FDFBF7] leading-tight">
                 {slides[activeIndex].title}
               </h1>
-              <p className="mt-3 text-sm md:text-base text-[#E8E5DD]">
+              <p className="mt-4 text-base md:text-lg text-[#E8E5DD]">
                 {slides[activeIndex].subtitle}
               </p>
               <Button
                 variant="primary"
-                className="mt-4 inline-flex items-center gap-2 shadow-lg hover:shadow-xl"
+                className="mt-6 inline-flex items-center gap-2 shadow-lg hover:shadow-xl"
                 onClick={() => navigate(slides[activeIndex].ctaPath)}
               >
                 {slides[activeIndex].ctaLabel}

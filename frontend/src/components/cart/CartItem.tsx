@@ -58,12 +58,12 @@ export default function CartItem({ item, onQuantityChange, onRemove, compact = f
           )}
           <p className="font-semibold text-text-primary mb-3">{formatPrice(item.price)}</p>
 
-          {/* Quantity Controls */}
+          {/* 40px minimum hit area keeps quantity and remove controls tappable on mobile. */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <button
                 onClick={handleDecrease}
-                className="p-1 rounded-button border border-border hover:border-accent-brown transition-default"
+                className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-button border border-border hover:border-accent-brown active:scale-95 transition-default"
                 aria-label="Giảm số lượng"
               >
                 <Minus className="w-3.5 h-3.5" />
@@ -73,7 +73,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, compact = f
               </span>
               <button
                 onClick={handleIncrease}
-                className="p-1 rounded-button border border-border hover:border-accent-brown transition-default"
+                className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-button border border-border hover:border-accent-brown active:scale-95 transition-default"
                 aria-label="Tăng số lượng"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -82,7 +82,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, compact = f
 
             <button
               onClick={() => onRemove(item.productId, item.variantId)}
-              className="p-1.5 text-text-secondary hover:text-accent-brown transition-default"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center text-text-secondary hover:text-accent-brown active:scale-95 transition-default"
               aria-label="Xóa sản phẩm"
             >
               <Trash2 className="w-4 h-4" />
@@ -122,12 +122,13 @@ export default function CartItem({ item, onQuantityChange, onRemove, compact = f
           <p className="font-semibold text-text-primary">{formatPrice(item.price)}</p>
         </div>
 
-        {/* Quantity Controls */}
+        {/* Quantity Controls — same 40px min hit area fix as the compact
+            (drawer) variant above. */}
         <div className="flex items-center justify-between mt-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleDecrease}
-              className="p-1 rounded-button border border-border hover:border-accent-brown transition-default"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-button border border-border hover:border-accent-brown active:scale-95 transition-default"
               aria-label="Giảm số lượng"
             >
               <Minus className="w-4 h-4" />
@@ -137,7 +138,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, compact = f
             </span>
             <button
               onClick={handleIncrease}
-              className="p-1 rounded-button border border-border hover:border-accent-brown transition-default"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-button border border-border hover:border-accent-brown active:scale-95 transition-default"
               aria-label="Tăng số lượng"
             >
               <Plus className="w-4 h-4" />
@@ -150,7 +151,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, compact = f
             </span>
             <button
               onClick={() => onRemove(item.productId, item.variantId)}
-              className="p-2 text-text-secondary hover:text-accent-brown transition-default"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center text-text-secondary hover:text-accent-brown active:scale-95 transition-default"
               aria-label="Xóa sản phẩm"
             >
               <Trash2 className="w-5 h-5" />

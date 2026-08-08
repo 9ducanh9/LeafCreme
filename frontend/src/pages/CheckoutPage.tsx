@@ -271,8 +271,8 @@ function CheckoutPageContent() {
         </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Order Summary */}
-          <div className="lg:col-span-1 order-2 lg:order-1">
+          {/* Show the order total before the form on mobile; keep the existing left column on desktop. */}
+          <div className="lg:col-span-1 order-1 lg:order-1">
             <Card className="sticky top-24">
               <h2 className="font-heading text-2xl font-semibold text-text-primary mb-6">
                 Đơn hàng của bạn
@@ -365,7 +365,7 @@ function CheckoutPageContent() {
           </div>
 
           {/* Checkout Form */}
-          <div className="lg:col-span-2 order-1 lg:order-2">
+          <div className="lg:col-span-2 order-2 lg:order-2">
             <Card>
               <h2 className="font-heading text-3xl font-semibold text-text-primary mb-6">
                 Thông tin giao hàng
@@ -469,6 +469,13 @@ function CheckoutPageContent() {
                         return false
                       }}
                       format="DD/MM/YYYY HH:mm"
+                      // Colors reference the real design tokens (tokens.css)
+                      // via CSS var() instead of hardcoded hex, so this MUI
+                      // picker can't silently drift from the rest of the
+                      // (Tailwind) storefront if the brand palette changes.
+                      // This is the one MUI element left on the storefront —
+                      // kept as-is for now; revisit if the storefront later
+                      // standardizes on one component system.
                       slotProps={{
                         textField: {
                           fullWidth: true,
@@ -479,32 +486,32 @@ function CheckoutPageContent() {
                           className: 'w-full',
                           sx: {
                             '& .MuiOutlinedInput-root': {
-                              borderRadius: '8px',
-                              borderColor: '#E8E5DD',
+                              borderRadius: 'var(--radius-input)',
+                              borderColor: 'var(--color-border)',
                               '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#C59B72',
+                                borderColor: 'var(--color-accent-brown)',
                               },
                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#C59B72',
+                                borderColor: 'var(--color-accent-brown)',
                               },
                               '&.Mui-error .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#d32f2f',
+                                borderColor: 'var(--color-accent-pink)',
                               },
                             },
                             '& .MuiInputLabel-root': {
-                              color: '#7A6F63',
+                              color: 'var(--color-text-secondary)',
                               fontSize: '0.875rem',
                               fontWeight: 500,
                               '&.Mui-focused': {
-                                color: '#C59B72',
+                                color: 'var(--color-accent-brown)',
                               },
                             },
                             '& .MuiInputBase-input': {
                               padding: '12px 16px',
-                              color: '#473C2F',
+                              color: 'var(--color-text-primary)',
                             },
                             '& .MuiFormHelperText-root': {
-                              color: '#7A6F63',
+                              color: 'var(--color-text-secondary)',
                               fontSize: '0.75rem',
                             },
                           },

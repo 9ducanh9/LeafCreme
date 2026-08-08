@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import require_role
 from app.db import get_db
 from app.models import (
     BienTheSanPham,
+    NguoiDung,
     SanPham,
     LoHangSanPham,
     LoHangLinhKien,
@@ -32,6 +34,11 @@ class ScanLookupResponse(BaseModel):
 def scan_lookup(
     code: str = Query(..., min_length=1, description="Mã scan (SKU biến thể / SKU sản phẩm / mã QR / mã lô)"),
     db: Session = Depends(get_db),
+    # Internal stock-receiving lookup only (used by AdminBatchCreatePage).
+    # Was previously unauthenticated and reachable from the public /cart
+    # page; batch/lot info (ma_lo, batch_id) is internal operational data
+    # and should never be exposed to anonymous callers.
+    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
 ):
     raw = (code or "").strip()
     if not raw:

@@ -1,7 +1,7 @@
 // Header/Navbar component - simple, slim header pinned to top
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShoppingCart, User as UserIcon, LogOut, LayoutDashboard, Leaf, Package } from 'lucide-react'
+import { ShoppingCart, User as UserIcon, LogIn, LogOut, LayoutDashboard, Leaf, Package } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLeafieContext } from '../../contexts/LeafieContext'
@@ -68,9 +68,9 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-gradient-to-r from-[#FFF5E6] via-[#FFFEF9] to-[#FFF5E6] border-b-2 border-[#D4A574] backdrop-blur-sm shadow-sm relative">
       {/* Seasonal decoration, if any, comes from the global FloatingEmojiOverlay
           in MainLayout — no need for a second one scoped to just the header. */}
-      <div className="max-w-[1440px] mx-auto px-6 py-4 relative z-10">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-3 md:py-4 relative z-10">
         {/* Cụm trái: logo + nav, cụm phải: cart + user */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-3 md:gap-8">
           {/* Logo */}
           <button
             onClick={() => navigate('/')}
@@ -153,7 +153,7 @@ export default function Header() {
           </nav>
 
           {/* Right side: Chatbot, Cart and User (được đẩy sang phải) */}
-          <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-2 md:gap-4 ml-auto">
             {/* Leafie Chatbot Icon */}
             <button
               onClick={() => openChat()}
@@ -285,7 +285,8 @@ export default function Header() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <>
+              <div className="hidden sm:flex items-center gap-2">
                 <Button
                   variant="outline"
                   onClick={() => navigate('/login')}
@@ -301,6 +302,15 @@ export default function Header() {
                   Đăng ký
                 </Button>
               </div>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="sm:hidden p-2 hover:opacity-70 transition-default"
+                aria-label="Đăng nhập hoặc đăng ký"
+              >
+                <LogIn className="w-6 h-6 text-text-primary" />
+              </button>
+              </>
             )}
           </div>
         </div>

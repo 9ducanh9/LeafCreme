@@ -17,13 +17,13 @@ export default function ProductCard({ product }: ProductCardProps) {
   const navigate = useNavigate()
 
   return (
-    <Card className="flex flex-col hover-lift cursor-pointer" onClick={() => navigate(`/products/${product.sanpham_id}`)}>
-      {/* Product Image */}
-      <div className="relative mb-4 -mx-6 -mt-6">
+    <Card className="flex flex-col hover-lift cursor-pointer group" onClick={() => navigate(`/products/${product.sanpham_id}`)}>
+      {/* Larger photo frame with a subtle zoom on hover. */}
+      <div className="relative mb-4 -mx-6 -mt-6 overflow-hidden rounded-t-card">
         <img
           src={product.hinh_anh_url ? getImageUrl(product.hinh_anh_url) : FALLBACK_IMAGE.product}
           alt={product.ten}
-          className="w-full h-64 object-cover rounded-t-card"
+          className="w-full h-72 md:h-80 object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement
             target.src = FALLBACK_IMAGE.product
@@ -41,7 +41,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <h3 className="font-heading text-lg font-medium text-text-primary mb-2 leading-tight">
           {product.ten}
         </h3>
-        <p className="text-text-secondary text-sm mb-4 flex-1 line-clamp-2">
+        <p className="text-text-secondary/80 text-sm mb-3 flex-1 line-clamp-2">
           {product.mo_ta || 'Sản phẩm chất lượng cao từ Leaf Creme.'}
         </p>
         <div className="flex items-center justify-between mt-auto">
@@ -63,5 +63,4 @@ export default function ProductCard({ product }: ProductCardProps) {
     </Card>
   )
 }
-
 
