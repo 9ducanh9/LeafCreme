@@ -1,6 +1,7 @@
 // Admin Pre-order Service - API calls for pre-order management
 import { apiClient } from '../api'
 import { PreOrder } from '../../types/admin'
+import { toAmount, type BackendOrder, type BackendOrderItem } from '../../types/api/order'
 
 // Map backend order status to frontend status
 // Backend statuses: cho, dang_xu_ly, thanh_toan, da_nhan, huy
@@ -32,13 +33,13 @@ function mapFrontendStatus(status: PreOrder['status'] | string): string {
 }
 
 // Transform backend order to frontend PreOrder format
-function transformOrder(order: any): PreOrder {
+function transformOrder(order: BackendOrder): PreOrder {
   // Get items from chi_tiet_don_hang (if available in detail view)
-  const items = (order.chi_tiet || []).map((item: any) => ({
+  const items = (order.chi_tiet || []).map((item: BackendOrderItem) => ({
     productName: item.ten_san_pham || item.bienthe?.san_pham?.ten_san_pham || 'Sản phẩm',
     size: item.bienthe?.kich_co || '',
     quantity: item.so_luong,
-    price: parseFloat(item.gia_ban) || 0,
+    price: toAmount(item.gia_ban),
   }))
 
   return {
@@ -46,14 +47,14 @@ function transformOrder(order: any): PreOrder {
     customerName: order.ten_khach_hang || 'Khách hàng',
     phone: order.so_dien_thoai_khach || '',
     pickupDate: order.ngay_giao_du_kien || order.ngay_tao,
-    status: mapBackendStatus(order.trang_thai),
+    status: mapBackendStatus(order.trang_thai ?? ''),
     notes: order.ghi_chu || '',
     items,
-    totalAmount: parseFloat(order.tien_thanh_toan) || parseFloat(order.tong_tien) || 0,
+    totalAmount: toAmount(order.tien_thanh_toan) || toAmount(order.tong_tien),
     createdAt: order.ngay_tao,
-    orderCode: order.ma_don_hang,
-    orderType: order.loai_don,
-    address: order.dia_chi_giao_hang,
+    orderCode: order.ma_don_hang ?? undefined,
+    orderType: order.loai_don ?? undefined,
+    address: order.dia_chi_giao_hang ?? undefined,
   }
 }
 
@@ -65,7 +66,7 @@ export async function getPreOrders(filters?: {
 }): Promise<PreOrder[]> {
   try {
     // Fetch online orders
-    const params: Record<string, any> = {
+    const params: Record<string, string | number | boolean | null> = {
       limit: 50,
     }
     
@@ -87,7 +88,7 @@ export async function getPreOrders(filters?: {
     }
 
     // Fetch online orders
-    const onlineOrders = await apiClient.get<any[]>('/orders', { 
+    const onlineOrders = await apiClient.get<BackendOrder[]>('/orders', { 
       ...params, loai_don: 'online' 
     })
     
@@ -119,7 +120,7 @@ export async function getPreOrders(filters?: {
 
 export async function getPreOrderById(id: string): Promise<PreOrder> {
   try {
-    const order = await apiClient.get<any>(`/orders/${id}`)
+    const order = await apiClient.get<BackendOrder>(`/orders/${id}`)
     return transformOrder(order)
   } catch (error) {
     console.error('Error fetching order:', error)
@@ -133,7 +134,7 @@ export async function updatePreOrderStatus(
 ): Promise<PreOrder> {
   try {
     const backendStatus = mapFrontendStatus(status)
-    const order = await apiClient.put<any>(`/orders/${id}/status`, {
+    const order = await apiClient.put<BackendOrder>(`/orders/${id}/status`, {
       trang_thai: backendStatus
     })
     return transformOrder(order)
@@ -145,7 +146,7 @@ export async function updatePreOrderStatus(
 
 export async function updatePreOrderNotes(id: string, notes: string): Promise<PreOrder> {
   try {
-    const order = await apiClient.patch<any>(`/orders/${id}`, { ghi_chu: notes })
+    const order = await apiClient.patch<BackendOrder>(`/orders/${id}`, { ghi_chu: notes })
     return transformOrder(order)
   } catch (error) {
     console.error('Error updating order notes:', error)

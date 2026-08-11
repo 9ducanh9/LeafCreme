@@ -59,6 +59,9 @@ export interface UseLeafieReturn {
   clearHistory: () => void
 }
 
+/** Message như lúc đọc ra từ localStorage: timestamp là string, chưa phải Date. */
+type StoredLeafieMessage = Omit<LeafieMessage, 'timestamp'> & { timestamp: string }
+
 export function useLeafie(): UseLeafieReturn {
   const { user } = useAuth()
   const [messages, setMessages] = useState<LeafieMessage[]>([])
@@ -68,10 +71,48 @@ export function useLeafie(): UseLeafieReturn {
   const [error, setError] = useState<string | null>(null)
   const previousUserIdRef = useRef<number | null>(null)
 
+  const loadContext = useCallback(async () => {
+    try {
+      const currentUserId = user?.nguoidung_id || null
+      const sessionId = getSessionId(currentUserId)
+      
+      const cached = localStorage.getItem(CONTEXT_CACHE_KEY)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Date.now() - parsed.timestamp < CONTEXT_TTL) {
+          // Always update sessionId to match current user state
+          setContext({ ...parsed.context, sessionId })
+          return
+        }
+      }
+
+      const freshContext = await buildLeafieContext()
+      // Add sessionId to context
+      const contextWithSession: LeafieContext = {
+        ...freshContext,
+        sessionId,
+      }
+      setContext(contextWithSession)
+
+      localStorage.setItem(
+        CONTEXT_CACHE_KEY,
+        JSON.stringify({
+          context: freshContext, // Cache without sessionId (it's dynamic)
+          timestamp: Date.now(),
+        })
+      )
+    } catch (err) {
+      console.error('❌ Failed to load Leafie context', err)
+    }
+    // Dep chỉ là user id — giống dep của effect gọi nó, nên không gây refetch vòng lặp.
+  }, [user?.nguoidung_id])
+
   // ✅ Load context on mount AND when user changes (for sessionId)
+  // loadContext phải khai TRƯỚC effect này: nó là const (không hoist như function
+  // declaration), nên để trong dep array mà khai sau sẽ ném TDZ lúc render.
   useEffect(() => {
     loadContext()
-  }, [user?.nguoidung_id])
+  }, [loadContext])
 
   // ✅ Load messages when user changes
   useEffect(() => {
@@ -111,7 +152,7 @@ export function useLeafie(): UseLeafieReturn {
       if (stored) {
         const parsed = JSON.parse(stored)
         // Convert timestamp strings back to Date objects
-        const loadedMessages = parsed.map((m: any) => ({
+        const loadedMessages = (parsed as StoredLeafieMessage[]).map((m) => ({
           ...m,
           timestamp: new Date(m.timestamp),
         }))
@@ -139,41 +180,6 @@ export function useLeafie(): UseLeafieReturn {
       storage.removeItem(key)
     }
   }, [messages, user?.nguoidung_id])
-
-  async function loadContext() {
-    try {
-      const currentUserId = user?.nguoidung_id || null
-      const sessionId = getSessionId(currentUserId)
-      
-      const cached = localStorage.getItem(CONTEXT_CACHE_KEY)
-      if (cached) {
-        const parsed = JSON.parse(cached)
-        if (Date.now() - parsed.timestamp < CONTEXT_TTL) {
-          // Always update sessionId to match current user state
-          setContext({ ...parsed.context, sessionId })
-          return
-        }
-      }
-
-      const freshContext = await buildLeafieContext()
-      // Add sessionId to context
-      const contextWithSession: LeafieContext = {
-        ...freshContext,
-        sessionId,
-      }
-      setContext(contextWithSession)
-
-      localStorage.setItem(
-        CONTEXT_CACHE_KEY,
-        JSON.stringify({
-          context: freshContext, // Cache without sessionId (it's dynamic)
-          timestamp: Date.now(),
-        })
-      )
-    } catch (err) {
-      console.error('❌ Failed to load Leafie context', err)
-    }
-  }
 
   // 🚀 GỬI MESSAGE → CHỈ GỌI AI
   const sendMessage = useCallback(async (message: string) => {

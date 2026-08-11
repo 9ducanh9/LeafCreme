@@ -22,9 +22,8 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
       token_type: 'bearer',
     }
   }
-  try {
-    // OAuth2PasswordRequestForm expects form data, not JSON
-    const formData = new URLSearchParams()
+  // OAuth2PasswordRequestForm expects form data, not JSON
+  const formData = new URLSearchParams()
     formData.append('username', credentials.username || credentials.email || '')
     formData.append('password', credentials.password)
 
@@ -58,10 +57,7 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
       }
     }
 
-    return data
-  } catch (error) {
-    throw error
-  }
+  return data
 }
 
 export async function register(data: RegisterData): Promise<RegisterResult> {
@@ -70,18 +66,14 @@ export async function register(data: RegisterData): Promise<RegisterResult> {
     return { confirmationRequired: true, email: data.email }
   }
 
-  try {
-    const response = await apiClient.post<AuthResponse>('/auth/register', data)
+  const response = await apiClient.post<AuthResponse>('/auth/register', data)
 
-    if (response.access_token) {
-      localStorage.setItem('access_token', response.access_token)
-      localStorage.setItem('refresh_token', response.refresh_token)
-    }
-
-    return { confirmationRequired: false, email: data.email }
-  } catch (error) {
-    throw error
+  if (response.access_token) {
+    localStorage.setItem('access_token', response.access_token)
+    localStorage.setItem('refresh_token', response.refresh_token)
   }
+
+  return { confirmationRequired: false, email: data.email }
 }
 
 export async function getCurrentUser(): Promise<User> {

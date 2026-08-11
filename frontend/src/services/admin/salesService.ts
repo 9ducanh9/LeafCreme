@@ -1,6 +1,7 @@
 // Admin Sales Service - API calls for sales/order management
 import { Order } from '../../types/admin'
 import { apiClient } from '../api'
+import { toAmount, type BackendOrder, type BackendOrderItem } from '../../types/api/order'
 
 export async function getOrders(filters?: {
   orderType?: string
@@ -18,17 +19,17 @@ export async function getOrders(filters?: {
   if (filters?.dateTo) params.to_date = filters.dateTo
   if (filters?.search) params.ma_don_hang = filters.search
 
-  const response = await apiClient.get<any[]>('/orders', Object.keys(params).length > 0 ? params : undefined)
+  const response = await apiClient.get<BackendOrder[]>('/orders', Object.keys(params).length > 0 ? params : undefined)
 
-  const orders: Order[] = response.map((item: any) => ({
+  const orders: Order[] = response.map((item: BackendOrder) => ({
     id: String(item.donhang_id),
-    orderType: mapBackendOrderType(item.loai_don),
+    orderType: mapBackendOrderType(item.loai_don ?? ''),
     customerName: item.ten_khach_hang || 'Khách hàng',
     date: item.ngay_tao,
     items: [],
-    totalAmount: Number(item.tien_thanh_toan),
+    totalAmount: toAmount(item.tien_thanh_toan),
     paymentMethod: 'unknown',
-    status: mapBackendStatus(item.trang_thai),
+    status: mapBackendStatus(item.trang_thai ?? ''),
   }))
 
   let filtered = orders
@@ -78,13 +79,13 @@ function mapFrontendOrderTypeToBackend(type: string): string {
   return type
 }
 
-function mapOrderDetailResponse(item: any): Order {
+function mapOrderDetailResponse(item: BackendOrder): Order {
   return {
     id: String(item.donhang_id),
-    orderType: mapBackendOrderType(item.loai_don),
+    orderType: mapBackendOrderType(item.loai_don ?? ''),
     customerName: item.ten_khach_hang || 'Khách hàng',
     date: item.ngay_tao,
-    items: (item.items || []).map((orderItem: any) => ({
+    items: (item.items || []).map((orderItem: BackendOrderItem) => ({
       productName: orderItem.hop_qua_id
         ? `Hộp quà #${orderItem.hop_qua_id}`
         : orderItem.lohang_sanpham_id
@@ -92,11 +93,11 @@ function mapOrderDetailResponse(item: any): Order {
           : 'Sản phẩm',
       size: '-',
       quantity: Number(orderItem.so_luong) || 0,
-      price: Number(orderItem.gia_don_vi) || 0,
+      price: toAmount(orderItem.gia_don_vi),
     })),
-    totalAmount: Number(item.tien_thanh_toan),
+    totalAmount: toAmount(item.tien_thanh_toan),
     paymentMethod: 'unknown',
-    status: mapBackendStatus(item.trang_thai),
+    status: mapBackendStatus(item.trang_thai ?? ''),
   }
 }
 
@@ -105,7 +106,7 @@ export async function getOrderById(id: string): Promise<Order> {
   if (Number.isNaN(orderId)) {
     throw new Error('Order ID is invalid')
   }
-  const response = await apiClient.get<any>(`/orders/${orderId}`)
+  const response = await apiClient.get<BackendOrder>(`/orders/${orderId}`)
   return mapOrderDetailResponse(response)
 }
 
@@ -117,7 +118,7 @@ export async function updateOrderStatus(
   if (Number.isNaN(orderId)) {
     throw new Error('Order ID is invalid')
   }
-  const response = await apiClient.patch<any>(`/orders/${orderId}/status`, {
+  const response = await apiClient.patch<BackendOrder>(`/orders/${orderId}/status`, {
     trang_thai: mapFrontendStatusToBackend(status),
   })
   return mapOrderDetailResponse(response)

@@ -47,6 +47,24 @@ function mapToAdminVariant(
  * Get all product variants for admin panel
  * Fetches products and their variants, then combines them
  */
+
+/**
+ * Chuẩn hoá đường dẫn ảnh trước khi gửi lên backend.
+ *
+ * - URL đầy đủ chứa /uploads/product|giftboxes/... -> lấy phần tương đối
+ * - URL ngoài (http...)                            -> giữ nguyên
+ * - Đã là đường dẫn tương đối (product/x.jpg)      -> giữ nguyên
+ *
+ * Trước đây block này lặp nguyên văn 2 lần trong file, và nhánh "URL ngoài" viết
+ * `imagePath = imagePath` (no-op, ESLint no-self-assign). Gom về một chỗ để hai
+ * nhánh update không thể lệch nhau.
+ */
+function toRelativeImagePath(image: string | undefined): string | undefined {
+  if (!image) return image
+  const urlMatch = image.match(/\/uploads\/(product|giftboxes)\/(.+)$/)
+  return urlMatch ? `${urlMatch[1]}/${urlMatch[2]}` : image
+}
+
 export async function getProductVariants(filters?: {
   category?: string
   size?: string
@@ -261,7 +279,7 @@ export async function updateProductVariant(
     
     if (!isNaN(variantId)) {
       // Update variant - only include fields that are provided
-      const variantUpdatePayload: Record<string, any> = {}
+      const variantUpdatePayload: Record<string, unknown> = {}
       
       if (data.name !== undefined && data.name !== null && data.name.trim() !== '') {
         variantUpdatePayload.huong_vi = data.name
@@ -282,22 +300,10 @@ export async function updateProductVariant(
       const variant = await apiClient.put<BackendVariant>(`/products/variants/${variantId}`, variantUpdatePayload)
 
       // Update product
-      // Convert full URL back to relative path if needed
-      let imagePath = data.image
-      if (imagePath) {
-        // If it's a full URL, extract the relative path
-        const urlMatch = imagePath.match(/\/uploads\/(product|giftboxes)\/(.+)$/)
-        if (urlMatch) {
-          imagePath = `${urlMatch[1]}/${urlMatch[2]}`
-        } else if (imagePath.startsWith('http')) {
-          // If it's external URL, keep as is
-          imagePath = imagePath
-        }
-        // If already relative path (product/xxx.jpg), keep as is
-      }
+      const imagePath = toRelativeImagePath(data.image)
       
       // Build update payload - only include fields that are provided
-      const productUpdatePayload: Record<string, any> = {}
+      const productUpdatePayload: Record<string, unknown> = {}
       
       if (data.name !== undefined && data.name !== null && data.name.trim() !== '') {
         productUpdatePayload.ten = data.name
@@ -326,22 +332,10 @@ export async function updateProductVariant(
     const productId = parseInt(id)
     if (!isNaN(productId)) {
       // Get existing product first
-      // Convert full URL back to relative path if needed
-      let imagePath = data.image
-      if (imagePath) {
-        // If it's a full URL, extract the relative path
-        const urlMatch = imagePath.match(/\/uploads\/(product|giftboxes)\/(.+)$/)
-        if (urlMatch) {
-          imagePath = `${urlMatch[1]}/${urlMatch[2]}`
-        } else if (imagePath.startsWith('http')) {
-          // If it's external URL, keep as is
-          imagePath = imagePath
-        }
-        // If already relative path (product/xxx.jpg), keep as is
-      }
+      const imagePath = toRelativeImagePath(data.image)
       
       // Build update payload - only include fields that are provided
-      const productUpdatePayload: Record<string, any> = {}
+      const productUpdatePayload: Record<string, unknown> = {}
       
       if (data.name !== undefined && data.name !== null && data.name.trim() !== '') {
         productUpdatePayload.ten = data.name

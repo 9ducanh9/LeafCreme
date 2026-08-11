@@ -28,7 +28,9 @@ export function getCategories(): string[] {
 function saveCategories(categories: string[]): void {
   try {
     localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(categories))
-  } catch {}
+  } catch {
+    /* localStorage không khả dụng (private mode / hết quota) — bỏ qua, không chặn luồng */
+  }
 }
 
 export function addCategory(category: string): void {
