@@ -41,8 +41,12 @@ export default function VerifyEmailPage() {
     }
   }
 
+  // <div> chứ không <main>: MainLayout đã render <main id="main-content">.
+  // HTML chỉ được có MỘT main landmark — hai main làm lệnh "nhảy tới main" của
+  // screen reader có hai đích, và skip link trỏ vào main ngoài chứ không phải
+  // nội dung của trang này.
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-background px-5 py-10">
       <section className="w-full max-w-md">
         <Link to="/" className="font-heading text-3xl text-text-primary">Leaf Creme</Link>
         <p className="mt-12 text-sm font-medium uppercase tracking-[0.15em] text-accent-brown">Email confirmation</p>
@@ -57,6 +61,6 @@ export default function VerifyEmailPage() {
         </form>
         <button type="button" onClick={resend} disabled={!email || loading} className="mt-5 w-full text-sm font-semibold text-accent-brown underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-60">Resend code</button>
       </section>
-    </main>
+    </div>
   )
 }

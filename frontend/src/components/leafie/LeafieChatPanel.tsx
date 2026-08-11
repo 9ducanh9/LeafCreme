@@ -1,5 +1,6 @@
 // Leafie chat panel - Discord style
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
+import { useOverlayA11y } from '../../hooks/useOverlayA11y'
 import { X, Send, Leaf, Trash2, MoreVertical } from 'lucide-react'
 import LeafieMessageList from './LeafieMessageList'
 import ConfirmDialog from '../ui/ConfirmDialog'
@@ -28,6 +29,13 @@ export default function LeafieChatPanel({
   const [showMenu, setShowMenu] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const titleId = `${useId()}-leafie-title`
+
+  // Panel giữ trong DOM khi đóng để còn transition trượt. `invisible` + `inert`
+  // (trong hook) bỏ nó khỏi tab order và accessibility tree — không thì người dùng
+  // bàn phím Tab vào một panel chat vô hình ngoài màn hình.
+  useOverlayA11y({ containerRef: panelRef, open: isOpen, onClose })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -148,16 +156,22 @@ export default function LeafieChatPanel({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-bg-overlay z-overlay transition-opacity duration-300 ${
-          isOpen ? 'opacity-40' : 'opacity-0 pointer-events-none'
+        aria-hidden="true"
+        className={`fixed inset-0 bg-bg-overlay z-overlay transition-[opacity,visibility] duration-300 ${
+          isOpen ? 'visible opacity-40' : 'invisible opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
       />
 
       {/* Panel - Discord style */}
       <div
-        className={`fixed right-0 top-0 bottom-0 w-full max-w-md bg-bg-surface z-modal flex flex-col shadow-xl transition-all duration-slow ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={`fixed right-0 top-0 bottom-0 w-full max-w-md bg-bg-surface z-modal flex flex-col shadow-xl outline-none transition-[transform,visibility] duration-slow ${
+          isOpen ? 'visible translate-x-0' : 'invisible translate-x-full'
         }`}
       >
         {/* Header - Discord style */}
@@ -169,7 +183,7 @@ export default function LeafieChatPanel({
               <Leaf className="w-5 h-5 md:w-6 md:h-6 text-brand-fg" strokeWidth={2.5} />
             </div>
             <div>
-              <h3 className="font-semibold text-fg-strong text-base md:text-lg">Leafie</h3>
+              <h3 id={titleId} className="font-semibold text-fg-strong text-base md:text-lg">Leafie</h3>
               <p className="text-xs text-fg-muted">Trợ lý của Leaf Crème</p>
             </div>
           </div>

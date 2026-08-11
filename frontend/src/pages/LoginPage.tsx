@@ -49,8 +49,12 @@ export default function LoginPage() {
     }
   }
 
+  // <div> chứ không <main>: MainLayout đã render <main id="main-content">.
+  // HTML chỉ được có MỘT main landmark — hai main làm lệnh "nhảy tới main" của
+  // screen reader có hai đích, và skip link trỏ vào main ngoài chứ không phải
+  // nội dung của trang này.
   return (
-    <main className="min-h-screen bg-background lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(480px,1.1fr)]">
+    <div className="min-h-screen bg-background lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(480px,1.1fr)]">
       <section className="relative hidden min-h-screen overflow-hidden lg:block">
         <img
           src={FALLBACK_IMAGE.productDetail}
@@ -165,6 +169,6 @@ export default function LoginPage() {
           </p>
         </div>
       </section>
-    </main>
+    </div>
   )
 }
