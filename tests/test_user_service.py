@@ -134,5 +134,10 @@ class TestDeleteUser:
 
         service.delete_user(db_session, target.nguoidung_id, admin)
 
+        # Soft-delete: the row survives (deactivated), it isn't hard-removed.
+        # See app/services/users/user_service.py delete_user docstring — a
+        # real DB delete here would raise IntegrityError for any user who
+        # has ever touched the inventory ledger.
         remaining = db_session.query(NguoiDung).filter(NguoiDung.nguoidung_id == target.nguoidung_id).first()
-        assert remaining is None
+        assert remaining is not None
+        assert remaining.dang_hoat_dong is False

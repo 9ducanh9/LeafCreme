@@ -5,14 +5,17 @@ import { ToastProvider } from './contexts/ToastContext'
 import { LeafieProvider } from './contexts/LeafieContext'
 import ProtectedRoute from './components/routing/ProtectedRoute'
 import AdminProtectedRoute from './components/admin/routing/AdminProtectedRoute'
-import MainLayout from './components/layout/MainLayout'
+import MainLayout from './components/layout/main-layout'
 import AdminLayout from './layout/admin/AdminLayout'
 import ToastContainer from './components/ui/ToastContainer'
+import ErrorBoundary from './components/ui/ErrorBoundary'
 import BakeryHomePage from './pages/BakeryHomePage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import CartPage from './pages/CartPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 import UserProfilePage from './pages/UserProfilePage'
 import MyOrdersPage from './pages/MyOrdersPage'
 import OrderDetailPage from './pages/OrderDetailPage'
@@ -46,6 +49,7 @@ function App() {
       <CartProvider>
         <ToastProvider>
           <LeafieProvider>
+            <ErrorBoundary>
             <BrowserRouter
               future={{
                 v7_startTransition: true,
@@ -65,6 +69,8 @@ function App() {
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/auth/callback" element={<AuthCallbackPage />} />
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
                 <Route
                   path="/profile"
                   element={
@@ -89,9 +95,30 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/orders/:id/payment-qr" element={<PaymentQRPage />} />
-                <Route path="/orders/:id/success" element={<OrderSuccessPage />} />
+                <Route
+                  path="/checkout"
+                  element={
+                    <ProtectedRoute>
+                      <CheckoutPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/orders/:id/payment-qr"
+                  element={
+                    <ProtectedRoute>
+                      <PaymentQRPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/orders/:id/success"
+                  element={
+                    <ProtectedRoute>
+                      <OrderSuccessPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Admin Routes */}
                 <Route
@@ -123,6 +150,7 @@ function App() {
               </MainLayout>
               <ToastContainer />
             </BrowserRouter>
+            </ErrorBoundary>
           </LeafieProvider>
         </ToastProvider>
       </CartProvider>

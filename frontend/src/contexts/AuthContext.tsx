@@ -1,6 +1,6 @@
 // Auth Context for user authentication state management
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { login as loginService, register as registerService, getCurrentUser, logout as logoutService, isAuthenticated, User } from '../services/authService'
+import { login as loginService, register as registerService, getCurrentUser, logout as logoutService, isAuthenticated, User, RegisterResult } from '../services/authService'
 import { onLogout as cartOnLogout, clearGuestCart } from '../services/cartService'
 
 interface AuthContextType {
@@ -8,7 +8,7 @@ interface AuthContextType {
   loading: boolean
   isAuthenticated: boolean
   login: (username: string, password: string) => Promise<void>
-  register: (data: RegisterData) => Promise<void>
+  register: (data: RegisterData) => Promise<RegisterResult>
   logout: () => void
   refreshUser: () => Promise<void>
 }
@@ -18,7 +18,8 @@ interface RegisterData {
   email: string
   mat_khau: string
   ho_ten: string
-  vaitro_id: number
+  // No vaitro_id — self-registration is always a "customer" account,
+  // assigned server-side. See docs/specs/01-auth-access-control.md Finding #1.
   so_dien_thoai?: string
   dia_chi?: string
   ngay_sinh?: string
@@ -87,15 +88,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const register = async (data: RegisterData) => {
+  const register = async (data: RegisterData): Promise<RegisterResult> => {
     try {
-      const authResponse = await registerService(data)
+      const registration = await registerService(data)
+
+      if (registration.confirmationRequired) {
+        return registration
+      }
       
       // Ensure token is stored before fetching user
-      if (authResponse.access_token) {
-        localStorage.setItem('access_token', authResponse.access_token)
-        localStorage.setItem('refresh_token', authResponse.refresh_token)
-        
+      if (isAuthenticated()) {
         // Small delay to ensure localStorage is updated
         await new Promise(resolve => setTimeout(resolve, 100))
       }
@@ -103,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Now fetch user data
       const userData = await getCurrentUser()
       setUser(userData)
+      return registration
     } catch (error) {
       // Clear tokens if register failed
       logoutService()

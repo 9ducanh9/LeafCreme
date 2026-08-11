@@ -4,8 +4,20 @@ Pydantic schemas cho các cấu trúc JSONB trong database
 Dùng để validate và serialize/deserialize các trường JSONB
 """
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Generic, List, Optional, TypeVar
 from datetime import datetime
+
+
+T = TypeVar("T")
+
+
+class Page(BaseModel, Generic[T]):
+    """Stable server-side pagination envelope used by admin data tables."""
+
+    items: List[T]
+    total: int
+    skip: int
+    limit: int
 
 
 # =========================================================

@@ -1,5 +1,5 @@
 // Protected Route wrapper - redirects to login if not authenticated
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
@@ -10,6 +10,7 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children, requireRole }: ProtectedRouteProps) {
   const { user, loading, isAuthenticated } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -20,7 +21,7 @@ export default function ProtectedRoute({ children, requireRole }: ProtectedRoute
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}${location.hash}` }} />
   }
 
   // Check role if required

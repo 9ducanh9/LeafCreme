@@ -1,6 +1,6 @@
 // Product service for fetching products from backend API
 import { apiClient } from './api'
-import type { Product, ProductFilters, ProductVariant } from '../types/product'
+import type { Product, ProductAvailability, ProductFilters, ProductVariant } from '../types/product'
 
 // Re-export types for backward compatibility
 export type { Product, ProductFilters, ProductVariant }
@@ -29,5 +29,9 @@ export async function getBestSellers(limit: number = 3): Promise<Product[]> {
 
 export async function getProductVariants(productId: number): Promise<ProductVariant[]> {
   return await apiClient.get<ProductVariant[]>(`/products/${productId}/variants`)
+}
+
+export async function getProductAvailability(productId: number): Promise<ProductAvailability[]> {
+  return await apiClient.get<ProductAvailability[]>(`/products/${productId}/availability`)
 }
 

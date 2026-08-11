@@ -1,8 +1,6 @@
-// Gift box card component for displaying gift boxes in grid
-import { useNavigate } from 'react-router-dom'
-import Card from '../ui/Card'
+import { Link } from 'react-router-dom'
+import Card, { CardBody, CardFooter, CardMedia, CardTitle } from '../ui/Card'
 import Badge from '../ui/Badge'
-import Button from '../ui/Button'
 import { formatPrice } from '../../utils/formatPrice'
 import { getImageUrl } from '../../utils/getImageUrl'
 import { GiftBox } from '../../types/giftBox'
@@ -13,69 +11,41 @@ interface GiftBoxCardProps {
 }
 
 export default function GiftBoxCard({ giftBox }: GiftBoxCardProps) {
-  const navigate = useNavigate()
-
-  const getImageUrlForGiftBox = () => {
-    if (giftBox.imageUrl) return getImageUrl(giftBox.imageUrl)
-    if (giftBox.imageKey && GIFT_BOX_IMAGES[giftBox.imageKey]) {
-      return GIFT_BOX_IMAGES[giftBox.imageKey]
-    }
-    return FALLBACK_IMAGE.giftBox
-  }
+  const image = giftBox.imageUrl
+    ? getImageUrl(giftBox.imageUrl)
+    : giftBox.imageKey && GIFT_BOX_IMAGES[giftBox.imageKey]
+      ? GIFT_BOX_IMAGES[giftBox.imageKey]
+      : FALLBACK_IMAGE.giftBox
 
   return (
-    <Card
-      className="flex flex-col hover-lift cursor-pointer"
-      onClick={() => navigate(`/gift-boxes/${giftBox.id}`)}
-    > 
-      {/* Gift Box Image */}
-      <div className="relative mb-4 -mx-6 -mt-6">
+    <Card interactive className="group relative overflow-hidden p-0">
+      <CardMedia className="aspect-product">
         <img
-          src={getImageUrlForGiftBox()}
+          src={image}
           alt={giftBox.name}
-          className="w-full h-64 object-cover rounded-t-card"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement
-            target.src = FALLBACK_IMAGE.giftBox
-          }}
+          className="h-full w-full object-cover transition-transform duration-slow group-hover:scale-[1.03]"
+          loading="lazy"
+          onError={(event) => { event.currentTarget.src = FALLBACK_IMAGE.giftBox }}
         />
         {giftBox.tags.length > 0 && (
-          <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-            {giftBox.tags.map((tag) => (
-              <Badge key={tag} className="bg-accent-yellow border border-accent-brown">
+          <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+            {giftBox.tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant={tag === 'limited' ? 'warning' : 'brand'}>
                 {tag === 'best_gift' ? 'Quà tặng tốt nhất' : tag === 'limited' ? 'Giới hạn' : 'Mới'}
               </Badge>
             ))}
           </div>
         )}
-      </div>
-
-      {/* Gift Box Info */}
-      <div className="flex-1 flex flex-col">
-        <h3 className="font-heading text-lg font-medium text-text-primary mb-1 leading-tight">
-          {giftBox.name}
-        </h3>
-        <p className="text-text-secondary text-sm mb-3">{giftBox.subtitle}</p>
-        <p className="text-text-secondary text-sm mb-4 flex-1 line-clamp-2">
-          {giftBox.description}
-        </p>
-        <div className="flex items-center justify-between mt-auto">
-          <span className="font-semibold text-lg text-text-primary tracking-tight">
-            {formatPrice(giftBox.price)}
-          </span>
-          <Button
-            variant="outline"
-            className="text-sm"
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate(`/gift-boxes/${giftBox.id}`)
-            }}
-          >
-            Xem chi tiết
-          </Button>
-        </div>
-      </div>
+      </CardMedia>
+      <CardBody className="gap-2">
+        <CardTitle><Link to={`/gift-boxes/${giftBox.id}`} className="outline-none after:absolute after:inset-0 after:z-raised after:content-['']">{giftBox.name}</Link></CardTitle>
+        <p className="text-sm text-fg-muted">{giftBox.subtitle}</p>
+        <p className="line-clamp-2 text-sm text-fg-muted">{giftBox.description}</p>
+      </CardBody>
+      <CardFooter className="justify-between">
+        <span className="text-lg font-semibold text-fg">{formatPrice(giftBox.price)}</span>
+        <span className="text-sm font-semibold text-brand-fg">Xem chi tiết</span>
+      </CardFooter>
     </Card>
   )
 }
-

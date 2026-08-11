@@ -10,7 +10,7 @@ from typing import Any, Optional
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
-from app.models import NhaCungCap
+from app.models import LoHangHopQua, LoHangLinhKien, LoHangSanPham, NhaCungCap
 from app.schemas import validate_thong_tin_thanh_toan
 from app.services.errors import DomainError
 
@@ -118,10 +118,27 @@ class SupplierService:
     def delete_supplier(self, db: Session, supplier_id: int, hard_delete: bool = False) -> None:
         supplier = self._get_or_404(db, supplier_id)
 
-        # TODO: Kiểm tra xem nhà cung cấp có đang được sử dụng trong lô hàng
-        # không. Nếu có, chỉ vô hiệu hóa thay vì xóa. (carried over from the
-        # original router — not addressed by this refactor)
         if hard_delete:
+            # The original TODO here ("check if supplier is referenced by
+            # any batch before hard-deleting") was never implemented — none
+            # of LoHang{SanPham,LinhKien,HopQua}.ncc_id have an ON DELETE
+            # rule at the DB level, so a supplier that's ever had a batch
+            # logged against it (i.e. nearly every real supplier) raised an
+            # unhandled IntegrityError -> bare 500. See
+            # docs/specs/06-users-suppliers.md Finding #2.
+            in_use = (
+                db.query(LoHangSanPham).filter(LoHangSanPham.ncc_id == supplier_id).first()
+                or db.query(LoHangLinhKien).filter(LoHangLinhKien.ncc_id == supplier_id).first()
+                or db.query(LoHangHopQua).filter(LoHangHopQua.ncc_id == supplier_id).first()
+            )
+            if in_use:
+                raise DomainError(
+                    status_code=400,
+                    detail=(
+                        "Không thể xóa vĩnh viễn — nhà cung cấp đang có lô hàng liên kết. "
+                        "Hãy vô hiệu hóa (không hard_delete) thay vì xóa."
+                    ),
+                )
             db.delete(supplier)
         else:
             supplier.dang_hoat_dong = False

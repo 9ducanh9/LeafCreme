@@ -44,6 +44,28 @@ export const IMAGE_PATHS = {
   navbar: {
     logo: getImageUrl(`${IMAGES_BASE_PATH}/navbar/logo.png`),
   },
+
+  // Homepage category cards + "about us" section. Previously hardcoded to
+  // random third-party URLs (freepik.com, an emvaobep.com recipe-blog
+  // photo, a bing.net thumbnail-cache link) instead of real Leaf Creme
+  // photography — fragile (can 404/change without warning, no license
+  // guarantee) and a brand-trust mismatch on the homepage. Routed through
+  // the same backend-served /uploads/images path as every other image in
+  // the app instead: drop real photos at these paths (via the existing
+  // product-image upload pipeline / directly in the backend's uploads
+  // folder) and they'll appear with no further code changes. Until then,
+  // the onError handler on each <img> falls back to FALLBACK_IMAGE.product
+  // (same fallback the rest of the storefront already uses) rather than a
+  // broken image. See UI/UX audit follow-up, Finding #8.
+  categories: {
+    banhKem: getImageUrl(`${IMAGES_BASE_PATH}/categories/banh-kem.jpg`),
+    bongLan: getImageUrl(`${IMAGES_BASE_PATH}/categories/bong-lan.jpg`),
+    mousse: getImageUrl(`${IMAGES_BASE_PATH}/categories/mousse.jpg`),
+    tiramisu: getImageUrl(`${IMAGES_BASE_PATH}/categories/tiramisu.jpg`),
+  },
+  about: {
+    bakery: getImageUrl(`${IMAGES_BASE_PATH}/about/bakery.jpg`),
+  },
 } as const
 
 // Fallback images (using external URLs as backup)

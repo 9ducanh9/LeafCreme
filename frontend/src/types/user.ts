@@ -28,7 +28,8 @@ export interface RegisterData {
   email: string
   mat_khau: string
   ho_ten: string
-  vaitro_id: number
+  // No vaitro_id — self-registration is always a "customer" account,
+  // assigned server-side. See docs/specs/01-auth-access-control.md Finding #1.
   so_dien_thoai?: string
   dia_chi?: string
   ngay_sinh?: string

@@ -37,13 +37,13 @@ export default function ProductFilters({
       
       // Also fetch categories from API to get real-time updates
       try {
-        const products = await getProducts({ limit: 1000 })
+        const products = await getProducts({ limit: 50 })
         const apiCategories = Array.from(
           new Set(products.map(p => p.danh_muc).filter(Boolean))
-        ).sort() as string[]
+        ) as string[]
         
         // Merge both sources, prioritizing API data
-        const allCategories = Array.from(new Set([...apiCategories, ...localCats])).sort()
+        const allCategories = Array.from(new Set([...apiCategories, ...localCats]))
         setCategories(allCategories)
       } catch (error) {
         // Fallback to localStorage if API fails

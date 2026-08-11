@@ -157,11 +157,23 @@ class UserService:
         return self._to_response(user)
 
     def delete_user(self, db: Session, user_id: int, current_user: NguoiDung) -> None:
+        """Soft-delete — sets dang_hoat_dong=False, same field already used
+        by PUT /users/{id} to disable an account.
+
+        Was previously a real db.delete(user). NguoiDung is referenced by
+        LichSuKho{SanPham,LinhKien,HopQua}.nguoidung_id (the inventory
+        ledger's "who did this" column) with no ON DELETE rule at the DB
+        level, so hard-deleting any user who has ever touched inventory —
+        which in practice is nearly every admin/manager/staff account after
+        a few days of real use — raised an unhandled IntegrityError that
+        surfaced as a bare 500 instead of a clean error. See
+        docs/specs/06-users-suppliers.md Finding #1.
+        """
         if current_user.nguoidung_id == user_id:
             raise DomainError(status_code=400, detail="Không thể xóa chính mình")
 
         user = self._get_user_or_404(db, user_id)
-        db.delete(user)
+        user.dang_hoat_dong = False
         db.commit()
 
     # ------------------------------------------------------------------

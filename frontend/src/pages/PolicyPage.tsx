@@ -1,9 +1,10 @@
 // Policy page - warm and clear policies
 import Card from '../components/ui/Card'
+import Container from '../components/layout/container'
 
 export default function PolicyPage() {
   return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-12 md:py-16">
+    <div className="bg-bg-canvas py-12 md:py-16"><Container>
       {/* Header */}
       <div className="max-w-3xl mx-auto mb-12">
         <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-4 leading-tight">
@@ -32,7 +33,7 @@ export default function PolicyPage() {
               Nếu có gì chưa rõ hoặc cần thay đổi, đó là lúc chúng ta nói chuyện. 
               Bạn không phải lo là mình nhầm gì đâu.
             </p>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-text-secondary">
               Thường thì chúng tôi sẽ liên hệ ngay sau khi bạn đặt bánh, trừ khi bạn đặt vào đêm khuya.
             </p>
           </div>
@@ -55,7 +56,7 @@ export default function PolicyPage() {
               Với bánh custom hoặc hộp quà đặc biệt, vì chúng mình đã chuẩn bị nguyên liệu riêng, 
               nên việc hủy có thể khó hơn một chút. 
             </p>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-text-secondary">
               Nếu chỉ đổi giờ giao hay địa chỉ, thì không sao cả—miễn bạn báo trước giờ giao bánh ít nhất 2 tiếng là được.
             </p>
           </div>
@@ -78,7 +79,7 @@ export default function PolicyPage() {
             <p>
               Phí giao hàng tùy khoảng cách. Chúng mình sẽ báo rõ trước khi bạn xác nhận đơn.
             </p>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-text-secondary">
               Nếu không có ai nhận ở nhà, tài xế sẽ gọi điện. Nên nhớ để máy gần nhé.
             </p>
           </div>
@@ -102,7 +103,7 @@ export default function PolicyPage() {
               Nếu bánh có vấn đề gì (vị lạ, hỏng, không đúng như đã đặt), 
               hãy chụp ảnh và liên hệ ngay. Chúng mình sẽ làm lại hoặc hoàn tiền cho bạn.
             </p>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-text-secondary">
               Chúng mình không dùng chất bảo quản, nên bánh không để lâu được nhưng đảm bảo luôn tươi mới.
             </p>
           </div>
@@ -126,7 +127,7 @@ export default function PolicyPage() {
             <p>
               Nếu bạn muốn xóa tài khoản hoặc xóa thông tin, cứ nói. Chúng tôi sẽ xóa.
             </p>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-text-secondary">
               Chúng mình giữ thông tin đơn hàng để phục vụ bạn tốt hơn lần sau—
               ví dụ nhớ địa chỉ, hay bánh bạn thích.
             </p>
@@ -140,13 +141,13 @@ export default function PolicyPage() {
             <br />
             cứ liên hệ trực tiếp. Chúng mình sẽ nói chuyện cụ thể hơn.
           </p>
-          <p className="text-text-muted text-xs mt-4">
+          <p className="text-text-secondary text-xs mt-4">
             Cập nhật lần cuối: 25/12/2025
           </p>
         </div>
 
       </div>
-    </div>
+    </Container></div>
   )
 }
 

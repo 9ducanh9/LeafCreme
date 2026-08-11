@@ -3,7 +3,8 @@ Orders router: Quản lý đơn hàng (POS, Online, Đặt trước)
 """
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from enum import Enum
+from typing import Literal, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -13,6 +14,7 @@ from app.core.dependencies import get_current_user, require_role
 from app.db import get_db
 from app.models import NguoiDung
 from app.services.orders import DomainError, OrderService
+from app.schemas import Page
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 order_service = OrderService()
@@ -51,6 +53,10 @@ class OrderItemResponse(BaseModel):
     tong_tien_phu: Decimal
     ghi_chu: Optional[str] = None
     trang_thai: str
+    # Resolved server-side (product/variant or gift box name) so the
+    # storefront doesn't have to show raw batch/gift-box IDs on order
+    # confirmation/detail. See OrderService._resolve_item_names.
+    product_name: str = "Sản phẩm không xác định"
 
     class Config:
         from_attributes = True
@@ -121,14 +127,24 @@ class OrderListResponse(BaseModel):
         from_attributes = True
 
 
+class OrderSortField(str, Enum):
+    ngay_tao = "ngay_tao"
+    tien_thanh_toan = "tien_thanh_toan"
+    trang_thai = "trang_thai"
+    ngay_giao_du_kien = "ngay_giao_du_kien"
+
+
 def _raise_http(exc: DomainError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
-@router.get("", response_model=List[OrderListResponse])
+@router.get("", response_model=Union[List[OrderListResponse], Page[OrderListResponse]])
 def list_orders(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
+    paginated: bool = Query(False),
+    sort_by: OrderSortField = Query(OrderSortField.ngay_tao),
+    sort_dir: Literal["asc", "desc"] = Query("desc"),
     loai_don: Optional[str] = Query(None, description="Filter theo loại đơn: pos, online, dattruoc"),
     trang_thai: Optional[str] = Query(None, description="Filter theo trạng thái"),
     ma_don_hang: Optional[str] = Query(None, description="Tìm kiếm theo mã đơn hàng"),
@@ -148,6 +164,9 @@ def list_orders(
             ma_don_hang=ma_don_hang,
             from_date=from_date,
             to_date=to_date,
+            paginated=paginated,
+            sort_by=sort_by.value,
+            sort_dir=sort_dir,
         )
     except DomainError as exc:
         _raise_http(exc)

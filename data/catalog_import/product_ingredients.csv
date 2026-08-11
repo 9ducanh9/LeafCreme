@@ -1,0 +1,216 @@
+product_id,ingredient_id,position,raw_text
+OFF-TIRA-0001,1,1,Lait écrémé reconstitué
+OFF-TIRA-0001,2,2,sirop de glucose
+OFF-TIRA-0001,3,3,huile de coco
+OFF-TIRA-0001,4,4,sucre
+OFF-TIRA-0001,5,5,protéines de lait
+OFF-TIRA-0001,6,6,farine de blé
+OFF-TIRA-0001,7,7,œufs
+OFF-TIRA-0001,8,8,mascarpone 2
+OFF-TIRA-0001,9,10,alcool
+OFF-TIRA-0001,10,11,jaune d'œufs
+OFF-TIRA-0001,11,13,café soluble 0
+OFF-TIRA-0001,12,15,amidon de blé
+OFF-TIRA-0001,13,16,amidon
+OFF-TIRA-0001,14,17,vin Marsala 0
+OFF-TIRA-0001,15,19,cacao en poudre 0
+OFF-TIRA-0001,16,21,dextrose
+OFF-TIRA-0001,17,22,émulsifiant: esters lactiques des mono et diglycérides d'acides gras
+OFF-TIRA-0001,18,23,cacao maigre en poudre
+OFF-TIRA-0001,19,24,arômes
+OFF-TIRA-0001,20,25,beurre de cacao
+OFF-TIRA-0001,21,26,extrait de café
+OFF-TIRA-0001,22,27,"poudre à lever (diphosphates, carbonates de sodium, farine de blé). Teneur en alcool: 1"
+OFF-TIRA-0001,23,28,5%. Peut contenir du soja
+OFF-TIRA-0001,24,29,des fruits à coque et de l'arachide.
+OFF-TIRA-0002,25,1,reconstituted skimmed milk
+OFF-TIRA-0002,26,2,glucose syrup
+OFF-TIRA-0002,27,3,16% mascarpone soft cheese (milk) (contains acidity regulator: lactic acid)
+OFF-TIRA-0002,28,4,"10% sponge fingers (wheat flour, egg, sugar, milk protein, raising agents: diphosphates, sodium carbonates)"
+OFF-TIRA-0002,29,5,coconut fat
+OFF-TIRA-0002,30,6,sugar
+OFF-TIRA-0002,31,7,cream (milk)
+OFF-TIRA-0002,32,8,2
+OFF-TIRA-0002,33,9,5% alcohol
+OFF-TIRA-0002,34,10,egg
+OFF-TIRA-0002,35,11,"1% cocoa dusting (46% cocoa, dextrose, wheat starch, sugar, cocoa butter)"
+OFF-TIRA-0002,36,12,1% marsala p
+OFF-TIRA-0002,37,13,d
+OFF-TIRA-0002,38,14,o
+OFF-TIRA-0002,39,15,wine
+OFF-TIRA-0002,40,16,1% soluble coffee
+OFF-TIRA-0002,41,17,milk protein
+OFF-TIRA-0002,42,18,stabiliser: sorbitols
+OFF-TIRA-0002,43,19,beef gelatine
+OFF-TIRA-0002,44,20,tapioca starch
+OFF-TIRA-0002,45,21,thickeners: sodium alginate
+OFF-TIRA-0002,46,22,locust bean gum
+OFF-TIRA-0002,47,23,emulsifier: lactic acid esters of mono - and diglycerides of fatty acids
+OFF-TIRA-0002,48,24,natural flavouring
+OFF-TIRA-0003,49,1,Mascarpone
+OFF-TIRA-0003,50,2,blancs d'œufs
+OFF-TIRA-0003,4,3,sucre
+OFF-TIRA-0003,51,4,biscuit aux œufs 12
+OFF-TIRA-0003,52,6,crème fraiche épaisse Paysan Breton
+OFF-TIRA-0003,53,7,sirop de café 0
+OFF-TIRA-0003,54,9,"sirop de vanille (eau, sucre, extrait de vanille)"
+OFF-TIRA-0003,15,10,cacao en poudre 0
+OFF-TIRA-0004,55,1,_Crème_*
+OFF-TIRA-0004,56,2,_mascarpone_* 16
+OFF-TIRA-0004,57,4,sucre de canne*
+OFF-TIRA-0004,58,5,_lait_ entier*
+OFF-TIRA-0004,59,6,eau
+OFF-TIRA-0004,60,7,"génoise* 9% (_œuf_*, farine de _blé_*, sucre de canne*, poudres à lever : carbonates de sodium et carbonates d'ammonium)"
+OFF-TIRA-0004,61,8,_œuf_*
+OFF-TIRA-0004,62,9,_lait_ écrémé en poudre*
+OFF-TIRA-0004,63,10,maltodextrine*
+OFF-TIRA-0004,64,11,alcool*
+OFF-TIRA-0004,65,12,extrait de café liquide* 1
+OFF-TIRA-0004,66,14,cacao en poudre* 1%
+OFF-TIRA-0004,67,15,amidon de tapioca*
+OFF-TIRA-0005,68,1,_crème_ 30%
+OFF-TIRA-0005,69,2,pâte de _noisettes_ grillées 22%
+OFF-TIRA-0005,4,3,sucre
+OFF-TIRA-0005,70,4,_mascarpone_ 9
+OFF-TIRA-0005,71,6,jaune d'_œuf_ 8
+OFF-TIRA-0005,72,8,"génoise (farine de _blé_, sucre, _œufs_ 1,9%, _lait_ entier en poudre, poudres à lever : tartrate de potassium et bicarbonate de sodium)"
+OFF-TIRA-0005,73,9,_noisettes_ grillées caramélisées 5
+OFF-TIRA-0005,74,11,_lait_
+OFF-TIRA-0005,75,12,poudre de cacao 1
+OFF-TIRA-0005,76,14,huile de tournesol
+OFF-TIRA-0005,77,15,fibres d'agrumes
+OFF-TIRA-0006,78,1,_Crème_ 33
+OFF-TIRA-0006,79,3,spéculoos en poudre 14
+OFF-TIRA-0006,6,5,farine de _blé_
+OFF-TIRA-0006,80,6,vergeoise
+OFF-TIRA-0006,4,7,sucre
+OFF-TIRA-0006,76,8,huile de tournesol
+OFF-TIRA-0006,59,9,eau
+OFF-TIRA-0006,81,10,_beurre_
+OFF-TIRA-0006,82,11,cannelle
+OFF-TIRA-0006,83,12,poudre à lever : bicarbonate de sodium
+OFF-TIRA-0006,84,13,sel)
+OFF-TIRA-0006,4,14,sucre
+OFF-TIRA-0006,70,15,_mascarpone_ 9
+OFF-TIRA-0006,85,16,"8% (_crème_, correcteur d'acidité : acide citrique, _lait_, jaune d'_œuf_ 8,3%, génoise 6,8% (_œufs_ 2,1% , farine de _blé_, sucre, eau, poudres à lever : diphosphates et carbonates de sodium, poudre de _lait_ écrémé), huile de tournesol, _œuf_ 0,7%, fibre d'agrumes, amidon de pomme de terre"
+OFF-TIRA-0007,86,1,CREME*
+OFF-TIRA-0007,87,2,"MASCARPONE* 16% (CREME*, correcteur d'acidité : acide lactique)"
+OFF-TIRA-0007,57,3,sucre de canne*
+OFF-TIRA-0007,58,4,LAIT entier*
+OFF-TIRA-0007,59,5,eau
+OFF-TIRA-0007,60,6,"génoise* 9% (OEUF entier*, farine de BLE*, sucre de canne*, poudres à lever : carbonates de sodium, carbonates d'ammonium)"
+OFF-TIRA-0007,88,7,OEUF entier*
+OFF-TIRA-0007,62,8,LAIT ÉCRÉMÉ en poudre*
+OFF-TIRA-0007,63,9,maltodextrine*
+OFF-TIRA-0007,64,10,alcool*
+OFF-TIRA-0007,89,11,extrait liquide de café* 1
+OFF-TIRA-0007,67,13,amidon de tapioca*
+OFF-TIRA-0007,66,14,cacao en poudre* 1%
+OFF-TIRA-0007,90,16,fruits à coque. Certains ingrédients de ce produit ne proviennent pas d'italie.
+OFF-TIRA-0008,59,1,Eau
+OFF-TIRA-0008,2,2,sirop de glucose
+OFF-TIRA-0008,91,3,génoise 8
+OFF-TIRA-0008,92,5,lait écréméen poudre
+OFF-TIRA-0008,93,6,huilede coco
+OFF-TIRA-0008,4,7,sucre
+OFF-TIRA-0008,94,8,mascarpone 4
+OFF-TIRA-0008,95,9,"7% (crème (dont lait), lait, correcteur d'acidité :acide lactique)"
+OFF-TIRA-0008,96,10,oeufs de poules élevées en plein air
+OFF-TIRA-0008,5,11,protéines de lait
+OFF-TIRA-0008,9,12,alcool
+OFF-TIRA-0008,97,13,vinMarsala AOC* 1
+OFF-TIRA-0008,98,15,cacaoen poudre 1
+OFF-TIRA-0008,99,17,cafésoluble 0
+OFF-TIRA-0008,100,19,fibrevégétale d'agrumes
+OFF-TIRA-0008,101,20,épaississant: carraghénanes
+OFF-TIRA-0008,102,21,arômesnaturels (dont lait et œufs)
+OFF-TIRA-0008,103,22,émulsifiant : mono - et diglycérides d'acidesgras
+OFF-TIRA-0008,104,23,extrait de café. Teneur en alcool : 1
+OFF-TIRA-0008,105,24,5%.*Appellation d'Origine Contrôlée. Peut contenir: soja et moutarde.
+OFF-SPNG-0001,4,1,Sucre
+OFF-SPNG-0001,6,2,farine de blé 20%
+OFF-SPNG-0001,106,3,huile de colza
+OFF-SPNG-0001,107,4,oeufs
+OFF-SPNG-0001,108,5,"chocolat en poudre 13 % (sucre, cacao en poudre)"
+OFF-SPNG-0001,109,6,pâte de noisette 6%
+OFF-SPNG-0001,110,7,lait écrémé en poudre 4
+OFF-SPNG-0001,111,9,sirop de glucose-fructose
+OFF-SPNG-0001,112,10,"poudres à lever (diphosphates, carbonates de sodium)"
+OFF-SPNG-0001,113,11,"émulsifiants (E471, lécithines de soja)"
+OFF-SPNG-0001,114,12,sel
+OFF-SPNG-0001,115,13,acidifiant (acide citrique)
+OFF-SPNG-0001,12,14,amidon de blé
+OFF-SPNG-0001,116,15,arômes naturels
+OFF-SPNG-0001,117,16,levure sèche. Peut contenir autres fruits à coque.
+OFF-SPNG-0002,118,1,LAIT frais pasteurisé 24%
+OFF-SPNG-0002,119,2,"chocolat noir extra 22% (sucre, pâte de cacao, beurre de cacao, émulsifiants: lecithines [SOJA]; vanilline)"
+OFF-SPNG-0002,4,3,sucre
+OFF-SPNG-0002,120,4,huile de palme
+OFF-SPNG-0002,121,5,LAIT écrémé en poudre 9
+OFF-SPNG-0002,122,7,farine de FROMENT 8%
+OFF-SPNG-0002,20,8,beurre de cacao
+OFF-SPNG-0002,123,9,BEURRE concentré
+OFF-SPNG-0002,16,10,dextrose
+OFF-SPNG-0002,124,11,"chocolat supérieur au LAIT 1% (sucre, LAIT en poudre, beurre de cacao, pâte de cacao, émulsifiants: lecithines [SOJA]; vanilline)"
+OFF-SPNG-0002,125,12,cacao maigre 0
+OFF-SPNG-0002,126,14,ŒUF en poudre 0
+OFF-SPNG-0002,127,16,levure
+OFF-SPNG-0002,128,17,émulsifiants: mono - et diglycérides d'acides gras
+OFF-SPNG-0002,129,18,lécithines [SOJA]; arômes
+OFF-SPNG-0002,114,19,sel
+OFF-SPNG-0002,130,20,extrait de malt d'ORGE en poudre.
+OFF-SPNG-0003,111,1,Sirop de glucose-fructose
+OFF-SPNG-0003,4,2,sucre
+OFF-SPNG-0003,6,3,farine de blé 19%
+OFF-SPNG-0003,131,4,purée de framboises 17 %***
+OFF-SPNG-0003,107,5,oeufs
+OFF-SPNG-0003,132,6,purée de pommes 15%
+OFF-SPNG-0003,12,7,amidon de blé
+OFF-SPNG-0003,133,8,gélifiant (pectines)
+OFF-SPNG-0003,116,9,arômes naturels
+OFF-SPNG-0003,134,10,correcteur d'acidité (acide citrique)
+OFF-SPNG-0003,135,11,"levure sèche. 
+Peut contenir lait et fruits à coque."
+OFF-SPNG-0004,136,1,"Fortified _Wheat_ Flour (_Wheat_ Flour, Calcium Carbonate, Iron, Niacin (B3), Thiamin (B1))"
+OFF-SPNG-0004,137,2,Water
+OFF-SPNG-0004,138,3,Raisins 14%
+OFF-SPNG-0004,139,4,"Partially Inverted Sugar Syrup (Partially Inverted Sugar Syrup, Colour (E150c))"
+OFF-SPNG-0004,140,5,Maize Starch
+OFF-SPNG-0004,141,6,Malted _Barley_ Flour 5%
+OFF-SPNG-0004,142,7,_Barley_ Malt Extract 4.4%
+OFF-SPNG-0004,143,8,"Vegetable Fat (Rapeseed, Palm)"
+OFF-SPNG-0004,144,9,Rice Starch
+OFF-SPNG-0004,145,10,Salt
+OFF-SPNG-0004,146,11,Yeast
+OFF-SPNG-0004,147,12,Preservative (Calcium Propionate).
+OFF-SPNG-0005,6,1,Farine de _blé_
+OFF-SPNG-0005,4,2,sucre
+OFF-SPNG-0005,106,3,huile de colza
+OFF-SPNG-0005,148,4,_œufs_ entiers
+OFF-SPNG-0005,50,5,blancs d'_œufs_
+OFF-SPNG-0005,149,6,poudre de _lait_ écrémé
+OFF-SPNG-0005,114,7,sel
+OFF-SPNG-0005,150,8,poudres à lever : carbonates de sodium
+OFF-SPNG-0005,151,9,diphosphates
+OFF-SPNG-0005,152,10,conservateur : sorbate de potassium
+OFF-SPNG-0005,153,11,correcteur d'acidité : acide citrique
+OFF-SPNG-0005,154,12,colorant : caroténoïdes
+OFF-SPNG-0005,19,13,"arômes (contient alcool &lt; 0,3%)."
+OFF-SPNG-0006,155,1,Sirop de glucose - fructose
+OFF-SPNG-0006,4,2,sucre
+OFF-SPNG-0006,156,3,"chocolat noir 17% [pâte de cacao, sucre, beurre de cacao, émulsifiant : lécithines (_soja_), arôme naturel de vanille]"
+OFF-SPNG-0006,157,4,jus de framboise à base de concentré 14%
+OFF-SPNG-0006,6,5,farine de _blé_
+OFF-SPNG-0006,7,6,_œufs_ 6%
+OFF-SPNG-0006,158,7,graisse de palme
+OFF-SPNG-0006,159,8,stabilisant : sorbitols
+OFF-SPNG-0006,12,9,amidon de _blé_
+OFF-SPNG-0006,160,10,gélifiant : pectines
+OFF-SPNG-0006,161,11,acidifiant : acide citrique
+OFF-SPNG-0006,162,12,fécule de manioc
+OFF-SPNG-0006,163,13,arôme naturel
+OFF-SPNG-0006,164,14,poudres à lever : carbonates d'ammonium et carbonates de sodium
+OFF-SPNG-0006,165,15,émulsifiant : mono - et diglycérides d'acides gras
+OFF-SPNG-0006,166,16,correcteur d'acidité : citrates de sodium
+OFF-SPNG-0006,167,17,"sel.
+Peut contenir des traces de fruits à coque et de lait."

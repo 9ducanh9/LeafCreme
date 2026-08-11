@@ -1,467 +1,95 @@
-// Admin Inventory Page - Quản lý tồn kho
-import { useState, useEffect, useCallback } from 'react'
-import {
-  Box,
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Tabs,
-  Tab,
-  TextField,
-  InputAdornment,
-  Chip,
-  CircularProgress,
-  Alert,
-} from '@mui/material'
-import SearchIcon from '@mui/icons-material/Search'
-import {
-  getProductInventory,
-  getComponentInventory,
-  getGiftBoxInventory,
-  ProductInventoryItem,
-  ComponentInventoryItem,
-  GiftBoxInventoryItem,
-} from '../../services/admin/inventoryService'
-import { normalizeSize, getSizeDisplayLabel } from '../../utils/sizeNormalizer'
+import { useCallback, useEffect, useState } from 'react'
+import { MenuItem, Tab, Tabs, TextField } from '@mui/material'
+import AdminPage from '../../components/admin/ui/admin-page'
+import DataTable, { type Column } from '../../components/admin/ui/data-table'
+import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
+import { useDataTableState } from '../../hooks/admin/useDataTableState'
+import { getBatchPage, type BatchListKind, type BatchPageItem } from '../../services/admin/batchService'
 
-interface TabPanelProps {
-  children?: React.ReactNode
-  index: number
-  value: number
-}
+const tabs: Array<{ kind: BatchListKind; label: string }> = [
+  { kind: 'products', label: 'Sản phẩm' },
+  { kind: 'components', label: 'Linh kiện' },
+  { kind: 'gift-boxes', label: 'Hộp quà' },
+]
 
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`inventory-tabpanel-${index}`}
-      aria-labelledby={`inventory-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
-    </div>
-  )
-}
+const columns: Column<BatchPageItem>[] = [
+  { id: 'ma_lo', label: 'Mã lô', sortable: true },
+  { id: 'lohang_id', label: 'Mã hệ thống', numeric: true, sortable: true },
+  { id: 'ngay_nhap', label: 'Ngày nhập', sortable: true, render: (row) => new Date(row.ngay_nhap).toLocaleDateString('vi-VN') },
+  { id: 'ngay_het_han', label: 'Hạn dùng', sortable: true, render: (row) => new Date(row.ngay_het_han).toLocaleDateString('vi-VN') },
+  { id: 'so_luong', label: 'Nhập', numeric: true },
+  { id: 'so_luong_hien_tai', label: 'Tồn hiện tại', numeric: true, sortable: true, render: (row) => row.so_luong_hien_tai ?? 0 },
+  { id: 'trang_thai', label: 'Trạng thái' },
+]
 
 export default function AdminInventoryPage() {
+  const table = useDataTableState({ key: 'inventory', defaultSortBy: 'ngay_het_han', defaultSortDir: 'asc', defaultPageSize: 50, filterKeys: ['search', 'trang_thai'] })
   const [activeTab, setActiveTab] = useState(0)
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [rows, setRows] = useState<BatchPageItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
-  
-  const [productInventory, setProductInventory] = useState<ProductInventoryItem[]>([])
-  const [componentInventory, setComponentInventory] = useState<ComponentInventoryItem[]>([])
-  const [giftBoxInventory, setGiftBoxInventory] = useState<GiftBoxInventoryItem[]>([])
 
   const loadInventory = useCallback(async () => {
-    setLoading(true)
+    setStatus('loading')
     setError(null)
     try {
-      if (activeTab === 0) {
-        const data = await getProductInventory()
-        setProductInventory(data)
-      } else if (activeTab === 1) {
-        const data = await getComponentInventory()
-        setComponentInventory(data)
-      } else if (activeTab === 2) {
-        const data = await getGiftBoxInventory()
-        setGiftBoxInventory(data)
-      }
-    } catch (err: unknown) {
-      console.error('Error loading inventory:', err)
-      // Kiểm tra nếu là lỗi CORS hoặc network
-      const detail =
-        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
-      const errorText =
-        err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : undefined
-      const status =
-        err && typeof err === 'object' && 'status' in err ? (err as { status?: unknown }).status : undefined
-      if (typeof detail === 'string' && (detail.includes('CORS') || detail.includes('fetch')) || errorText === 'Network error') {
-        setError('Lỗi kết nối: Vui lòng kiểm tra backend server đang chạy và CORS đã được cấu hình đúng')
-      } else if (status === 401) {
-        setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
-      } else {
-        setError((typeof errorText === 'string' && errorText) || (typeof detail === 'string' && detail) || 'Không thể tải dữ liệu tồn kho')
-      }
-    } finally {
-      setLoading(false)
+      const page = await getBatchPage(tabs[activeTab].kind, {
+        skip: table.skip,
+        limit: table.pageSize,
+        sort_by: table.sortBy,
+        sort_dir: table.sortDir,
+        search: table.filters.search,
+        trang_thai: table.filters.trang_thai,
+      })
+      setRows(page.items)
+      setTotal(page.total)
+      setStatus('idle')
+    } catch {
+      setError('Không thể tải dữ liệu tồn kho')
+      setStatus('error')
     }
-  }, [activeTab])
+  }, [activeTab, table.filters, table.pageSize, table.skip, table.sortBy, table.sortDir])
 
-  useEffect(() => {
-    loadInventory()
-  }, [loadInventory])
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  }
-
-  const getFilteredProducts = () => {
-    if (!search) return productInventory
-    const lowerSearch = search.toLowerCase()
-    return productInventory.filter(
-      (item) =>
-        item.ma_lo.toLowerCase().includes(lowerSearch) ||
-        (item.ten_sanpham || '').toLowerCase().includes(lowerSearch) ||
-        item.huong_vi.toLowerCase().includes(lowerSearch) ||
-        (item.kich_thuoc || '').toLowerCase().includes(lowerSearch)
-    )
-  }
-
-  const getFilteredComponents = () => {
-    if (!search) return componentInventory
-    const lowerSearch = search.toLowerCase()
-    return componentInventory.filter(
-      (item) =>
-        item.ma_lo.toLowerCase().includes(lowerSearch) ||
-        item.ten_linh_kien.toLowerCase().includes(lowerSearch)
-    )
-  }
-
-  const getFilteredGiftBoxes = () => {
-    if (!search) return giftBoxInventory
-    const lowerSearch = search.toLowerCase()
-    return giftBoxInventory.filter(
-      (item) =>
-        item.ma_lo.toLowerCase().includes(lowerSearch) ||
-        item.ten_hop_qua.toLowerCase().includes(lowerSearch)
-    )
-  }
-
-  const getTotalStock = (items: (ProductInventoryItem | ComponentInventoryItem | GiftBoxInventoryItem)[]) => {
-    return items.reduce((sum, item) => sum + (item.so_luong_hien_tai || 0), 0)
-  }
-
-  const getLowStockItems = (items: (ProductInventoryItem | ComponentInventoryItem | GiftBoxInventoryItem)[], threshold: number = 10) => {
-    return items.filter((item) => item.so_luong_hien_tai < threshold)
-  }
+  useEffect(() => { void loadInventory() }, [loadInventory])
+  const updateFilter = (name: string, value: string) => table.patch({ filters: { ...table.filters, [name]: value } })
+  const hasFilters = Object.keys(table.filters).length > 0
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F' }}>
-          Quản lý tồn kho
-        </Typography>
-      </Box>
-
-      <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={activeTab}
-          onChange={(_, newValue) => {
-            setActiveTab(newValue)
-            setSearch('')
-          }}
-          sx={{
-            borderBottom: 1,
-            borderColor: 'divider',
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              fontFamily: 'Playfair Display, serif',
-              fontSize: '1rem',
-            },
-          }}
-        >
-          <Tab label="Sản phẩm" />
-          <Tab label="Linh kiện" />
-          <Tab label="Hộp quà" />
-        </Tabs>
-
-        <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-          <TextField
-            size="small"
-            placeholder="Tìm kiếm theo mã lô hoặc tên..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ color: '#7A6F63' }} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ flexGrow: 1, maxWidth: 400 }}
-          />
-        </Box>
-      </Paper>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {loading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress sx={{ color: '#C59B72' }} />
-        </Box>
-      ) : (
-        <>
-          {/* Products Tab */}
-          <TabPanel value={activeTab} index={0}>
-            <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Chip
-                label={`Tổng tồn kho: ${getTotalStock(getFilteredProducts()).toLocaleString()}`}
-                color="primary"
-                sx={{ bgcolor: '#C59B72', color: 'white' }}
-              />
-              {getLowStockItems(getFilteredProducts()).length > 0 && (
-                <Chip
-                  label={`Sắp hết hàng: ${getLowStockItems(getFilteredProducts()).length}`}
-                  color="warning"
-                />
-              )}
-            </Box>
-            <TableContainer 
-              component={Paper}
-              sx={{ 
-                borderRadius: '16px',
-                border: 'none',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
-              }}
-            >
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: '#F7F6F3' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã lô</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Sản phẩm</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hương vị</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="center">Size</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
-                      Tồn kho
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
-                      Đã bán
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hết hạn</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {getFilteredProducts().length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 8, color: '#9B948B' }}>
-                        {search ? 'Không tìm thấy kết quả' : 'Không có dữ liệu tồn kho'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    getFilteredProducts().map((item) => (
-                      <TableRow
-                        key={item.lohang_id}
-                        sx={{
-                          cursor: 'pointer',
-                          transition: 'background-color 0.15s ease',
-                          '&:hover': { bgcolor: '#FAFAF9' },
-                        }}
-                      >
-                        <TableCell sx={{ color: '#9B948B', fontWeight: 600, py: 2, fontSize: '0.8125rem', fontFamily: 'monospace' }}>{item.ma_lo}</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>{item.ten_sanpham || 'N/A'}</TableCell>
-                        <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{item.huong_vi}</TableCell>
-                        <TableCell sx={{ py: 2 }} align="center">
-                          <Chip
-                            label={item.kich_thuoc ? getSizeDisplayLabel(normalizeSize(item.kich_thuoc)) : 'N/A'}
-                            size="small"
-                            sx={{
-                              bgcolor: 'rgba(232, 229, 221, 0.5)',
-                              color: '#7A6F63',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                              height: '24px',
-                              borderRadius: '12px',
-                              border: 'none'
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell align="right" sx={{ py: 2 }}>
-                          <Chip
-                            label={item.so_luong_hien_tai.toLocaleString()}
-                            size="small"
-                            color={item.so_luong_hien_tai < 10 ? 'warning' : 'default'}
-                            sx={{
-                              fontSize: '0.75rem',
-                              height: '24px',
-                              borderRadius: '12px',
-                              fontWeight: 700
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem', fontWeight: 600 }}>{item.so_luong_da_ban.toLocaleString()}</TableCell>
-                        <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{formatDate(item.ngay_het_han)}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </TabPanel>
-
-          {/* Components Tab */}
-          <TabPanel value={activeTab} index={1}>
-            <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Chip
-                label={`Tổng tồn kho: ${getTotalStock(getFilteredComponents()).toLocaleString()}`}
-                color="primary"
-                sx={{ bgcolor: '#C59B72', color: 'white' }}
-              />
-              {getLowStockItems(getFilteredComponents()).length > 0 && (
-                <Chip
-                  label={`Sắp hết hàng: ${getLowStockItems(getFilteredComponents()).length}`}
-                  color="warning"
-                />
-              )}
-            </Box>
-            <TableContainer 
-              component={Paper}
-              sx={{ 
-                borderRadius: '16px',
-                border: 'none',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
-              }}
-            >
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: '#F7F6F3' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã lô</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Tên linh kiện</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
-                      Tồn kho
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
-                      Đã sử dụng
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hết hạn</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {getFilteredComponents().length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 8, color: '#9B948B' }}>
-                        {search ? 'Không tìm thấy kết quả' : 'Không có dữ liệu tồn kho'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    getFilteredComponents().map((item) => (
-                      <TableRow
-                        key={item.lohang_id}
-                        sx={{
-                          cursor: 'pointer',
-                          transition: 'background-color 0.15s ease',
-                          '&:hover': { bgcolor: '#FAFAF9' },
-                        }}
-                      >
-                        <TableCell sx={{ color: '#9B948B', fontWeight: 600, py: 2, fontSize: '0.8125rem', fontFamily: 'monospace' }}>{item.ma_lo}</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>{item.ten_linh_kien}</TableCell>
-                        <TableCell align="right" sx={{ py: 2 }}>
-                          <Chip
-                            label={item.so_luong_hien_tai.toLocaleString()}
-                            size="small"
-                            color={item.so_luong_hien_tai < 10 ? 'warning' : 'default'}
-                            sx={{
-                              fontSize: '0.75rem',
-                              height: '24px',
-                              borderRadius: '12px',
-                              fontWeight: 700
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem', fontWeight: 600 }}>{item.so_luong_da_su_dung.toLocaleString()}</TableCell>
-                        <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{formatDate(item.ngay_het_han)}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </TabPanel>
-
-          {/* Gift Boxes Tab */}
-          <TabPanel value={activeTab} index={2}>
-            <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Chip
-                label={`Tổng tồn kho: ${getTotalStock(getFilteredGiftBoxes()).toLocaleString()}`}
-                color="primary"
-                sx={{ bgcolor: '#C59B72', color: 'white' }}
-              />
-              {getLowStockItems(getFilteredGiftBoxes()).length > 0 && (
-                <Chip
-                  label={`Sắp hết hàng: ${getLowStockItems(getFilteredGiftBoxes()).length}`}
-                  color="warning"
-                />
-              )}
-            </Box>
-            <TableContainer 
-              component={Paper}
-              sx={{ 
-                borderRadius: '16px',
-                border: 'none',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
-              }}
-            >
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: '#F7F6F3' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Mã lô</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Tên hộp quà</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
-                      Tồn kho
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }} align="right">
-                      Đã bán
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#7A6F63', fontSize: '0.8125rem', py: 2, letterSpacing: '0.3px' }}>Hết hạn</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {getFilteredGiftBoxes().length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 8, color: '#9B948B' }}>
-                        {search ? 'Không tìm thấy kết quả' : 'Không có dữ liệu tồn kho'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    getFilteredGiftBoxes().map((item) => (
-                      <TableRow
-                        key={item.lohang_id}
-                        sx={{
-                          cursor: 'pointer',
-                          transition: 'background-color 0.15s ease',
-                          '&:hover': { bgcolor: '#FAFAF9' },
-                        }}
-                      >
-                        <TableCell sx={{ color: '#9B948B', fontWeight: 600, py: 2, fontSize: '0.8125rem', fontFamily: 'monospace' }}>{item.ma_lo}</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#473C2F', py: 2 }}>{item.ten_hop_qua}</TableCell>
-                        <TableCell align="right" sx={{ py: 2 }}>
-                          <Chip
-                            label={item.so_luong_hien_tai.toLocaleString()}
-                            size="small"
-                            color={item.so_luong_hien_tai < 10 ? 'warning' : 'default'}
-                            sx={{
-                              fontSize: '0.75rem',
-                              height: '24px',
-                              borderRadius: '12px',
-                              fontWeight: 700
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem', fontWeight: 600 }}>{item.so_luong_da_ban.toLocaleString()}</TableCell>
-                        <TableCell sx={{ color: '#7A6F63', py: 2, fontSize: '0.875rem' }}>{formatDate(item.ngay_het_han)}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </TabPanel>
-        </>
-      )}
-    </Box>
+    <AdminPage title="Tồn kho" breadcrumb={[{ label: 'Tồn kho' }]}>
+      <Tabs value={activeTab} onChange={(_, value) => { setActiveTab(value); table.patch({ page: 0 }) }} aria-label="Nhóm tồn kho">
+        {tabs.map((tab) => <Tab key={tab.kind} label={tab.label} />)}
+      </Tabs>
+      <DataTableToolbar title="Các lô hàng đang quản lý" onClear={hasFilters ? () => table.patch({ filters: {} }) : undefined}>
+        <TextField size="small" label="Tìm theo mã lô" value={table.filters.search || ''} onChange={(event) => updateFilter('search', event.target.value)} />
+        <TextField select size="small" label="Trạng thái" value={table.filters.trang_thai || ''} onChange={(event) => updateFilter('trang_thai', event.target.value)}>
+          <MenuItem value="">Tất cả</MenuItem>
+          <MenuItem value="hoatdong">Hoạt động</MenuItem>
+          <MenuItem value="tamdung">Tạm dừng</MenuItem>
+          <MenuItem value="hethan">Hết hạn</MenuItem>
+          <MenuItem value="daxuathet">Đã xuất hết</MenuItem>
+        </TextField>
+      </DataTableToolbar>
+      <DataTable
+        caption={`Danh sách lô ${tabs[activeTab].label.toLowerCase()}`}
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.lohang_id}
+        getRowLabel={(row) => row.ma_lo}
+        total={total}
+        page={table.page}
+        pageSize={table.pageSize}
+        onPageChange={(page) => table.patch({ page })}
+        onPageSizeChange={(pageSize) => table.patch({ pageSize })}
+        sortBy={table.sortBy}
+        sortDir={table.sortDir}
+        onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })}
+        status={status}
+        error={error}
+        onRetry={() => void loadInventory()}
+        hasActiveFilters={hasFilters}
+        onClearFilters={() => table.patch({ filters: {} })}
+      />
+    </AdminPage>
   )
 }
-

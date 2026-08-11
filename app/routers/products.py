@@ -6,16 +6,19 @@ logic (moved out as part of the Phase 1 service-layer migration).
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import JSONResponse
+from sqlalchemy import Date, cast, func, select
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Literal, Optional, List, Union
+from enum import Enum
 from decimal import Decimal
-from datetime import datetime
+from datetime import date, datetime
 
 from ..db import get_db
 from ..core.dependencies import get_current_active_user, require_role, get_optional_user
-from ..models import NguoiDung
+from ..models import BienTheSanPham, LoHangSanPham, NguoiDung, TonKhoSanPham
 from ..services.products import ProductService, DomainError
 from pydantic import BaseModel, Field
+from ..schemas import Page
 
 router = APIRouter(prefix="/products", tags=["products"])
 product_service = ProductService()
@@ -79,6 +82,13 @@ class ProductResponse(BaseModel):
         from_attributes = True
 
 
+class ProductSortField(str, Enum):
+    ten = "ten"
+    gia_co_ban = "gia_co_ban"
+    danh_muc = "danh_muc"
+    ngay_tao = "ngay_tao"
+
+
 # =========================================================
 # Pydantic Schemas - Variants
 # =========================================================
@@ -116,13 +126,23 @@ class VariantResponse(BaseModel):
         from_attributes = True
 
 
+class ProductAvailabilityResponse(BaseModel):
+    bienthe_id: int
+    so_luong_con: int
+    ngay_het_han_som_nhat: Optional[datetime]
+    dang_ban_duoc: bool
+
+
 # =========================================================
 # Product Endpoints
 # =========================================================
-@router.get("", response_model=List[ProductResponse])
+@router.get("", response_model=Union[List[ProductResponse], Page[ProductResponse]])
 def list_products(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(50, ge=1, le=200),
+    paginated: bool = Query(False),
+    sort_by: ProductSortField = Query(ProductSortField.ngay_tao),
+    sort_dir: Literal["asc", "desc"] = Query("desc"),
     search: Optional[str] = Query(None, description="Tìm kiếm theo tên hoặc SKU"),
     danh_muc: Optional[str] = Query(None, description="Lọc theo danh mục"),
     loai: Optional[str] = Query(None, pattern="^(don|bien_the)$"),
@@ -133,6 +153,7 @@ def list_products(
     """Danh sách sản phẩm với filters (public access)"""
     return product_service.list_products(
         db, skip=skip, limit=limit, search=search, danh_muc=danh_muc, loai=loai, dang_hoat_dong=dang_hoat_dong,
+        paginated=paginated, sort_by=sort_by.value, sort_dir=sort_dir,
     )
 
 
@@ -161,6 +182,50 @@ async def upload_product_image(
     except DomainError as exc:
         _raise_http(exc)
     return JSONResponse({"image_path": image_path, "message": "Upload ảnh thành công"})
+
+
+@router.get("/{product_id}/availability", response_model=List[ProductAvailabilityResponse])
+def get_product_availability(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[NguoiDung] = Depends(get_optional_user),
+):
+    """Return sellable stock by variant, excluding inactive and expired lots."""
+    variants = db.scalars(
+        select(BienTheSanPham).where(
+            BienTheSanPham.sanpham_id == product_id,
+            BienTheSanPham.dang_hoat_dong.is_(True),
+        )
+    ).all()
+    if not variants:
+        return []
+
+    today = date.today()
+    rows = db.execute(
+        select(
+            LoHangSanPham.bienthe_sanpham_id,
+            func.coalesce(func.sum(TonKhoSanPham.so_luong_hien_tai), 0),
+            func.min(LoHangSanPham.ngay_het_han),
+        )
+        .join(TonKhoSanPham, TonKhoSanPham.lohang_sanpham_id == LoHangSanPham.lohang_id)
+        .where(
+            LoHangSanPham.bienthe_sanpham_id.in_([variant.bienthe_id for variant in variants]),
+            LoHangSanPham.trang_thai == "hoatdong",
+            cast(LoHangSanPham.ngay_het_han, Date) >= today,
+            TonKhoSanPham.so_luong_hien_tai > 0,
+        )
+        .group_by(LoHangSanPham.bienthe_sanpham_id)
+    ).all()
+    stock_by_variant = {variant_id: (int(quantity or 0), earliest_expiry) for variant_id, quantity, earliest_expiry in rows}
+    return [
+        ProductAvailabilityResponse(
+            bienthe_id=variant.bienthe_id,
+            so_luong_con=stock_by_variant.get(variant.bienthe_id, (0, None))[0],
+            ngay_het_han_som_nhat=stock_by_variant.get(variant.bienthe_id, (0, None))[1],
+            dang_ban_duoc=stock_by_variant.get(variant.bienthe_id, (0, None))[0] > 0,
+        )
+        for variant in variants
+    ]
 
 
 @router.get("/{product_id}", response_model=ProductResponse)

@@ -1,0 +1,942 @@
+[
+  {
+    "id": "LC-REC-0001",
+    "name": "Mousse chanh dây",
+    "slug": "mousse-chanh-day",
+    "category": "Mousse",
+    "subcategory": "Chanh dây",
+    "flavor": "Chanh dây (Passion fruit)",
+    "image_url": "product/1_Mousse_chanh_dây.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "MOU-01-S",
+        "product_id": "LC-REC-0001",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "190000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-01-M",
+        "product_id": "LC-REC-0001",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "220000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-01-L",
+        "product_id": "LC-REC-0001",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "340000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0002",
+    "name": "Mousse dâu tươi",
+    "slug": "mousse-dau-tuoi",
+    "category": "Mousse",
+    "subcategory": "Dâu tươi",
+    "flavor": "Dâu tươi (Fresh strawberry)",
+    "image_url": "product/2_Mousse_dâu_tươi.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "MOU-02-S",
+        "product_id": "LC-REC-0002",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "190000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-02-M",
+        "product_id": "LC-REC-0002",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "220000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-02-L",
+        "product_id": "LC-REC-0002",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "340000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0003",
+    "name": "Mousse matcha phô mai",
+    "slug": "mousse-matcha-pho-mai",
+    "category": "Mousse",
+    "subcategory": "Matcha phô mai",
+    "flavor": "Matcha phô mai (Matcha cheese)",
+    "image_url": "product/3_Mousse_matcha_phô_mai.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "MOU-03-S",
+        "product_id": "LC-REC-0003",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "190000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-03-M",
+        "product_id": "LC-REC-0003",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "220000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-03-L",
+        "product_id": "LC-REC-0003",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "340000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0004",
+    "name": "Mousse chocolate đen",
+    "slug": "mousse-chocolate-en",
+    "category": "Mousse",
+    "subcategory": "Chocolate đen",
+    "flavor": "Chocolate đen (Dark chocolate)",
+    "image_url": "product/4_Mousse_chocolate_đen.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "MOU-04-S",
+        "product_id": "LC-REC-0004",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "190000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-04-M",
+        "product_id": "LC-REC-0004",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "220000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-04-L",
+        "product_id": "LC-REC-0004",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "340000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0005",
+    "name": "Mousse việt quất",
+    "slug": "mousse-viet-quat",
+    "category": "Mousse",
+    "subcategory": "Việt quất",
+    "flavor": "Việt quất (Blueberry)",
+    "image_url": "product/5_Mousse_việt_quất.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "MOU-05-S",
+        "product_id": "LC-REC-0005",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "190000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-05-M",
+        "product_id": "LC-REC-0005",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "220000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "MOU-05-L",
+        "product_id": "LC-REC-0005",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "340000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0006",
+    "name": "Tiramisu classic coffee",
+    "slug": "tiramisu-classic-coffee",
+    "category": "Tiramisu",
+    "subcategory": "Coffee",
+    "flavor": "Coffee (Classic)",
+    "image_url": "product/6_Tiramisu_classic_coffee.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "TIRA-06-S",
+        "product_id": "LC-REC-0006",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-06-M",
+        "product_id": "LC-REC-0006",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-06-L",
+        "product_id": "LC-REC-0006",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "310000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0007",
+    "name": "Tiramisu cacao",
+    "slug": "tiramisu-cacao",
+    "category": "Tiramisu",
+    "subcategory": "Cacao",
+    "flavor": "Cacao",
+    "image_url": "product/7_Tiramisu_cacao.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "TIRA-07-S",
+        "product_id": "LC-REC-0007",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-07-M",
+        "product_id": "LC-REC-0007",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-07-L",
+        "product_id": "LC-REC-0007",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "310000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0008",
+    "name": "Tiramisu matcha",
+    "slug": "tiramisu-matcha",
+    "category": "Tiramisu",
+    "subcategory": "Matcha",
+    "flavor": "Matcha",
+    "image_url": "product/8_Tiramisu_matcha.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "TIRA-08-S",
+        "product_id": "LC-REC-0008",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-08-M",
+        "product_id": "LC-REC-0008",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-08-L",
+        "product_id": "LC-REC-0008",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "310000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0009",
+    "name": "Tiramisu dâu",
+    "slug": "tiramisu-dau",
+    "category": "Tiramisu",
+    "subcategory": "Dâu",
+    "flavor": "Dâu (Strawberry)",
+    "image_url": "product/9_Tiramisu_dâu.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "TIRA-09-S",
+        "product_id": "LC-REC-0009",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-09-M",
+        "product_id": "LC-REC-0009",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-09-L",
+        "product_id": "LC-REC-0009",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "310000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0010",
+    "name": "Tiramisu oreo",
+    "slug": "tiramisu-oreo",
+    "category": "Tiramisu",
+    "subcategory": "Oreo",
+    "flavor": "Oreo",
+    "image_url": "product/10_Tiramisu_oreo.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "TIRA-10-S",
+        "product_id": "LC-REC-0010",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-10-M",
+        "product_id": "LC-REC-0010",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "TIRA-10-L",
+        "product_id": "LC-REC-0010",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "310000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0011",
+    "name": "Bông lan trứng muối basic",
+    "slug": "bong-lan-trung-muoi-basic",
+    "category": "Bông lan",
+    "subcategory": "Trứng muối",
+    "flavor": "Trứng muối (Salted egg)",
+    "image_url": "product/11_Bông_lan_trứng_muối_basic.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BL-11-S",
+        "product_id": "LC-REC-0011",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-11-M",
+        "product_id": "LC-REC-0011",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-11-L",
+        "product_id": "LC-REC-0011",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0012",
+    "name": "Bông lan trứng muối phô mai",
+    "slug": "bong-lan-trung-muoi-pho-mai",
+    "category": "Bông lan",
+    "subcategory": "Trứng muối phô mai",
+    "flavor": "Trứng muối phô mai (Salted egg cheese)",
+    "image_url": "product/12_Bông_lan_trứng_muối_phô_mai.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BL-12-S",
+        "product_id": "LC-REC-0012",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-12-M",
+        "product_id": "LC-REC-0012",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-12-L",
+        "product_id": "LC-REC-0012",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0013",
+    "name": "Bông lan trứng muối sốt dầu trứng",
+    "slug": "bong-lan-trung-muoi-sot-dau-trung",
+    "category": "Bông lan",
+    "subcategory": "Trứng muối sốt dầu trứng",
+    "flavor": "Trứng muối sốt dầu trứng (Salted egg + egg-oil sauce)",
+    "image_url": "product/13_Bông_lan_trứng_muối_sốt_dầu_trứng.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BL-13-S",
+        "product_id": "LC-REC-0013",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-13-M",
+        "product_id": "LC-REC-0013",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-13-L",
+        "product_id": "LC-REC-0013",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0014",
+    "name": "Bông lan bơ sữa trái cây",
+    "slug": "bong-lan-bo-sua-trai-cay",
+    "category": "Bông lan",
+    "subcategory": "Bơ sữa trái cây",
+    "flavor": "Bơ sữa trái cây (Buttermilk fruit)",
+    "image_url": "product/14_Bông_lan_bơ_sữa_trái_cây.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BL-14-S",
+        "product_id": "LC-REC-0014",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-14-M",
+        "product_id": "LC-REC-0014",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-14-L",
+        "product_id": "LC-REC-0014",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0015",
+    "name": "Bông lan bơ sữa chocolate chips",
+    "slug": "bong-lan-bo-sua-chocolate-chips",
+    "category": "Bông lan",
+    "subcategory": "Bơ sữa chocolate chips",
+    "flavor": "Bơ sữa chocolate chips (Buttermilk choc chip)",
+    "image_url": "product/15_Bông_lan_bơ_sữa_chocolate_chips.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BL-15-S",
+        "product_id": "LC-REC-0015",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "170000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-15-M",
+        "product_id": "LC-REC-0015",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "200000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BL-15-L",
+        "product_id": "LC-REC-0015",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0016",
+    "name": "Bánh kem vanilla trái cây",
+    "slug": "banh-kem-vanilla-trai-cay",
+    "category": "Bánh kem",
+    "subcategory": "Vanilla trái cây",
+    "flavor": "Vanilla trái cây (Vanilla fruit)",
+    "image_url": "product/16_Banh_kem_vanilla_trai_cay.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BK-16-S",
+        "product_id": "LC-REC-0016",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "150000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-16-M",
+        "product_id": "LC-REC-0016",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-16-L",
+        "product_id": "LC-REC-0016",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "380000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0017",
+    "name": "Bánh kem chocolate",
+    "slug": "banh-kem-chocolate",
+    "category": "Bánh kem",
+    "subcategory": "Chocolate",
+    "flavor": "Chocolate",
+    "image_url": "product/17_Bánh_kem_chocolate.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BK-17-S",
+        "product_id": "LC-REC-0017",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "150000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-17-M",
+        "product_id": "LC-REC-0017",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-17-L",
+        "product_id": "LC-REC-0017",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "380000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0018",
+    "name": "Bánh kem red velvet",
+    "slug": "banh-kem-red-velvet",
+    "category": "Bánh kem",
+    "subcategory": "Red velvet",
+    "flavor": "Red velvet",
+    "image_url": "product/18_Bánh_kem_red_velvet.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BK-18-S",
+        "product_id": "LC-REC-0018",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "150000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-18-M",
+        "product_id": "LC-REC-0018",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-18-L",
+        "product_id": "LC-REC-0018",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "380000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0019",
+    "name": "Bánh kem oreo",
+    "slug": "banh-kem-oreo",
+    "category": "Bánh kem",
+    "subcategory": "Oreo",
+    "flavor": "Oreo",
+    "image_url": "product/19_Bánh_kem_oreo.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BK-19-S",
+        "product_id": "LC-REC-0019",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "150000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-19-M",
+        "product_id": "LC-REC-0019",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-19-L",
+        "product_id": "LC-REC-0019",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "380000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  },
+  {
+    "id": "LC-REC-0020",
+    "name": "Bánh kem tiramisu kem",
+    "slug": "banh-kem-tiramisu-kem",
+    "category": "Bánh kem",
+    "subcategory": "Tiramisu kem",
+    "flavor": "Tiramisu kem (Tiramisu cream)",
+    "image_url": "product/20_Bánh_kem_tiramisu_kem.jpg",
+    "image_license_status": "cc-license-unsplash-pexels-see-download-script",
+    "data_origin": "recovered",
+    "notes": "Tên + ảnh khôi phục từ dữ liệu gốc bị mất (ảnh đã tải sẵn bởi scripts/download_product_images.py, xem git 3b9931c; tên khớp PRODUCT_NAME_MAPPING trong scripts/seed_gift_boxes.py). Giá là ước lượng theo thị trường (xem README), KHÔNG phải giá gốc đã mất. Nguyên liệu/allergen chưa xác thực.",
+    "variants": [
+      {
+        "sku": "BK-20-S",
+        "product_id": "LC-REC-0020",
+        "size": "S - 12cm (2-3 người)",
+        "weight": "400",
+        "weight_unit": "g",
+        "servings": "2-3 người",
+        "price": "150000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-20-M",
+        "product_id": "LC-REC-0020",
+        "size": "M - 14cm (3-4 người)",
+        "weight": "550",
+        "weight_unit": "g",
+        "servings": "3-4 người",
+        "price": "250000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      },
+      {
+        "sku": "BK-20-L",
+        "product_id": "LC-REC-0020",
+        "size": "L - 18cm (6-8 người)",
+        "weight": "900",
+        "weight_unit": "g",
+        "servings": "6-8 người",
+        "price": "380000",
+        "price_currency": "VND",
+        "price_data_origin": "synthetic"
+      }
+    ]
+  }
+]

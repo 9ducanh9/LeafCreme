@@ -59,6 +59,9 @@ class NguoiDung(Base):
     nguoidung_id: Mapped[int] = mapped_column(primary_key=True)
     ten_dang_nhap: Mapped[str] = mapped_column(String(50), unique=True)
     email: Mapped[str] = mapped_column(String(100), unique=True)
+    # Immutable Cognito subject used to map an external identity to this
+    # application's existing role and customer records.
+    cognito_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     mat_khau_ma_hoa: Mapped[str] = mapped_column(String(255))
     vaitro_id: Mapped[int] = mapped_column(ForeignKey("vaitro.vaitro_id", ondelete="RESTRICT"))
     ho_ten: Mapped[str] = mapped_column(String(100))

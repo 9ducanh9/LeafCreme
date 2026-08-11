@@ -21,6 +21,7 @@ from app.routers import (
 )
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.security_middleware import SecurityMiddleware
+from app.scheduler import shutdown_scheduler, start_scheduler
 
 app = FastAPI(
     title="BakeryOnl API",
@@ -88,6 +89,16 @@ app.include_router(components.router)
 app.include_router(leafie.router)
 app.include_router(alerts.router)
 app.include_router(inventory_trace.router)
+
+
+@app.on_event("startup")
+def _on_startup() -> None:
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+def _on_shutdown() -> None:
+    shutdown_scheduler()
 
 
 @app.get("/", tags=["root"])

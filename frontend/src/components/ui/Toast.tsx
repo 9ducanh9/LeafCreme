@@ -1,6 +1,6 @@
-// Toast notification component - displays temporary messages
 import { useEffect } from 'react'
-import { X, CheckCircle2, AlertCircle, Info, AlertTriangle } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
+import { cn } from '../../lib/cn'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -8,67 +8,30 @@ export interface Toast {
   id: string
   message: string
   type: ToastType
-  duration?: number // in milliseconds, default 3000
+  duration?: number
 }
 
-interface ToastProps {
-  toast: Toast
-  onClose: (id: string) => void
-}
+interface ToastProps { toast: Toast; onClose: (id: string) => void }
 
 export default function ToastComponent({ toast, onClose }: ToastProps) {
-  const duration = toast.duration ?? 3000
-
+  const duration = toast.duration ?? 5000
   useEffect(() => {
-    if (duration > 0) {
-      const timer = setTimeout(() => {
-        onClose(toast.id)
-      }, duration)
-      return () => clearTimeout(timer)
-    }
-  }, [duration, toast.id, onClose])
+    if (duration <= 0) return
+    const timer = window.setTimeout(() => onClose(toast.id), duration)
+    return () => window.clearTimeout(timer)
+  }, [duration, onClose, toast.id])
 
-  const getIcon = () => {
-    switch (toast.type) {
-      case 'success':
-        return <CheckCircle2 className="w-5 h-5 text-white" />
-      case 'error':
-        return <AlertCircle className="w-5 h-5 text-white" />
-      case 'warning':
-        return <AlertTriangle className="w-5 h-5 text-white" />
-      case 'info':
-        return <Info className="w-5 h-5 text-white" />
-    }
-  }
+  const Icon = toast.type === 'success' ? CheckCircle2 : toast.type === 'error' ? AlertCircle : toast.type === 'warning' ? AlertTriangle : Info
+  const styles = {
+    success: 'border-success/30 bg-success-bg text-success',
+    error: 'border-danger/30 bg-danger-bg text-danger',
+    warning: 'border-warning/30 bg-warning-bg text-warning',
+    info: 'border-info/30 bg-info-bg text-info',
+  }[toast.type]
 
-  const getBgColor = () => {
-    switch (toast.type) {
-      case 'success':
-        return 'bg-accent-brown'
-      case 'error':
-        return 'bg-red-500'
-      case 'warning':
-        return 'bg-accent-yellow'
-      case 'info':
-        return 'bg-blue-500'
-    }
-  }
-
-  return (
-    <div
-      className={`${getBgColor()} text-white px-4 py-3 rounded-card shadow-lg flex items-center gap-3 min-w-[300px] max-w-[500px] animate-slide-in-right`}
-      role="alert"
-    >
-      <div className="flex-shrink-0">{getIcon()}</div>
-      <p className="flex-1 text-sm font-medium">{toast.message}</p>
-      <button
-        onClick={() => onClose(toast.id)}
-        className="flex-shrink-0 p-1 hover:bg-white/20 rounded-button transition-default"
-        aria-label="Đóng thông báo"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  )
+  return <div className={cn('flex w-full max-w-md items-start gap-3 rounded-lg border px-4 py-3 shadow-lg', styles)} role="status" aria-live="polite">
+    <Icon className="mt-0.5 size-5 shrink-0" aria-hidden />
+    <p className="flex-1 text-sm font-medium">{toast.message}</p>
+    <button type="button" onClick={() => onClose(toast.id)} className="shrink-0 rounded-md p-1 hover:bg-bg-overlay" aria-label="Đóng thông báo"><X className="size-4" aria-hidden /></button>
+  </div>
 }
-

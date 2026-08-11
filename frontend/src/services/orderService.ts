@@ -28,6 +28,9 @@ export interface OrderItemResponse {
   tong_tien_phu: number
   ghi_chu?: string
   trang_thai: string
+  // Resolved server-side — product/variant name or gift box name. See
+  // app/services/orders/order_service.py OrderService._resolve_item_names.
+  product_name: string
 }
 
 export interface OrderResponse {

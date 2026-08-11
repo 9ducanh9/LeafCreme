@@ -48,4 +48,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # Migrations run as a separate deploy step (see docker-compose.yml command /
 # a future fly.toml release_command) — NOT at container start, so a bad
 # migration fails the deploy instead of crash-looping the running app.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# The app owns an APScheduler instance. Keep a single worker unless scheduled
+# work is moved into a separate worker service, otherwise every worker runs it.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]

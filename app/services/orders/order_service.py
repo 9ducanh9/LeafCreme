@@ -3,26 +3,23 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import desc, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.events.dispatcher import dispatcher
-from app.events.types import inventory_restored, order_cancelled, order_created, payment_failed
 from app.models import (
     BienTheSanPham,
     ChiTietDonHang,
     CongThucHopQua,
-    DanhGiaSanPham,
     DonHang,
     DonHangPhieuGiamGia,
-    DoiTra,
     HopQua,
     HopQuaBOM,
-    LichSuKhoHopQua,
-    LichSuKhoLinhKien,
-    LichSuKhoSanPham,
+    LoHangHopQua,
+    LoHangSanPham,
     NguoiDung,
     PhanBoChiTietDonHang,
     PhieuGiamGia,
+    SanPham,
     ThanhToan,
     TonKhoHopQua,
     TonKhoLinhKien,
@@ -34,6 +31,8 @@ from .errors import DomainError
 from .inventory_service import InventoryAllocation, InventoryService
 from .types import OrderItemInfo
 from .voucher_service import VoucherService
+
+_TERMINAL_ORDER_STATUSES = ("hoan_thanh", "da_huy")
 
 
 class OrderService:
@@ -58,6 +57,9 @@ class OrderService:
         ma_don_hang: Optional[str] = None,
         from_date: Optional[datetime] = None,
         to_date: Optional[datetime] = None,
+        paginated: bool = False,
+        sort_by: str = "ngay_tao",
+        sort_dir: str = "desc",
     ):
         query = db.query(DonHang)
 
@@ -76,7 +78,20 @@ class OrderService:
         if vaitro_ten not in ["admin", "manager"]:
             query = query.filter(DonHang.nguoidung_id == current_user.nguoidung_id)
 
-        return query.order_by(desc(DonHang.ngay_tao)).offset(skip).limit(limit).all()
+        if not paginated:
+            return query.order_by(desc(DonHang.ngay_tao), DonHang.donhang_id.asc()).offset(skip).limit(limit).all()
+
+        total = query.count()
+        sort_map = {
+            "ngay_tao": DonHang.ngay_tao,
+            "tien_thanh_toan": DonHang.tien_thanh_toan,
+            "trang_thai": DonHang.trang_thai,
+            "ngay_giao_du_kien": DonHang.ngay_giao_du_kien,
+        }
+        sort_column = sort_map.get(sort_by, DonHang.ngay_tao)
+        direction = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
+        items = query.order_by(direction, DonHang.donhang_id.asc()).offset(skip).limit(limit).all()
+        return {"items": items, "total": total, "skip": skip, "limit": limit}
 
     def get_order(self, db: Session, order_id: int, current_user: NguoiDung) -> dict:
         order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
@@ -88,6 +103,7 @@ class OrderService:
             raise DomainError(status_code=403, detail="Bạn không có quyền xem đơn hàng này")
 
         items = db.query(ChiTietDonHang).filter(ChiTietDonHang.donhang_id == order_id).all()
+        item_names = self._resolve_item_names(db, items)
         items_payload = [{
             "chitiet_id": item.chitiet_id,
             "lohang_sanpham_id": item.lohang_sanpham_id,
@@ -100,6 +116,7 @@ class OrderService:
             "trang_thai": getattr(item, "trang_thai_don_hang", None)
             or getattr(item, "trang_thai", None)
             or "dang_xu_ly",
+            "product_name": item_names.get(item.chitiet_id, "Sản phẩm không xác định"),
         } for item in items]
 
         voucher_links = db.query(DonHangPhieuGiamGia).filter(
@@ -121,6 +138,58 @@ class OrderService:
             "items": items_payload,
             "vouchers": vouchers,
         }
+
+    def _resolve_item_names(self, db: Session, items: list[ChiTietDonHang]) -> dict[int, str]:
+        """Batch-resolve a human-readable product name per ChiTietDonHang
+        row, keyed by chitiet_id. Previously the order confirmation/detail
+        pages had nothing to show but raw batch/gift-box IDs
+        ("Sản phẩm #12") — OrderItemResponse never carried a name field at
+        all. Done as 3 batched queries (not one per item) since an order
+        can have several line items. See UI/UX audit follow-up, Finding #4.
+        """
+        sanpham_batch_ids = {i.lohang_sanpham_id for i in items if i.lohang_sanpham_id}
+        hopqua_batch_ids = {i.lohang_hopqua_id for i in items if i.lohang_hopqua_id}
+        hopqua_direct_ids = {i.hop_qua_id for i in items if i.hop_qua_id}
+
+        name_by_sanpham_batch: dict[int, str] = {}
+        if sanpham_batch_ids:
+            rows = (
+                db.query(LoHangSanPham.lohang_id, SanPham.ten, BienTheSanPham.huong_vi, BienTheSanPham.kich_thuoc)
+                .join(BienTheSanPham, BienTheSanPham.bienthe_id == LoHangSanPham.bienthe_sanpham_id)
+                .join(SanPham, SanPham.sanpham_id == BienTheSanPham.sanpham_id)
+                .filter(LoHangSanPham.lohang_id.in_(sanpham_batch_ids))
+                .all()
+            )
+            for lohang_id, ten, huong_vi, kich_thuoc in rows:
+                variant_label = " - ".join(p for p in (huong_vi, kich_thuoc) if p)
+                name_by_sanpham_batch[lohang_id] = f"{ten} ({variant_label})" if variant_label else ten
+
+        name_by_hopqua_batch: dict[int, str] = {}
+        if hopqua_batch_ids:
+            rows = (
+                db.query(LoHangHopQua.lohang_id, HopQua.ten_hop_qua)
+                .join(HopQua, HopQua.hop_qua_id == LoHangHopQua.hop_qua_id)
+                .filter(LoHangHopQua.lohang_id.in_(hopqua_batch_ids))
+                .all()
+            )
+            name_by_hopqua_batch = dict(rows)
+
+        name_by_hopqua_direct: dict[int, str] = {}
+        if hopqua_direct_ids:
+            rows = db.query(HopQua.hop_qua_id, HopQua.ten_hop_qua).filter(
+                HopQua.hop_qua_id.in_(hopqua_direct_ids)
+            ).all()
+            name_by_hopqua_direct = dict(rows)
+
+        result: dict[int, str] = {}
+        for item in items:
+            if item.lohang_sanpham_id and item.lohang_sanpham_id in name_by_sanpham_batch:
+                result[item.chitiet_id] = name_by_sanpham_batch[item.lohang_sanpham_id]
+            elif item.lohang_hopqua_id and item.lohang_hopqua_id in name_by_hopqua_batch:
+                result[item.chitiet_id] = name_by_hopqua_batch[item.lohang_hopqua_id]
+            elif item.hop_qua_id and item.hop_qua_id in name_by_hopqua_direct:
+                result[item.chitiet_id] = name_by_hopqua_direct[item.hop_qua_id]
+        return result
 
     def _add_allocation(self, db: Session, detail_id: int, allocation: InventoryAllocation) -> None:
         db.add(PhanBoChiTietDonHang(
@@ -299,9 +368,16 @@ class OrderService:
 
             order.tong_tien = tong_tien
             order.tien_giam_gia = tien_giam
-            order.tien_thanh_toan = tong_tien - tien_giam
+            # Clamped — stacking multiple vouchers used to be able to push
+            # this negative (each voucher capped its own discount against
+            # tong_tien independently, not against the running remainder),
+            # which fed straight into PaymentService._maybe_complete_order
+            # ("total_paid >= tien_thanh_toan") and could mark an order
+            # hoan_thanh with $0 actually paid. See
+            # docs/specs/02-orders.md Finding #1 / docs/specs/03-payments.md
+            # Finding #1.
+            order.tien_thanh_toan = max(Decimal("0"), tong_tien - tien_giam)
 
-            dispatcher.dispatch(db, order_created(order.donhang_id, {"loai_don": loai_don}))
             db.commit()
             db.refresh(order)
             return self.get_order(db=db, order_id=order.donhang_id, current_user=current_user)
@@ -344,6 +420,21 @@ class OrderService:
         valid_statuses = ["cho", "cho_coc", "dang_xu_ly", "dang_giao", "hoan_thanh", "da_huy"]
         if trang_thai not in valid_statuses:
             raise DomainError(status_code=400, detail=f"Trạng thái không hợp lệ. Chọn: {', '.join(valid_statuses)}")
+
+        # Terminal states can't be walked back out of through this generic
+        # endpoint — e.g. da_huy -> hoan_thanh used to be accepted (only
+        # enum membership was checked, not the transition itself), which
+        # could mark a cancelled order "completed" without ever
+        # re-deducting the inventory that cancel_order() had restored. See
+        # docs/specs/02-orders.md Finding #3.
+        if order.trang_thai in _TERMINAL_ORDER_STATUSES and trang_thai != order.trang_thai:
+            raise DomainError(
+                status_code=400,
+                detail=(
+                    f"Đơn hàng đang ở trạng thái cuối ('{order.trang_thai}') — "
+                    "không thể chuyển sang trạng thái khác qua endpoint này."
+                ),
+            )
 
         order.trang_thai = trang_thai
         if note:
@@ -468,8 +559,6 @@ class OrderService:
         self._restore_voucher_usage(db, order_id)
         order.trang_thai = "da_huy"
         order.ghi_chu = (order.ghi_chu or "") + f"\n[PAYMENT FAILED - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}] {reason}"
-        dispatcher.dispatch(db, payment_failed(order_id, {"reason": reason}))
-        dispatcher.dispatch(db, inventory_restored(order_id, {"reason": reason}))
 
     def cancel_order(self, db: Session, order_id: int, ly_do: str, current_user: NguoiDung) -> dict:
         order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
@@ -489,8 +578,6 @@ class OrderService:
         try:
             self._restore_order_inventory(db, order, current_user, f"Order cancellation: {ly_do}")
             self._restore_voucher_usage(db, order_id)
-            dispatcher.dispatch(db, order_cancelled(order_id, {"reason": ly_do}))
-            dispatcher.dispatch(db, inventory_restored(order_id, {"reason": ly_do}))
             order.trang_thai = "da_huy"
             order.ghi_chu = (order.ghi_chu or "") + f"\n[HỦY ĐƠN - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}] {ly_do}"
             db.commit()
@@ -502,26 +589,41 @@ class OrderService:
         return self.get_order(db=db, order_id=order_id, current_user=current_user)
 
     def delete_order(self, db: Session, order_id: int) -> None:
+        """Hard-delete — genuinely permanent, unlike cancel_order().
+
+        Used to manually pre-delete ChiTietDonHang/PhanBoChiTietDonHang/
+        LichSuKho{SanPham,LinhKien,HopQua}/DanhGiaSanPham/DoiTra/ThanhToan/
+        DonHangPhieuGiamGia before deleting the order itself — i.e. it
+        deliberately cleared away the inventory ledger and payment history
+        so that the DB's own FK protection wouldn't stop it. See
+        docs/specs/02-orders.md Finding #4.
+
+        The DB schema already gets this right on its own: ChiTietDonHang,
+        PhanBoChiTietDonHang, DonHangPhieuGiamGia, ThanhToan and DoiTra all
+        cascade-delete with the order (acceptable — those are order-scoped
+        records with no independent meaning), DanhGiaSanPham SET NULLs its
+        order reference (a review can outlive the order), but
+        LichSuKho{SanPham,LinhKien,HopQua} (the inventory ledger — audit
+        trail of real stock movements) has no cascade/set-null rule at all,
+        so Postgres rejects the delete outright if this order ever moved
+        real inventory. Letting that happen (instead of working around it)
+        is the fix: this now only succeeds for orders that never actually
+        processed anything. Anything that has — use cancel_order() instead,
+        which preserves history.
+        """
         order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
         if not order:
             raise DomainError(status_code=404, detail=f"Không tìm thấy đơn hàng #{order_id}")
 
         try:
-            detail_ids = [
-                row[0] for row in db.query(ChiTietDonHang.chitiet_id).filter(ChiTietDonHang.donhang_id == order_id).all()
-            ]
-            if detail_ids:
-                db.query(PhanBoChiTietDonHang).filter(PhanBoChiTietDonHang.chitiet_id.in_(detail_ids)).delete(synchronize_session=False)
-            db.query(LichSuKhoSanPham).filter(LichSuKhoSanPham.donhang_id == order_id).delete()
-            db.query(LichSuKhoLinhKien).filter(LichSuKhoLinhKien.donhang_id == order_id).delete()
-            db.query(LichSuKhoHopQua).filter(LichSuKhoHopQua.donhang_id == order_id).delete()
-            db.query(DanhGiaSanPham).filter(DanhGiaSanPham.donhang_id == order_id).delete()
-            db.query(DoiTra).filter(DoiTra.donhang_id == order_id).delete()
-            db.query(ThanhToan).filter(ThanhToan.donhang_id == order_id).delete()
-            db.query(DonHangPhieuGiamGia).filter(DonHangPhieuGiamGia.donhang_id == order_id).delete()
-            db.query(ChiTietDonHang).filter(ChiTietDonHang.donhang_id == order_id).delete()
             db.delete(order)
             db.commit()
-        except Exception as e:
+        except IntegrityError:
             db.rollback()
-            raise DomainError(status_code=500, detail=f"Không thể xóa đơn hàng: {str(e)}")
+            raise DomainError(
+                status_code=400,
+                detail=(
+                    "Không thể xóa vĩnh viễn đơn hàng đã có lịch sử kho (nhập/xuất/điều chỉnh). "
+                    "Hãy dùng hủy đơn (cancel) để giữ lại lịch sử kiểm toán."
+                ),
+            )

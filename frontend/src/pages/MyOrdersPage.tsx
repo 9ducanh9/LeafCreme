@@ -1,208 +1,26 @@
-// My Orders page - view order history
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Calendar, ChevronRight, Package } from 'lucide-react'
+import Container from '../components/layout/container'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import LoadingSpinner from '../components/ui/LoadingSpinner'
-import ErrorMessage from '../components/ui/ErrorMessage'
-import { useAuth } from '../contexts/AuthContext'
-import { listOrders, OrderListItem } from '../services/orderService'
+import Badge, { type BadgeVariant } from '../components/ui/Badge'
+import Skeleton from '../components/ui/Skeleton'
+import EmptyState from '../components/ui/EmptyState'
+import Alert from '../components/ui/Alert'
+import { listOrders } from '../services/orderService'
+import type { OrderListItem } from '../services/orderService'
 import { formatPrice } from '../utils/formatPrice'
-import { ArrowLeft, Package, Calendar, CreditCard } from 'lucide-react'
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  cho: { label: 'Chờ xử lý', color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
-  dang_xu_ly: { label: 'Đang xử lý', color: 'text-blue-600 bg-blue-50 border-blue-200' },
-  thanh_toan: { label: 'Đã thanh toán', color: 'text-green-600 bg-green-50 border-green-200' },
-  da_nhan: { label: 'Đã nhận', color: 'text-green-700 bg-green-100 border-green-300' },
-  huy: { label: 'Đã hủy', color: 'text-gray-500 bg-gray-50 border-gray-200' },
-}
-
-const ORDER_TYPE_LABELS: Record<string, string> = {
-  pos: 'Tại quầy',
-  online: 'Trực tuyến',
-  dattruoc: 'Đặt trước',
-}
+const statuses: Record<string, { label: string; variant: BadgeVariant }> = { cho: { label: 'Chờ xử lý', variant: 'warning' }, dang_xu_ly: { label: 'Đang xử lý', variant: 'info' }, thanh_toan: { label: 'Đã thanh toán', variant: 'success' }, da_nhan: { label: 'Đã nhận', variant: 'success' }, huy: { label: 'Đã hủy', variant: 'neutral' } }
+const types: Record<string, string> = { pos: 'Tại quầy', online: 'Trực tuyến', dattruoc: 'Đặt trước' }
+const date = (value: string) => new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
 
 export default function MyOrdersPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [orders, setOrders] = useState<OrderListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-
-    const fetchOrders = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await listOrders()
-        setOrders(data)
-      } catch (err: unknown) {
-        const detail =
-          err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
-        setError((typeof detail === 'string' && detail) || 'Không thể tải danh sách đơn hàng')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchOrders()
-  }, [user, navigate])
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-background py-8 md:py-12">
-      <div className="max-w-[1440px] mx-auto px-6">
-        {/* Back Button */}
-        <Button variant="outline" onClick={() => navigate('/profile')} className="mb-8">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Quay lại trang cá nhân
-        </Button>
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-heading text-3xl md:text-4xl font-semibold text-text-primary mb-3">
-            Đơn hàng của tôi
-          </h1>
-          <p className="text-text-secondary">
-            Xem lại lịch sử mua hàng và trạng thái đơn hàng của bạn
-          </p>
-        </div>
-
-        {/* Error State */}
-        {error && (
-          <div className="mb-6">
-            <ErrorMessage message={error} />
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && orders.length === 0 && !error && (
-          <Card className="text-center py-24 px-8">
-            <Package className="w-24 h-24 text-accent-brown/20 mx-auto mb-6" />
-            <h2 className="font-heading text-2xl font-semibold text-text-primary mb-4">
-              Chưa có đơn hàng nào
-            </h2>
-            <p className="text-text-secondary mb-8 max-w-md mx-auto">
-              Bạn chưa có đơn hàng nào. Hãy khám phá các sản phẩm của chúng mình nhé!
-            </p>
-            <Button variant="primary" onClick={() => navigate('/search')}>
-              Khám phá sản phẩm
-            </Button>
-          </Card>
-        )}
-
-        {/* Orders List */}
-        {!loading && orders.length > 0 && (
-          <div className="space-y-4">
-            {orders.map((order) => {
-              const statusInfo = STATUS_LABELS[order.trang_thai] || {
-                label: order.trang_thai,
-                color: 'text-gray-600 bg-gray-50 border-gray-200',
-              }
-
-              return (
-                <Card
-                  key={order.donhang_id}
-                  className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer"
-                  onClick={() => navigate(`/orders/${order.donhang_id}`)}
-                >
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    {/* Left: Order Info */}
-                    <div className="flex-1 space-y-3">
-                      {/* Order Code & Type */}
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="font-semibold text-lg text-text-primary">
-                          {order.ma_don_hang}
-                        </h3>
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-accent-brown/10 text-accent-brown border border-accent-brown/20">
-                          {ORDER_TYPE_LABELS[order.loai_don] || order.loai_don}
-                        </span>
-                        <span
-                          className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusInfo.color}`}
-                        >
-                          {statusInfo.label}
-                        </span>
-                      </div>
-
-                      {/* Date & Customer Info */}
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-text-secondary">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          <span>{formatDate(order.ngay_tao)}</span>
-                        </div>
-                        {order.ten_khach_hang && (
-                          <div className="flex items-center gap-2">
-                            <Package className="w-4 h-4" />
-                            <span>{order.ten_khach_hang}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Delivery Info */}
-                      {order.ngay_giao_du_kien && (
-                        <div className="text-sm text-text-secondary">
-                          <span className="font-medium">Giao dự kiến:</span>{' '}
-                          {formatDate(order.ngay_giao_du_kien)}
-                        </div>
-                      )}
-
-                      {/* Note */}
-                      {order.ghi_chu && (
-                        <div className="text-sm text-text-secondary italic">
-                          Ghi chú: {order.ghi_chu}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right: Price Info */}
-                    <div className="flex flex-col items-end gap-2 md:min-w-[180px]">
-                      <div className="text-right">
-                        <p className="text-sm text-text-secondary mb-1">Tổng tiền</p>
-                        <p className="text-xl font-bold text-text-primary">
-                          {formatPrice(order.tien_thanh_toan)}
-                        </p>
-                      </div>
-                      {order.tien_giam_gia > 0 && (
-                        <div className="text-xs text-green-600 flex items-center gap-1">
-                          <CreditCard className="w-3 h-3" />
-                          <span>Giảm {formatPrice(order.tien_giam_gia)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  )
+  useEffect(() => { listOrders().then(setOrders).catch((err: unknown) => { const detail = err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined; setError(typeof detail === 'string' ? detail : 'Không thể tải lịch sử đơn hàng.') }).finally(() => setLoading(false)) }, [])
+  return <div className="bg-bg-canvas py-8 sm:py-12"><Container><Button variant="ghost" onClick={() => navigate('/profile')} className="mb-8 -ml-2"><ArrowLeft className="size-4" />Quay lại trang cá nhân</Button><div className="mb-8"><p className="text-xs font-semibold uppercase tracking-caps text-brand-fg">Tài khoản</p><h1 className="mt-2 text-h1">Đơn hàng của tôi</h1><p className="mt-3 text-fg-muted">Theo dõi những món bánh đang trên đường đến với bạn.</p></div>{error && <Alert variant="danger" className="mb-6">{error}</Alert>}{loading ? <div className="space-y-4">{[1, 2, 3].map((item) => <Card key={item}><Skeleton className="h-5 w-40" /><Skeleton className="mt-4 h-4 w-64" /></Card>)}</div> : orders.length === 0 ? <EmptyState title="Chưa có đơn hàng nào" description="Hãy chọn một món bánh để bắt đầu bộ sưu tập ngọt ngào của bạn." action={<Button href="/search" variant="primary">Khám phá menu</Button>} /> : <div className="space-y-4">{orders.map((order) => { const status = statuses[order.trang_thai] || { label: order.trang_thai, variant: 'neutral' as BadgeVariant }; return <Card key={order.donhang_id} interactive className="cursor-pointer p-5 sm:p-6" onClick={() => navigate(`/orders/${order.donhang_id}`)}><div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="font-heading text-lg font-semibold text-fg-strong">{order.ma_don_hang}</h2><Badge variant="brand">{types[order.loai_don] || order.loai_don}</Badge><Badge variant={status.variant}>{status.label}</Badge></div><div className="mt-3 flex flex-wrap gap-4 text-sm text-fg-muted"><span className="flex items-center gap-2"><Calendar className="size-4" />{date(order.ngay_tao)}</span>{order.ten_khach_hang && <span className="flex items-center gap-2"><Package className="size-4" />{order.ten_khach_hang}</span>}</div>{order.ngay_giao_du_kien && <p className="mt-2 text-sm text-fg-muted">Giao dự kiến: <span className="font-medium text-fg">{date(order.ngay_giao_du_kien)}</span></p>}</div><div className="flex items-center justify-between gap-5 sm:justify-end"><div className="sm:text-right"><p className="text-xs text-fg-subtle">Tổng thanh toán</p><p className="mt-1 text-lg font-semibold tabular-nums text-brand-fg">{formatPrice(order.tien_thanh_toan)}</p></div><ChevronRight className="size-5 text-fg-subtle" aria-hidden /></div></div></Card> })}</div>}</Container></div>
 }
-
-

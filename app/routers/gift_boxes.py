@@ -6,7 +6,8 @@ business logic (moved out as part of the Phase 1 service-layer migration).
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from enum import Enum
+from typing import Literal, Optional, List, Union
 from decimal import Decimal
 
 from ..db import get_db
@@ -14,6 +15,7 @@ from ..core.dependencies import require_role, get_optional_user
 from ..models import NguoiDung
 from ..services.gift_boxes import GiftBoxService, DomainError
 from pydantic import BaseModel, Field
+from ..schemas import Page
 
 router = APIRouter(prefix="/admin/gift-boxes", tags=["gift-boxes"])
 
@@ -68,6 +70,12 @@ class GiftBoxResponse(BaseModel):
         from_attributes = True
 
 
+class GiftBoxSortField(str, Enum):
+    ten = "ten"
+    gia = "gia"
+    ngay_tao = "ngay_tao"
+
+
 # =========================================================
 # Pydantic Schemas - BOM
 # =========================================================
@@ -100,10 +108,13 @@ class BomItemResponse(BaseModel):
 # =========================================================
 # Gift Box Endpoints
 # =========================================================
-@router.get("", response_model=List[GiftBoxResponse])
+@router.get("", response_model=Union[List[GiftBoxResponse], Page[GiftBoxResponse]])
 def list_gift_boxes(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(50, ge=1, le=200),
+    paginated: bool = Query(False),
+    sort_by: GiftBoxSortField = Query(GiftBoxSortField.ngay_tao),
+    sort_dir: Literal["asc", "desc"] = Query("desc"),
     search: Optional[str] = Query(None, description="Tìm kiếm theo tên hoặc SKU"),
     dang_hoat_dong: Optional[bool] = Query(None),
     min_price: Optional[Decimal] = Query(None, gt=0),
@@ -115,6 +126,7 @@ def list_gift_boxes(
     return gift_box_service.list_gift_boxes(
         db, skip=skip, limit=limit, search=search, dang_hoat_dong=dang_hoat_dong,
         min_price=min_price, max_price=max_price,
+        paginated=paginated, sort_by=sort_by.value, sort_dir=sort_dir,
     )
 
 
@@ -235,10 +247,13 @@ def delete_bom_item(
 # =========================================================
 # Public Endpoints (Customer-facing, no auth required)
 # =========================================================
-@public_router.get("", response_model=List[GiftBoxResponse])
+@public_router.get("", response_model=Union[List[GiftBoxResponse], Page[GiftBoxResponse]])
 def list_gift_boxes_public(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(50, ge=1, le=200),
+    paginated: bool = Query(False),
+    sort_by: GiftBoxSortField = Query(GiftBoxSortField.ngay_tao),
+    sort_dir: Literal["asc", "desc"] = Query("desc"),
     search: Optional[str] = Query(None, description="Tìm kiếm theo tên hoặc SKU"),
     dang_hoat_dong: Optional[bool] = Query(None, description="Lọc theo trạng thái hoạt động"),
     min_price: Optional[Decimal] = Query(None, gt=0),
@@ -250,6 +265,7 @@ def list_gift_boxes_public(
     return gift_box_service.list_gift_boxes(
         db, skip=skip, limit=limit, search=search, dang_hoat_dong=dang_hoat_dong,
         min_price=min_price, max_price=max_price, default_active_only=True,
+        paginated=paginated, sort_by=sort_by.value, sort_dir=sort_dir,
     )
 
 

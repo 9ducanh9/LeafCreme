@@ -8,8 +8,11 @@ redesigned. `app.core.security` (hashing/JWT) is untouched — this service
 only orchestrates calls into it plus the DB lookups around it.
 """
 from datetime import date, datetime
+import re
+import secrets
 from typing import Any, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.security import (
@@ -23,6 +26,15 @@ from app.models import NguoiDung, VaiTro
 from app.services.errors import DomainError
 
 _INVALID_CREDENTIALS = "Tên đăng nhập hoặc mật khẩu không đúng"
+
+# Public self-registration always creates a "customer" account — the role
+# is looked up by name server-side, never trusted from the request. Prior
+# behavior accepted an arbitrary vaitro_id from the client and only checked
+# that the role existed, which let anyone self-register as admin/manager/
+# staff via a raw API call (no UI needed). Fixed as a standalone hotfix —
+# see docs/specs/01-auth-access-control.md Finding #1. Staff/manager/admin
+# accounts must be created via POST /users (already admin-gated).
+_SELF_REGISTER_ROLE_NAME = "customer"
 
 
 def parse_date_vietnam(date_str: str) -> Optional[date]:
@@ -70,9 +82,14 @@ class AuthService:
         if existing_user:
             raise DomainError(status_code=400, detail="Tên đăng nhập hoặc email đã tồn tại")
 
-        vaitro = db.query(VaiTro).filter(VaiTro.vaitro_id == payload.vaitro_id).first()
+        # Deliberately NOT payload.vaitro_id — see _SELF_REGISTER_ROLE_NAME
+        # above. Any vaitro_id the client sends is ignored.
+        vaitro = db.query(VaiTro).filter(VaiTro.ten_vai_tro == _SELF_REGISTER_ROLE_NAME).first()
         if not vaitro:
-            raise DomainError(status_code=404, detail="Vai trò không tồn tại")
+            raise DomainError(
+                status_code=500,
+                detail="Vai trò mặc định 'customer' chưa được cấu hình trên hệ thống",
+            )
 
         ngay_sinh = None
         if payload.ngay_sinh:
@@ -85,7 +102,7 @@ class AuthService:
             ten_dang_nhap=payload.ten_dang_nhap,
             email=payload.email,
             mat_khau_ma_hoa=get_password_hash(payload.mat_khau),
-            vaitro_id=payload.vaitro_id,
+            vaitro_id=vaitro.vaitro_id,
             ho_ten=payload.ho_ten,
             so_dien_thoai=payload.so_dien_thoai,
             dia_chi=payload.dia_chi,
@@ -130,6 +147,71 @@ class AuthService:
 
         vaitro_ten = user.vaitro.ten_vai_tro if user.vaitro else "N/A"
         return self._token_payload(user, vaitro_ten)
+
+    def provision_cognito_user(self, db: Session, claims: dict, profile: Any | None = None) -> dict:
+        """Link a verified Cognito identity to a local user or create a customer.
+
+        Roles remain exclusively in PostgreSQL. An existing account is linked
+        only when Cognito has verified the same email, preserving current admin
+        and staff permissions without copying any role from token claims.
+        """
+        subject = claims.get("sub")
+        email = str(claims.get("email") or "").strip().lower()
+        if not subject or not email or claims.get("email_verified") is not True:
+            raise DomainError(status_code=401, detail="Cognito identity must have a verified email")
+
+        user = db.query(NguoiDung).filter(NguoiDung.cognito_sub == subject).first()
+        if user is None:
+            user = db.query(NguoiDung).filter(func.lower(NguoiDung.email) == email).first()
+            if user is not None:
+                if user.cognito_sub and user.cognito_sub != subject:
+                    raise DomainError(status_code=409, detail="Email is already linked to another Cognito identity")
+                user.cognito_sub = subject
+            else:
+                role = db.query(VaiTro).filter(VaiTro.ten_vai_tro == _SELF_REGISTER_ROLE_NAME).first()
+                if role is None:
+                    raise DomainError(status_code=500, detail="Vai trÃ² máº·c Ä‘á»‹nh 'customer' chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh trÃªn há»‡ thá»‘ng")
+
+                profile_matches_identity = (
+                    profile is not None and str(getattr(profile, "email", "")).strip().lower() == email
+                )
+                base_name = str(
+                    getattr(profile, "ten_dang_nhap", "") if profile_matches_identity else claims.get("preferred_username")
+                    or email.split("@", 1)[0]
+                )
+                base_name = re.sub(r"[^a-zA-Z0-9_.-]", "", base_name)[:40] or "customer"
+                username = f"{base_name}-{subject.replace('-', '')[:8]}"
+                ngay_sinh = None
+                if profile_matches_identity and getattr(profile, "ngay_sinh", None):
+                    try:
+                        ngay_sinh = parse_date_vietnam(profile.ngay_sinh)
+                    except ValueError:
+                        ngay_sinh = None
+                user = NguoiDung(
+                    ten_dang_nhap=username,
+                    email=email,
+                    cognito_sub=subject,
+                    mat_khau_ma_hoa=get_password_hash(secrets.token_urlsafe(32)),
+                    vaitro_id=role.vaitro_id,
+                    ho_ten=str(
+                        getattr(profile, "ho_ten", "") if profile_matches_identity else claims.get("name")
+                        or email.split("@", 1)[0]
+                    )[:100],
+                    so_dien_thoai=getattr(profile, "so_dien_thoai", None) if profile_matches_identity else None,
+                    dia_chi=getattr(profile, "dia_chi", None) if profile_matches_identity else None,
+                    ngay_sinh=ngay_sinh,
+                    gioi_tinh=getattr(profile, "gioi_tinh", None) if profile_matches_identity else None,
+                    dang_hoat_dong=True,
+                )
+                db.add(user)
+
+        if not user.dang_hoat_dong:
+            raise DomainError(status_code=403, detail="TÃ i khoáº£n Ä‘Ã£ bá»‹ vÃ´ hiá»‡u hÃ³a")
+
+        user.lan_dang_nhap_cuoi = datetime.utcnow()
+        db.commit()
+        db.refresh(user)
+        return self.current_user_info(user)
 
     @staticmethod
     def current_user_info(current_user: NguoiDung) -> dict:

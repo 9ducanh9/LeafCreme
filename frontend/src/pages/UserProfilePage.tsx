@@ -10,6 +10,7 @@ import { updateUserProfile, UserUpdateData, uploadAvatar } from '../services/use
 import { ArrowLeft, User as UserIcon, Lock, Package } from 'lucide-react'
 import { MAX_AVATAR_SIZE, ALLOWED_IMAGE_TYPES } from '../constants/fileUpload'
 import { API_BASE_URL } from '../config/runtimeConfig'
+import Container from '../components/layout/container'
 
 type ProfileTab = 'profile' | 'password'
 
@@ -147,16 +148,16 @@ export default function UserProfilePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background py-16">
-        <div className="max-w-[1440px] mx-auto px-6">
+        <Container>
           <ErrorMessage message="Vui lòng đăng nhập để xem thông tin cá nhân" />
-        </div>
+        </Container>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-background py-8 md:py-12">
-      <div className="max-w-[1440px] mx-auto px-6">
+      <Container className="py-8 md:py-12">
         <button
           onClick={() => navigate('/')}
           className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-default mb-8 whitespace-nowrap"
@@ -165,6 +166,7 @@ export default function UserProfilePage() {
           <span>Về trang chủ</span>
         </button>
 
+        <h1 className="sr-only">Tài khoản của tôi</h1>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8">
           <div className="lg:col-span-1">
             <Card className="p-4 md:p-6">
@@ -178,7 +180,7 @@ export default function UserProfilePage() {
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default ${
                       activeTab === 'profile'
                         ? 'bg-accent-brown/8 text-text-primary font-medium'
-                        : 'text-text-secondary hover:bg-background-secondary/30 hover:text-text-primary'
+                        : 'text-text-secondary hover:bg-bg-alt/30 hover:text-text-primary'
                     }`}
                   >
                     <UserIcon
@@ -193,7 +195,7 @@ export default function UserProfilePage() {
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default ${
                       activeTab === 'password'
                         ? 'bg-accent-brown/8 text-text-primary font-medium'
-                        : 'text-text-secondary hover:bg-background-secondary/30 hover:text-text-primary'
+                        : 'text-text-secondary hover:bg-bg-alt/30 hover:text-text-primary'
                     }`}
                   >
                     <Lock
@@ -205,7 +207,7 @@ export default function UserProfilePage() {
                   </button>
                   <button
                     onClick={() => navigate('/orders')}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default text-text-secondary hover:bg-background-secondary/30 hover:text-text-primary"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default text-text-secondary hover:bg-bg-alt/30 hover:text-text-primary"
                   >
                     <Package className="w-[18px] h-[18px] text-text-secondary/70" />
                     <span className="text-[15px]">Đơn hàng của tôi</span>
@@ -222,9 +224,9 @@ export default function UserProfilePage() {
                   <p className="text-xs font-normal text-text-secondary/70 mb-2">
                     Cài đặt tài khoản
                   </p>
-                  <h1 className="font-heading text-2xl md:text-3xl font-semibold text-text-primary mb-3 leading-tight">
+                  <h2 className="font-heading text-2xl md:text-3xl font-semibold text-text-primary mb-3 leading-tight">
                     Thông tin cá nhân
-                  </h1>
+                  </h2>
                   <p className="text-sm text-text-secondary leading-relaxed max-w-2xl">
                     Cập nhật thông tin tài khoản và cách chúng tôi liên hệ với bạn.
                   </p>
@@ -252,7 +254,7 @@ export default function UserProfilePage() {
                           className="relative w-40 h-40 rounded-full bg-gradient-to-br from-accent-yellow/20 to-accent-brown/10 border-4 border-accent-brown/20 flex items-center justify-center overflow-hidden cursor-pointer hover:border-accent-brown/40 hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
                         >
                           {uploadingAvatar && (
-                            <div className="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center z-10">
+                            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-full bg-bg-overlay">
                               <LoadingSpinner size="sm" />
                             </div>
                           )}
@@ -314,7 +316,7 @@ export default function UserProfilePage() {
                             value={profileData.ho_ten}
                             onChange={handleProfileChange}
                             required
-                            className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50"
+                            className="w-full rounded-input border border-interactive bg-bg-surface px-4 py-3.5 text-fg placeholder:text-fg-subtle outline-none transition-all duration-200 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                             disabled={loading}
                           />
                         </div>
@@ -330,7 +332,7 @@ export default function UserProfilePage() {
                             value={profileData.email}
                             onChange={handleProfileChange}
                             required
-                            className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50"
+                            className="w-full rounded-input border border-interactive bg-bg-surface px-4 py-3.5 text-fg placeholder:text-fg-subtle outline-none transition-all duration-200 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                             disabled={loading}
                           />
                         </div>
@@ -345,7 +347,7 @@ export default function UserProfilePage() {
                             type="tel"
                             value={profileData.so_dien_thoai}
                             onChange={handleProfileChange}
-                            className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50"
+                            className="w-full rounded-input border border-interactive bg-bg-surface px-4 py-3.5 text-fg placeholder:text-fg-subtle outline-none transition-all duration-200 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                             disabled={loading}
                           />
                         </div>
@@ -359,7 +361,7 @@ export default function UserProfilePage() {
                             label="Ngày sinh"
                             placeholder="dd/mm/yyyy"
                             disabled={loading}
-                            className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50"
+                            className="w-full rounded-input border border-interactive bg-bg-surface px-4 py-3.5 text-fg outline-none transition-all duration-200 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                           />
                         </div>
 
@@ -372,7 +374,7 @@ export default function UserProfilePage() {
                             name="gioi_tinh"
                             value={profileData.gioi_tinh}
                             onChange={handleProfileChange}
-                            className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                            className="w-full cursor-pointer rounded-input border border-interactive bg-bg-surface px-4 py-3.5 text-fg outline-none transition-all duration-200 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                             disabled={loading}
                           >
                             <option value="">Chọn giới tính</option>
@@ -393,7 +395,7 @@ export default function UserProfilePage() {
                           value={profileData.dia_chi}
                           onChange={handleProfileChange}
                           rows={4}
-                          className="w-full px-4 py-3.5 rounded-input border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/10 transition-all duration-200 resize-none disabled:opacity-50"
+                          className="w-full resize-none rounded-input border border-interactive bg-bg-surface px-4 py-3.5 text-fg placeholder:text-fg-subtle outline-none transition-all duration-200 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                           disabled={loading}
                         />
                       </div>
@@ -412,7 +414,7 @@ export default function UserProfilePage() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="px-8 py-3.5 rounded-button bg-accent-brown text-white font-semibold hover:bg-accent-brown/90 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="rounded-button bg-brand px-8 py-3.5 font-semibold text-fg-on-brand transition-all duration-200 hover:bg-brand-hover hover:shadow-md focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
                     </button>
@@ -425,14 +427,14 @@ export default function UserProfilePage() {
                   <p className="text-xs font-normal text-text-secondary/70 mb-2">
                     Bảo mật
                   </p>
-                  <h1 className="font-heading text-2xl md:text-3xl font-semibold text-text-primary mb-3 leading-tight">
+                  <h2 className="font-heading text-2xl md:text-3xl font-semibold text-text-primary mb-3 leading-tight">
                     Đổi mật khẩu
-                  </h1>
+                  </h2>
                   <p className="text-sm text-text-secondary leading-relaxed max-w-2xl">
                     Chức năng đổi mật khẩu chưa được triển khai backend trong dự án này.
                   </p>
                 </div>
-                <div className="rounded-lg border border-border bg-background-secondary/30 p-4 text-sm text-text-secondary leading-relaxed">
+                <div className="rounded-lg border border-border bg-bg-alt/30 p-4 text-sm text-text-secondary leading-relaxed">
                   Để tránh gây hiểu lầm, biểu mẫu đổi mật khẩu đã được ẩn cho đến khi endpoint thật sẵn sàng.
                   Hiện tại bạn có thể quay lại tab thông tin cá nhân hoặc liên hệ quản trị viên để hỗ trợ đổi mật khẩu.
                 </div>
@@ -440,7 +442,7 @@ export default function UserProfilePage() {
             )}
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   )
 }

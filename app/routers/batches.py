@@ -8,18 +8,47 @@ the three batch kinds instead of staying triplicated).
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Literal, Optional, List
+from enum import Enum
 from decimal import Decimal
-from datetime import datetime
+from datetime import date, datetime
 
 from ..db import get_db
 from ..core.dependencies import get_current_active_user, require_role
 from ..models import NguoiDung
 from ..services.batches import BatchService, DomainError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from ..schemas import Page
 
 router = APIRouter(prefix="/batches", tags=["batches"])
 batch_service = BatchService()
+
+
+class BatchSortField(str, Enum):
+    ngay_het_han = "ngay_het_han"
+    ngay_san_xuat = "ngay_san_xuat"
+    so_luong_hien_tai = "so_luong_hien_tai"
+    ngay_tao = "ngay_tao"
+
+
+class BatchDateValidationMixin(BaseModel):
+    ngay_het_han: datetime
+
+    @model_validator(mode="after")
+    def validate_expiry_date(self):
+        if self.ngay_het_han.date() < date.today():
+            raise ValueError("Ngày hết hạn không được ở trước hôm nay")
+        return self
+
+
+class BatchUpdateDateValidationMixin(BaseModel):
+    ngay_het_han: Optional[datetime] = None
+
+    @model_validator(mode="after")
+    def validate_expiry_date(self):
+        if self.ngay_het_han is not None and self.ngay_het_han.date() < date.today():
+            raise ValueError("Ngày hết hạn không được ở trước hôm nay")
+        return self
 
 
 def _raise_http(exc: DomainError) -> None:
@@ -29,7 +58,7 @@ def _raise_http(exc: DomainError) -> None:
 # =========================================================
 # Pydantic Schemas - Product Batch
 # =========================================================
-class ProductBatchCreate(BaseModel):
+class ProductBatchCreate(BatchDateValidationMixin):
     bienthe_sanpham_id: int = Field(..., gt=0)
     ncc_id: Optional[int] = Field(None, gt=0)
     ma_lo: str = Field(..., min_length=1, max_length=50)
@@ -41,7 +70,7 @@ class ProductBatchCreate(BaseModel):
     ghi_chu: Optional[str] = None
 
 
-class ProductBatchUpdate(BaseModel):
+class ProductBatchUpdate(BatchUpdateDateValidationMixin):
     ncc_id: Optional[int] = Field(None, gt=0)
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
@@ -74,7 +103,7 @@ class ProductBatchResponse(BaseModel):
 # =========================================================
 # Pydantic Schemas - Component Batch
 # =========================================================
-class ComponentBatchCreate(BaseModel):
+class ComponentBatchCreate(BatchDateValidationMixin):
     linh_kien_id: int = Field(..., gt=0)
     ncc_id: Optional[int] = Field(None, gt=0)
     ma_lo: str = Field(..., min_length=1, max_length=50)
@@ -86,7 +115,7 @@ class ComponentBatchCreate(BaseModel):
     ghi_chu: Optional[str] = None
 
 
-class ComponentBatchUpdate(BaseModel):
+class ComponentBatchUpdate(BatchUpdateDateValidationMixin):
     ncc_id: Optional[int] = Field(None, gt=0)
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
@@ -119,7 +148,7 @@ class ComponentBatchResponse(BaseModel):
 # =========================================================
 # Pydantic Schemas - Gift Box Batch
 # =========================================================
-class GiftBoxBatchCreate(BaseModel):
+class GiftBoxBatchCreate(BatchDateValidationMixin):
     hop_qua_id: int = Field(..., gt=0)
     ncc_id: Optional[int] = Field(None, gt=0)
     ma_lo: str = Field(..., min_length=1, max_length=50)
@@ -131,7 +160,7 @@ class GiftBoxBatchCreate(BaseModel):
     ghi_chu: Optional[str] = None
 
 
-class GiftBoxBatchUpdate(BaseModel):
+class GiftBoxBatchUpdate(BatchUpdateDateValidationMixin):
     ncc_id: Optional[int] = Field(None, gt=0)
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
@@ -177,10 +206,12 @@ def create_product_batch(
         _raise_http(exc)
 
 
-@router.get("/products", response_model=List[ProductBatchResponse])
+@router.get("/products", response_model=Page[ProductBatchResponse])
 def list_product_batches(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(50, ge=1, le=200),
+    sort_by: BatchSortField = Query(BatchSortField.ngay_het_han),
+    sort_dir: Literal["asc", "desc"] = Query("asc"),
     bienthe_id: Optional[int] = Query(None, gt=0),
     ncc_id: Optional[int] = Query(None, gt=0),
     trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
@@ -192,6 +223,7 @@ def list_product_batches(
     return batch_service.list_batches(
         db, "products", skip=skip, limit=limit, item_id=bienthe_id,
         ncc_id=ncc_id, trang_thai=trang_thai, search=search,
+        sort_by=sort_by.value, sort_dir=sort_dir,
     )
 
 
@@ -238,10 +270,12 @@ def create_component_batch(
         _raise_http(exc)
 
 
-@router.get("/components", response_model=List[ComponentBatchResponse])
+@router.get("/components", response_model=Page[ComponentBatchResponse])
 def list_component_batches(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(50, ge=1, le=200),
+    sort_by: BatchSortField = Query(BatchSortField.ngay_het_han),
+    sort_dir: Literal["asc", "desc"] = Query("asc"),
     linh_kien_id: Optional[int] = Query(None, gt=0),
     ncc_id: Optional[int] = Query(None, gt=0),
     trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
@@ -253,6 +287,7 @@ def list_component_batches(
     return batch_service.list_batches(
         db, "components", skip=skip, limit=limit, item_id=linh_kien_id,
         ncc_id=ncc_id, trang_thai=trang_thai, search=search,
+        sort_by=sort_by.value, sort_dir=sort_dir,
     )
 
 
@@ -299,10 +334,12 @@ def create_gift_box_batch(
         _raise_http(exc)
 
 
-@router.get("/gift-boxes", response_model=List[GiftBoxBatchResponse])
+@router.get("/gift-boxes", response_model=Page[GiftBoxBatchResponse])
 def list_gift_box_batches(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(50, ge=1, le=200),
+    sort_by: BatchSortField = Query(BatchSortField.ngay_het_han),
+    sort_dir: Literal["asc", "desc"] = Query("asc"),
     hop_qua_id: Optional[int] = Query(None, gt=0),
     ncc_id: Optional[int] = Query(None, gt=0),
     trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
@@ -314,6 +351,7 @@ def list_gift_box_batches(
     return batch_service.list_batches(
         db, "gift_boxes", skip=skip, limit=limit, item_id=hop_qua_id,
         ncc_id=ncc_id, trang_thai=trang_thai, search=search,
+        sort_by=sort_by.value, sort_dir=sort_dir,
     )
 
 

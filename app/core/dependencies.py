@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.db import get_db
 from app.models import NguoiDung
-from app.core.security import decode_token
+from app.core.config import settings
+from app.core.security import decode_cognito_token, decode_token
 
 security = HTTPBearer()
 
@@ -20,7 +21,11 @@ def get_current_user(
     Dependency để lấy current user từ JWT token
     """
     token = credentials.credentials
-    payload = decode_token(token)
+    payload = (
+        decode_cognito_token(token, "access")
+        if settings.AUTH_PROVIDER == "cognito"
+        else decode_token(token)
+    )
     
     if payload is None:
         raise HTTPException(
@@ -29,26 +34,26 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if payload.get("type") != "access":
+    if settings.AUTH_PROVIDER == "local" and payload.get("type") != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Get user_id from payload (can be string or int)
-    user_id_raw = payload.get("sub")
-    if user_id_raw is None:
+    subject = payload.get("sub")
+    if subject is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Convert to int if it's a string
-    user_id = int(user_id_raw) if isinstance(user_id_raw, str) else user_id_raw
-    
-    user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
+    if settings.AUTH_PROVIDER == "cognito":
+        user = db.query(NguoiDung).filter(NguoiDung.cognito_sub == subject).first()
+    else:
+        user_id = int(subject) if isinstance(subject, str) else subject
+        user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -90,20 +95,24 @@ def get_optional_user(
     
     try:
         token = credentials.credentials
-        payload = decode_token(token)
+        payload = (
+            decode_cognito_token(token, "access")
+            if settings.AUTH_PROVIDER == "cognito"
+            else decode_token(token)
+        )
         
-        if payload is None or payload.get("type") != "access":
+        if payload is None or (settings.AUTH_PROVIDER == "local" and payload.get("type") != "access"):
             return None
         
-        # Get user_id from payload (can be string or int)
-        user_id_raw = payload.get("sub")
-        if user_id_raw is None:
+        subject = payload.get("sub")
+        if subject is None:
             return None
-        
-        # Convert to int if it's a string
-        user_id = int(user_id_raw) if isinstance(user_id_raw, str) else user_id_raw
-        
-        user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
+
+        if settings.AUTH_PROVIDER == "cognito":
+            user = db.query(NguoiDung).filter(NguoiDung.cognito_sub == subject).first()
+        else:
+            user_id = int(subject) if isinstance(subject, str) else subject
+            user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
         if user and user.dang_hoat_dong:
             return user
         return None

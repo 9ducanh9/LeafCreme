@@ -1,0 +1,58 @@
+{
+  "$comment": [
+    "Hooks chặn ở tầng tool — prompt nói 'đừng làm thế' là không đủ.",
+    "PreToolUse exit code 2 = block + trả stderr cho agent đọc.",
+    "guard-protected.mjs là read-only với agent (nó tự bảo vệ chính nó)."
+  ],
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/*.pem)",
+      "Read(./**/id_rsa*)",
+      "Edit(./scripts/gate/**)",
+      "Edit(./scripts/guard-protected.mjs)",
+      "Edit(./docs/contrast-check.py)",
+      "Edit(./docs/MANUAL-CHECKS.md)",
+      "Edit(./docs/ui-redesign/**)",
+      "Edit(./CLAUDE.md)",
+      "Edit(./.claude/**)",
+      "Write(./scripts/gate/**)",
+      "Write(./scripts/guard-protected.mjs)",
+      "Write(./docs/contrast-check.py)",
+      "Write(./docs/MANUAL-CHECKS.md)",
+      "Write(./docs/ui-redesign/**)",
+      "Write(./CLAUDE.md)",
+      "Write(./.claude/**)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(npm publish:*)",
+      "Bash(alembic:*)",
+      "Bash(psql:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/guard-protected.mjs"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/gate/remind.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

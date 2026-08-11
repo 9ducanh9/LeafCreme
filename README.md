@@ -209,6 +209,16 @@ Apply database migrations (schema is now Alembic-managed — see
 alembic upgrade head
 ```
 
+For a new local database, load the migrated LeafCreme catalog and demo users
+without deleting any existing rows:
+
+```bash
+python scripts/seed_demo_data.py
+```
+
+The default local-only demo password is `LeafCremeDemo123!`. Override it with
+`LEAFCREME_DEMO_PASSWORD` before running the seed outside local development.
+
 Run backend:
 
 ```bash

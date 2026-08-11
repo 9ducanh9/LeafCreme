@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from datetime import date
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import Date, cast, select
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -41,12 +42,14 @@ class InventoryService:
         nguoidung_id: Optional[int] = None,
         reason: str = "Order product deduction",
     ) -> list[InventoryAllocation]:
+        today = date.today()
         rows = db.execute(
             select(LoHangSanPham, TonKhoSanPham)
             .join(TonKhoSanPham, TonKhoSanPham.lohang_sanpham_id == LoHangSanPham.lohang_id)
             .where(
                 LoHangSanPham.bienthe_sanpham_id == bienthe_id,
                 LoHangSanPham.trang_thai == "hoatdong",
+                cast(LoHangSanPham.ngay_het_han, Date) >= today,
                 TonKhoSanPham.so_luong_hien_tai > 0,
             )
             .order_by(LoHangSanPham.ngay_het_han.asc())
@@ -97,12 +100,14 @@ class InventoryService:
         nguoidung_id: Optional[int] = None,
         reason: str = "Order gift box deduction",
     ) -> list[InventoryAllocation]:
+        today = date.today()
         rows = db.execute(
             select(LoHangHopQua, TonKhoHopQua)
             .join(TonKhoHopQua, TonKhoHopQua.lohang_hopqua_id == LoHangHopQua.lohang_id)
             .where(
                 LoHangHopQua.hop_qua_id == hop_qua_id,
                 LoHangHopQua.trang_thai == "hoatdong",
+                cast(LoHangHopQua.ngay_het_han, Date) >= today,
                 TonKhoHopQua.so_luong_hien_tai > 0,
             )
             .order_by(LoHangHopQua.ngay_het_han.asc())

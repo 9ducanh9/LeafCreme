@@ -33,7 +33,7 @@ export default function LeafieMessageList({
         return (
           <div
             key={message.id}
-            className={`group flex gap-3 px-2 md:px-4 py-1 hover:bg-[#F0EDE5]/30 transition-colors ${
+            className={`group flex gap-3 px-2 py-1 transition-colors hover:bg-bg-subtle md:px-4 ${
               isUser ? 'flex-row-reverse' : ''
             }`}
           >
@@ -41,8 +41,8 @@ export default function LeafieMessageList({
             {showAvatar ? (
               <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                 isUser 
-                  ? 'bg-gradient-to-br from-[#C59B72] to-[#D4A574]' 
-                  : 'bg-gradient-to-br from-[#F5C96A]/40 to-[#C59B72]/30 border-2 border-[#C59B72]/30'
+                  ? 'bg-brand text-fg-on-brand'
+                  : 'border-2 border-brand-border-subtle bg-brand-subtle'
               } relative overflow-hidden`}>
                 {isUser ? (
                   user?.avatar_url && user.avatar_url.trim() && !avatarError ? (
@@ -62,12 +62,12 @@ export default function LeafieMessageList({
                       }}
                     />
                   ) : (
-                    <User className="w-5 h-5 text-white" strokeWidth={2} />
+                    <User className="w-5 h-5 text-fg-on-brand" strokeWidth={2} />
                   )
                 ) : (
                   <>
                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent animate-pulse" />
-                    <Leaf className="w-5 h-5 text-[#C59B72] relative z-10" strokeWidth={2.5} />
+                    <Leaf className="relative z-10 h-5 w-5 text-brand-fg" strokeWidth={2.5} />
                   </>
                 )}
               </div>
@@ -80,11 +80,11 @@ export default function LeafieMessageList({
               {showAvatar && (
                 <div className={`flex items-center gap-2 mb-1 ${isUser ? 'flex-row-reverse' : ''}`}>
                   <span className={`font-semibold text-sm ${
-                    isUser ? 'text-[#C59B72]' : 'text-[#473C2F]'
+                    isUser ? 'text-brand-fg' : 'text-fg-strong'
                   }`}>
                     {isUser ? (user?.ho_ten || 'Bạn') : 'Leafie'}
                   </span>
-                  <span className="text-xs text-[#7A6F63]">
+                  <span className="text-xs text-fg-subtle">
                     {new Date(message.timestamp).toLocaleTimeString('vi-VN', {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -97,8 +97,8 @@ export default function LeafieMessageList({
               <div
                 className={`inline-block max-w-[85%] md:max-w-[75%] rounded-lg px-3 py-1.5 ${
                   isUser
-                    ? 'bg-gradient-to-r from-[#C59B72] to-[#D4A574] text-white rounded-tr-sm'
-                    : 'bg-white border border-[#E8E5DD] text-[#473C2F] rounded-tl-sm shadow-sm'
+                    ? 'rounded-tr-sm bg-brand text-fg-on-brand'
+                    : 'rounded-tl-sm border border-border-subtle bg-bg-surface text-fg shadow-sm'
                 }`}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
@@ -113,20 +113,20 @@ export default function LeafieMessageList({
       {/* Loading indicator - Discord style */}
       {loading && (
         <div className="group flex gap-3 px-2 md:px-4 py-1">
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-[#F5C96A]/40 to-[#C59B72]/30 border-2 border-[#C59B72]/30 flex items-center justify-center relative overflow-hidden">
+          <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-brand-border-subtle bg-brand-subtle relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent animate-pulse" />
-            <Leaf className="w-5 h-5 text-[#C59B72] relative z-10" strokeWidth={2.5} />
+            <Leaf className="relative z-10 h-5 w-5 text-brand-fg" strokeWidth={2.5} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-sm text-[#473C2F]">Leafie</span>
-              <span className="text-xs text-[#7A6F63]">đang nhập...</span>
+              <span className="text-sm font-semibold text-fg-strong">Leafie</span>
+              <span className="text-xs text-fg-subtle">đang nhập...</span>
             </div>
-            <div className="bg-white border border-[#E8E5DD] rounded-lg rounded-tl-sm px-3 py-1.5 shadow-sm inline-block">
+            <div className="inline-block rounded-lg rounded-tl-sm border border-border-subtle bg-bg-surface px-3 py-1.5 shadow-sm">
               <div className="flex gap-1.5 items-center">
-                <span className="w-2 h-2 rounded-full bg-[#C59B72] animate-dot-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 rounded-full bg-[#C59B72] animate-dot-bounce" style={{ animationDelay: '200ms' }} />
-                <span className="w-2 h-2 rounded-full bg-[#C59B72] animate-dot-bounce" style={{ animationDelay: '400ms' }} />
+                <span className="h-2 w-2 rounded-full bg-brand animate-dot-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="h-2 w-2 rounded-full bg-brand animate-dot-bounce" style={{ animationDelay: '200ms' }} />
+                <span className="h-2 w-2 rounded-full bg-brand animate-dot-bounce" style={{ animationDelay: '400ms' }} />
               </div>
             </div>
           </div>

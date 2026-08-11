@@ -67,8 +67,15 @@ export default function AdminGiftBoxBomPage() {
     }
   }, [giftBoxId, loadData])
 
+  const validate = () => {
+    const errors: Record<string, string> = {}
+    if (!selectedVariantId) errors.selectedVariantId = 'Vui lòng chọn biến thể'
+    if (quantity <= 0) errors.quantity = 'Số lượng phải lớn hơn 0'
+    return errors
+  }
+
   const handleAddBomItem = async () => {
-    if (!selectedVariantId || quantity <= 0) {
+    if (Object.keys(validate()).length > 0) {
       showError('Vui lòng chọn biến thể và nhập số lượng > 0')
       return
     }

@@ -1,320 +1,58 @@
-// Header/Navbar component - simple, slim header pinned to top
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ShoppingCart, User as UserIcon, LogIn, LogOut, LayoutDashboard, Leaf, Package } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { ChevronDown, LayoutDashboard, Leaf, LogIn, LogOut, Package, ShoppingBag, User } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLeafieContext } from '../../contexts/LeafieContext'
 import Button from '../ui/Button'
-import ProductDropdown from './ProductDropdown'
-import { IMAGE_PATHS } from '../../constants/images'
+import MobileNav, { MobileNavTrigger } from './mobile-nav'
+
+const navItems = [{ to: '/', label: 'Trang chủ' }, { to: '/search', label: 'Sản phẩm' }, { to: '/gift-boxes', label: 'Hộp quà' }, { to: '/contact', label: 'Liên hệ' }, { to: '/policies', label: 'Chính sách' }]
+
+function navClass({ isActive }: { isActive: boolean }) {
+  return `relative py-2 text-sm font-medium transition-colors ${isActive ? 'text-brand-fg after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-brand' : 'text-fg-muted hover:text-fg'}`
+}
 
 export default function Header() {
-  const navigate = useNavigate()
   const { cart, openCartDrawer } = useCart()
   const { user, logout } = useAuth()
   const { openChat } = useLeafieContext()
-  const [showUserMenu, setShowUserMenu] = useState(false)
-  const [showProductDropdown, setShowProductDropdown] = useState(false)
-  const [avatarError, setAvatarError] = useState(false)
-  const avatarButtonRef = useRef<HTMLButtonElement>(null)
-  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [productMenuOpen, setProductMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const isAdmin = user?.vaitro?.ten_vai_tro?.toLowerCase() === 'admin' || user?.vaitro?.vaitro_id === 1
 
-  // Reset avatar error when user or avatar_url changes
+  useEffect(() => { setMobileOpen(false); setProductMenuOpen(false); setUserMenuOpen(false) }, [location.pathname])
   useEffect(() => {
-    setAvatarError(false)
-  }, [user?.avatar_url])
-
-  // Calculate menu position when opening
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
   useEffect(() => {
-    if (showUserMenu && avatarButtonRef.current) {
-      const updatePosition = () => {
-        if (avatarButtonRef.current) {
-          const rect = avatarButtonRef.current.getBoundingClientRect()
-          setMenuPosition({
-            top: rect.bottom + 8, // 8px = mt-2 equivalent
-            right: window.innerWidth - rect.right,
-          })
-        }
-      }
-      
-      // Calculate immediately
-      updatePosition()
-      
-      // Update position on scroll or resize
-      window.addEventListener('scroll', updatePosition, true)
-      window.addEventListener('resize', updatePosition)
-      
-      return () => {
-        window.removeEventListener('scroll', updatePosition, true)
-        window.removeEventListener('resize', updatePosition)
-      }
-    } else {
-      setMenuPosition(null)
-    }
-  }, [showUserMenu])
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMobileOpen(false); setProductMenuOpen(false); setUserMenuOpen(false) } }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(event.target as Node)) setUserMenuOpen(false) }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [])
 
-  const handleLogout = () => {
-    logout()
-    setShowUserMenu(false)
-    navigate('/')
-  }
+  const submitSearch = (query: string) => { const trimmed = query.trim(); navigate(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : '/search'); setMobileOpen(false) }
+  const logoutAndGoHome = () => { logout(); setUserMenuOpen(false); navigate('/') }
 
-  // Check if user is admin
-  const isAdmin = user?.vaitro?.ten_vai_tro?.toLowerCase() === 'admin' || 
-                  user?.vaitro?.vaitro_id === 1
-
-  return (
-    <header className="sticky top-0 z-50 bg-gradient-to-r from-[#FFF5E6] via-[#FFFEF9] to-[#FFF5E6] border-b-2 border-[#D4A574] backdrop-blur-sm shadow-sm relative">
-      {/* Seasonal decoration, if any, comes from the global FloatingEmojiOverlay
-          in MainLayout — no need for a second one scoped to just the header. */}
-      <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-3 md:py-4 relative z-10">
-        {/* Cụm trái: logo + nav, cụm phải: cart + user */}
-        <div className="flex items-center gap-3 md:gap-8">
-          {/* Logo */}
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center hover:opacity-80 transition-default"
-            aria-label="Leaf Creme - Về trang chủ"
-          >
-            <img
-              src={IMAGE_PATHS.navbar.logo}
-              alt="Leaf Creme"
-              className="h-8 md:h-10 w-auto object-contain"
-              onError={(e) => {
-                // Fallback to main logo or text if image not found
-                const target = e.target as HTMLImageElement
-                const currentSrc = target.src
-                if (currentSrc.includes('navbar')) {
-                  // Try main logo
-                  target.src = IMAGE_PATHS.logo.main
-                } else {
-                  // Fallback to text
-                  target.style.display = 'none'
-                  const fallback = target.nextElementSibling as HTMLElement
-                  if (fallback) {
-                    fallback.style.display = 'block'
-                  }
-                }
-              }}
-            />
-            <span className="font-heading text-xl md:text-2xl font-medium text-text-primary leading-tight hidden">
-              Leaf Creme
-            </span>
-          </button>
-
-          {/* Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-6 ml-6">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="text-text-secondary hover:text-text-primary transition-default"
-            >
-              Trang chủ
-            </button>
-
-            <div className="relative group">
-              <button
-                type="button"
-                onClick={() => navigate('/search')}
-                onMouseEnter={() => setShowProductDropdown(true)}
-                className="text-text-secondary hover:text-text-primary transition-default"
-              >
-                Sản phẩm
-              </button>
-              <div
-                onMouseEnter={() => setShowProductDropdown(true)}
-                onMouseLeave={() => setShowProductDropdown(false)}
-              >
-                {showProductDropdown && (
-                  <ProductDropdown
-                    isOpen={showProductDropdown}
-                    onClose={() => setShowProductDropdown(false)}
-                  />
-                )}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/gift-boxes')}
-              className="text-text-secondary hover:text-text-primary transition-default"
-            >
-              Hộp quà
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/contact')}
-              className="text-text-secondary hover:text-text-primary transition-default"
-            >
-              Liên hệ
-            </button>
-          </nav>
-
-          {/* Right side: Chatbot, Cart and User (được đẩy sang phải) */}
-          <div className="flex items-center gap-2 md:gap-4 ml-auto">
-            {/* Leafie Chatbot Icon */}
-            <button
-              onClick={() => openChat()}
-              className="relative p-2 hover:opacity-70 transition-default group"
-              aria-label="Trò chuyện với Leafie"
-            >
-              <div className="relative">
-                <Leaf className="w-6 h-6 text-[#C59B72] group-hover:text-[#D4A574] transition-default" />
-                <span className="absolute -top-1 -right-1 text-[#F5C96A] text-xs animate-pulse">✨</span>
-              </div>
-            </button>
-
-            {/* Cart Icon */}
-            <button
-              onClick={openCartDrawer}
-              className="relative p-2 hover:opacity-70 transition-default"
-              aria-label="Giỏ hàng"
-            >
-              <ShoppingCart className="w-6 h-6 text-text-primary" />
-              {cart.itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gradient-to-br from-[#C59B72] to-[#D4A574] text-white text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center shadow-md border border-[#F5C96A]/30">
-                  {cart.itemCount > 99 ? '99+' : cart.itemCount}
-                </span>
-              )}
-            </button>
-
-            {/* User Menu */}
-            {user ? (
-              <div className="relative">
-                <button
-                  ref={avatarButtonRef}
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="relative p-1 hover:opacity-70 transition-default z-10"
-                  aria-label="Tài khoản"
-                >
-                  {user.avatar_url && user.avatar_url.trim() && !avatarError ? (
-                    <img
-                      src={
-                        user.avatar_url.startsWith('http')
-                          ? user.avatar_url
-                          : `${
-                              import.meta.env.VITE_API_BASE_URL ||
-                              'http://localhost:8000'
-                            }${user.avatar_url}`
-                      }
-                      alt={user.ho_ten}
-                      className="w-10 h-10 rounded-full object-cover border border-border"
-                      onError={() => {
-                        setAvatarError(true)
-                      }}
-                    />
-                  ) : (
-                    <UserIcon className="w-10 h-10 text-text-primary" />
-                  )}
-                </button>
-
-                {showUserMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-[105]"
-                      onClick={() => setShowUserMenu(false)}
-                    />
-                    <div
-                      className="fixed w-56 bg-surface border border-border rounded-card shadow-xl z-[110] overflow-hidden"
-                      style={menuPosition ? {
-                        top: `${menuPosition.top}px`,
-                        right: `${menuPosition.right}px`,
-                      } : {
-                        top: '60px',
-                        right: '20px',
-                      }}
-                    >
-                      <div className="p-4 border-b border-border">
-                        <p className="font-semibold text-text-primary mb-2">
-                          {user.ho_ten}
-                        </p>
-                        {user.ten_dang_nhap && (
-                          <p className="text-xs text-text-secondary mb-2">
-                            {user.ten_dang_nhap}
-                          </p>
-                        )}
-                        <p className="text-sm text-text-secondary">
-                          {user.email}
-                        </p>
-                      </div>
-                      <div className="py-2">
-                        <button
-                          onClick={() => {
-                            navigate('/profile')
-                            setShowUserMenu(false)
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
-                        >
-                          <UserIcon className="w-4 h-4" />
-                          Thông tin cá nhân
-                        </button>
-                        <button
-                          onClick={() => {
-                            navigate('/orders')
-                            setShowUserMenu(false)
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
-                        >
-                          <Package className="w-4 h-4" />
-                          Đơn hàng của tôi
-                        </button>
-                        {isAdmin && (
-                          <button
-                            onClick={() => {
-                              navigate('/admin')
-                              setShowUserMenu(false)
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
-                          >
-                            <LayoutDashboard className="w-4 h-4" />
-                            Admin Panel
-                          </button>
-                        )}
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-background transition-default"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Đăng xuất
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <>
-              <div className="hidden sm:flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/login')}
-                  className="text-sm"
-                >
-                  Đăng nhập
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => navigate('/register')}
-                  className="text-sm"
-                >
-                  Đăng ký
-                </Button>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="sm:hidden p-2 hover:opacity-70 transition-default"
-                aria-label="Đăng nhập hoặc đăng ký"
-              >
-                <LogIn className="w-6 h-6 text-text-primary" />
-              </button>
-              </>
-            )}
-          </div>
-        </div>
+  return <>
+    <header className="sticky top-0 z-header h-16 border-b border-border-subtle bg-bg-canvas/95 backdrop-blur-sm">
+      <div className="mx-auto flex h-16 max-w-container items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <MobileNavTrigger open={mobileOpen} onOpen={() => setMobileOpen(true)} />
+        <Link to="/" className="flex shrink-0 items-center gap-2 rounded-md" aria-label="Leaf Crème — Trang chủ"><span className="grid size-9 place-items-center rounded-full bg-brand-subtle text-brand-fg"><Leaf className="size-5" /></span><span className="font-heading text-xl font-semibold tracking-tight text-fg-strong">Leaf Crème</span></Link>
+        <nav className="ml-8 hidden items-center gap-7 lg:flex" aria-label="Điều hướng chính">{navItems.map((item) => item.to === '/search' ? <div key={item.to} className="relative" ref={productMenuOpen ? undefined : undefined}><button type="button" className={`relative flex items-center gap-1 py-2 text-sm font-medium transition-colors ${location.pathname === '/search' ? 'text-brand-fg' : 'text-fg-muted hover:text-fg'}`} aria-haspopup="true" aria-expanded={productMenuOpen} onClick={() => setProductMenuOpen((open) => !open)}>{item.label}<ChevronDown className={`size-4 transition-transform ${productMenuOpen ? 'rotate-180' : ''}`} /></button>{productMenuOpen && <div className="absolute left-0 top-full z-dropdown mt-2 w-56 rounded-lg border border-border bg-bg-surface p-2 shadow-lg"><Link to="/search" className="block rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-bg-subtle hover:text-fg">Tất cả sản phẩm</Link><Link to="/categories/Bánh kem" className="block rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-bg-subtle hover:text-fg">Bánh kem</Link><Link to="/categories/Mousse" className="block rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-bg-subtle hover:text-fg">Mousse</Link><Link to="/categories/Tiramisu" className="block rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-bg-subtle hover:text-fg">Tiramisu</Link></div>}</div> : <NavLink key={item.to} to={item.to} className={navClass} end={item.to === '/'}>{item.label}</NavLink>)}</nav>
+        <div className="ml-auto flex items-center gap-1 sm:gap-2"><button type="button" onClick={openChat} aria-label="Trò chuyện với Leafie" className="hidden rounded-md p-2 text-fg-muted hover:bg-bg-subtle hover:text-brand-fg sm:grid"><Leaf className="size-5" /></button><button type="button" onClick={openCartDrawer} aria-label={`Giỏ hàng, ${cart.itemCount} sản phẩm`} className="relative grid size-10 place-items-center rounded-md text-fg-muted hover:bg-bg-subtle hover:text-brand-fg"><ShoppingBag className="size-5" />{cart.itemCount > 0 && <span className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-brand px-1 text-[10px] font-bold leading-4 text-fg-on-brand">{cart.itemCount > 99 ? '99+' : cart.itemCount}</span>}</button>{user ? <div className="relative" ref={menuRef}><button type="button" onClick={() => setUserMenuOpen((open) => !open)} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label="Mở menu tài khoản" className="grid size-10 place-items-center rounded-full border border-border-interactive bg-bg-surface text-brand-fg hover:bg-bg-subtle"><User className="size-5" /></button>{userMenuOpen && <div role="menu" className="absolute right-0 top-full z-dropdown mt-2 w-56 overflow-hidden rounded-lg border border-border bg-bg-surface shadow-lg"><div className="border-b border-border-subtle px-4 py-3"><p className="truncate text-sm font-semibold text-fg-strong">{user.ho_ten}</p><p className="truncate text-xs text-fg-subtle">{user.email}</p></div><Link role="menuitem" to="/profile" className="flex items-center gap-3 px-4 py-3 text-sm text-fg-muted hover:bg-bg-subtle hover:text-fg"><User className="size-4" />Thông tin cá nhân</Link><Link role="menuitem" to="/orders" className="flex items-center gap-3 px-4 py-3 text-sm text-fg-muted hover:bg-bg-subtle hover:text-fg"><Package className="size-4" />Đơn hàng của tôi</Link>{isAdmin && <Link role="menuitem" to="/admin" className="flex items-center gap-3 px-4 py-3 text-sm text-fg-muted hover:bg-bg-subtle hover:text-fg"><LayoutDashboard className="size-4" />Admin Panel</Link>}<button type="button" role="menuitem" onClick={logoutAndGoHome} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-danger hover:bg-danger-bg"><LogOut className="size-4" />Đăng xuất</button></div>}</div> : <><Link to="/login" className="hidden rounded-md p-2 text-fg-muted hover:bg-bg-subtle hover:text-fg sm:block"><span className="sr-only">Đăng nhập</span><LogIn className="size-5" /></Link><Button href="/login" variant="outline" size="sm" className="hidden sm:inline-flex">Đăng nhập</Button><Button href="/register" variant="primary" size="sm" className="hidden sm:inline-flex">Bắt đầu</Button></>}</div>
       </div>
     </header>
-  )
+    <MobileNav open={mobileOpen} user={user} onClose={() => setMobileOpen(false)} onSearch={submitSearch} />
+  </>
 }

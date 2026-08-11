@@ -9,7 +9,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import NguoiDung
+from app.core.config import settings
 from app.core.dependencies import get_current_user
+from app.core.security import decode_cognito_token
 from app.services.auth import AuthService, DomainError
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
@@ -26,11 +28,14 @@ def _raise_http(exc: DomainError, headers: dict | None = None) -> None:
 # Request/Response Schemas
 # =========================================================
 class UserRegister(BaseModel):
+    """Public self-registration. No vaitro_id field on purpose — every
+    self-registered account is a "customer" account, assigned server-side
+    (see AuthService.register). Staff/manager/admin accounts are created
+    via POST /users, which is already admin-gated."""
     ten_dang_nhap: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     mat_khau: str = Field(..., min_length=6)
     ho_ten: str = Field(..., min_length=1, max_length=100)
-    vaitro_id: int = Field(..., gt=0)
     so_dien_thoai: Optional[str] = Field(None, max_length=20)
     dia_chi: Optional[str] = None
     ngay_sinh: Optional[str] = Field(None, description="Format: DD/MM/YYYY (ví dụ: 16/10/2004) hoặc YYYY-MM-DD")
@@ -51,6 +56,21 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class CognitoProfile(BaseModel):
+    ten_dang_nhap: Optional[str] = Field(None, min_length=3, max_length=50)
+    email: Optional[EmailStr] = None
+    ho_ten: Optional[str] = Field(None, min_length=1, max_length=100)
+    so_dien_thoai: Optional[str] = Field(None, max_length=20)
+    dia_chi: Optional[str] = None
+    ngay_sinh: Optional[str] = None
+    gioi_tinh: Optional[str] = Field(None, max_length=10)
+
+
+class CognitoSessionRequest(BaseModel):
+    id_token: str = Field(..., min_length=1)
+    profile: Optional[CognitoProfile] = None
+
+
 class LoginResponse(TokenResponse):
     pass
 
@@ -60,6 +80,8 @@ class LoginResponse(TokenResponse):
 # =========================================================
 @router.post("/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
+    if settings.AUTH_PROVIDER == "cognito":
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Use Cognito registration")
     """Đăng ký người dùng mới"""
     try:
         return auth_service.register(db, user_data)
@@ -72,6 +94,8 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
+    if settings.AUTH_PROVIDER == "cognito":
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Use Cognito login")
     """
     Login với username/password
     Có thể dùng username hoặc email để login
@@ -88,9 +112,26 @@ def login(
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_token(token_data: RefreshTokenRequest, db: Session = Depends(get_db)):
+    if settings.AUTH_PROVIDER == "cognito":
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Use Cognito token refresh")
     """Refresh access token từ refresh token"""
     try:
         return auth_service.refresh_token(db, token_data.refresh_token)
+    except DomainError as exc:
+        _raise_http(exc)
+
+
+@router.post("/cognito/session")
+def establish_cognito_session(session_data: CognitoSessionRequest, db: Session = Depends(get_db)):
+    """Validate an ID token then map its subject to the local user/role."""
+    if settings.AUTH_PROVIDER != "cognito":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cognito authentication is disabled")
+
+    claims = decode_cognito_token(session_data.id_token, "id")
+    if claims is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Cognito identity token")
+    try:
+        return auth_service.provision_cognito_user(db, claims, session_data.profile)
     except DomainError as exc:
         _raise_http(exc)
 

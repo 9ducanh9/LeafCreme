@@ -1,168 +1,41 @@
-// Cart page - full cart page for detailed review and checkout
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Card from '../components/ui/Card'
+import { ArrowLeft, Cake } from 'lucide-react'
+import Card, { CardBody, CardHeader, CardTitle } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
+import EmptyState from '../components/ui/EmptyState'
+import { Container, Section } from '../components/layout'
 import { useCart } from '../contexts/CartContext'
 import CartItem from '../components/cart/CartItem'
 import CartSummary from '../components/cart/CartSummary'
-import { ArrowLeft, Cake } from 'lucide-react'
 
 export default function CartPage() {
   const navigate = useNavigate()
   const { cartItems, cartSubtotal, cartCount, updateQuantity, removeFromCart, clearCart } = useCart()
-  const [confirmRemove, setConfirmRemove] = useState<{
-    isOpen: boolean
-    productId?: number
-    variantId?: number
-  }>({ isOpen: false })
+  const [confirmRemove, setConfirmRemove] = useState<{ isOpen: boolean; productId?: number; variantId?: number }>({ isOpen: false })
   const [confirmClearAll, setConfirmClearAll] = useState(false)
 
-  const handleRemoveItem = (productId: number, variantId?: number) => {
-    setConfirmRemove({ isOpen: true, productId, variantId })
-  }
-
   const handleConfirmRemove = () => {
-    if (confirmRemove.productId !== undefined) {
-      removeFromCart(confirmRemove.productId, confirmRemove.variantId)
-    }
+    if (confirmRemove.productId !== undefined) removeFromCart(confirmRemove.productId, confirmRemove.variantId)
     setConfirmRemove({ isOpen: false })
   }
 
-  const handleClearAll = () => {
-    setConfirmClearAll(true)
-  }
-
-  const handleConfirmClearAll = () => {
-    clearCart()
-    setConfirmClearAll(false)
-  }
-
-  const handleContinueShopping = () => {
-    navigate('/search')
-  }
-
-  const handleCheckout = () => {
-    navigate('/checkout')
-  }
-
-  // Empty cart state
   if (cartItems.length === 0) {
-    return (
-      <div className="min-h-screen bg-background py-16">
-        <div className="max-w-[1440px] mx-auto px-6">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/')} 
-            className="mb-10 text-sm text-text-secondary border-border/60 hover:border-border hover:bg-transparent"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Tiếp tục mua sắm
-          </Button>
-
-          <Card className="text-center py-24 px-8 rounded-[20px] bg-[#FAF9F7] shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
-            <Cake className="w-28 h-28 text-accent-brown/15 mx-auto mb-5 stroke-[1.5]" />
-            <h2 className="font-heading text-2xl font-normal text-text-primary mb-4">
-              Chưa có gì trong giỏ cả
-            </h2>
-            <p className="text-base text-[#7A6F63]/90 mb-12 max-w-[420px] mx-auto leading-[1.7]">
-              Hãy để chúng mình làm ngọt ngào thêm ngày của bạn nhé
-            </p>
-            <Button 
-              variant="primary" 
-              onClick={() => navigate('/search')} 
-              className="px-10 py-3 rounded-full shadow-[0_2px_8px_rgba(197,155,114,0.15)] hover:shadow-[0_3px_12px_rgba(197,155,114,0.25)] hover:-translate-y-[1px] transition-all duration-200"
-            >
-              Xem bánh ngon
-            </Button>
-          </Card>
-        </div>
-      </div>
-    )
+    return <Section tone="canvas"><Container><Button variant="ghost" onClick={() => navigate('/')} className="mb-8"><ArrowLeft className="size-4" />Tiếp tục mua sắm</Button><EmptyState icon={<Cake className="size-12" />} title="Giỏ hàng đang trống" description="Hãy để Leaf Crème làm ngọt ngào thêm ngày của bạn." action={<Button href="/search">Xem bánh ngon</Button>} /></Container></Section>
   }
 
   return (
-    <div className="min-h-screen bg-background py-16">
-      <div className="max-w-[1440px] mx-auto px-6">
-        <div className="flex items-center justify-between mb-8">
-          <Button variant="outline" onClick={() => navigate('/')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Tiếp tục mua sắm
-          </Button>
-          <Button variant="outline" onClick={handleClearAll} className="text-sm">
-            Xóa tất cả
-          </Button>
+    <Section tone="canvas">
+      <Container>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3"><Button variant="ghost" onClick={() => navigate('/')}><ArrowLeft className="size-4" />Tiếp tục mua sắm</Button><Button variant="ghost" onClick={() => setConfirmClearAll(true)} className="text-danger">Xóa tất cả</Button></div>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <Card className="overflow-hidden p-0"><CardHeader className="border-b border-border-subtle"><CardTitle>Sản phẩm trong giỏ ({cartCount})</CardTitle></CardHeader><CardBody className="divide-y divide-border-subtle p-0">{cartItems.map((item) => <div key={`${item.productId}-${item.variantId || 'none'}`} className="px-5 sm:px-6"><CartItem item={item} onQuantityChange={updateQuantity} onRemove={(productId, variantId) => setConfirmRemove({ isOpen: true, productId, variantId })} compact={false} /></div>)}</CardBody></Card>
+          <Card className="h-fit lg:sticky lg:top-24"><CardTitle className="mb-6">Tóm tắt đơn hàng</CardTitle><CartSummary subtotal={cartSubtotal} itemCount={cartCount} shipping={0} showShipping={false} onCheckout={() => navigate('/checkout')} onContinueShopping={() => navigate('/search')} checkoutLabel="Tiến hành thanh toán" continueShoppingLabel="Tiếp tục mua sắm" compact={false} /></Card>
         </div>
-
-        {/* Scan lookup remains in the internal batch-create flow, not the customer cart. */}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items List - Left Side */}
-          <div className="lg:col-span-2">
-            <Card className="p-0">
-              <div className="p-6 border-b border-border">
-                <h2 className="font-heading text-2xl font-semibold text-text-primary">
-                  Sản phẩm trong giỏ hàng ({cartCount})
-                </h2>
-              </div>
-              <div className="divide-y divide-border">
-                {cartItems.map((item) => (
-                  <div key={`${item.productId}-${item.variantId || 'none'}`} className="px-6">
-                    <CartItem
-                      item={item}
-                      onQuantityChange={updateQuantity}
-                      onRemove={handleRemoveItem}
-                      compact={false}
-                    />
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          {/* Cart Summary - Right Side (Sticky on Desktop) */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
-              <h2 className="font-heading text-2xl font-semibold text-text-primary mb-6">
-                Tóm tắt đơn hàng
-              </h2>
-
-              <CartSummary
-                subtotal={cartSubtotal}
-                itemCount={cartCount}
-                shipping={0} // Can be calculated or fetched from API
-                showShipping={false} // Set to true if shipping is available
-                onCheckout={handleCheckout}
-                onContinueShopping={handleContinueShopping}
-                checkoutLabel="Tiến hành thanh toán"
-                continueShoppingLabel="Tiếp tục mua sắm"
-                compact={false}
-              />
-            </Card>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirm Dialogs */}
-      <ConfirmDialog
-        isOpen={confirmRemove.isOpen}
-        message="Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?"
-        confirmLabel="Xóa"
-        cancelLabel="Hủy"
-        onConfirm={handleConfirmRemove}
-        onCancel={() => setConfirmRemove({ isOpen: false })}
-        variant="danger"
-      />
-      <ConfirmDialog
-        isOpen={confirmClearAll}
-        message="Bạn có chắc muốn xóa tất cả sản phẩm khỏi giỏ hàng?"
-        confirmLabel="Xóa tất cả"
-        cancelLabel="Hủy"
-        onConfirm={handleConfirmClearAll}
-        onCancel={() => setConfirmClearAll(false)}
-        variant="danger"
-      />
-    </div>
+      </Container>
+      <ConfirmDialog isOpen={confirmRemove.isOpen} message="Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?" confirmLabel="Xóa" cancelLabel="Hủy" onConfirm={handleConfirmRemove} onCancel={() => setConfirmRemove({ isOpen: false })} variant="danger" />
+      <ConfirmDialog isOpen={confirmClearAll} message="Bạn có chắc muốn xóa tất cả sản phẩm khỏi giỏ hàng?" confirmLabel="Xóa tất cả" cancelLabel="Hủy" onConfirm={() => { clearCart(); setConfirmClearAll(false) }} onCancel={() => setConfirmClearAll(false)} variant="danger" />
+    </Section>
   )
 }

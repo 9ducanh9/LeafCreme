@@ -1,26 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  MenuItem,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material'
+import { Chip, MenuItem, TextField } from '@mui/material'
 import RefreshIcon from '@mui/icons-material/Refresh'
+import AdminPage from '../../components/admin/ui/admin-page'
+import DataTable, { type Column } from '../../components/admin/ui/data-table'
+import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
+import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import {
-  BatchType,
-  MovementType,
-  StockLedgerRow,
+  type BatchType,
+  type MovementType,
+  type StockLedgerRow,
   getBatchTypeLabel,
   getInventoryLedger,
   getMovementTypeLabel,
@@ -42,165 +30,109 @@ const movementTypes: Array<{ value: MovementType; label: string }> = [
   { value: 'tra_hang', label: 'Trả hàng' },
 ]
 
-const formatDateTime = (value?: string) => {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('vi-VN')
-}
-
-const getMovementColor = (movementType: MovementType) => {
-  if (movementType === 'nhap_hang' || movementType === 'tra_hang') return 'success'
-  if (movementType === 'xuat_ban' || movementType === 'xuat_bom' || movementType === 'xuat_huy') return 'error'
-  if (movementType === 'kiem_ke') return 'warning'
+const formatDateTime = (value?: string) => (value ? new Date(value).toLocaleString('vi-VN') : '-')
+const movementColor = (value: MovementType) => {
+  if (value === 'nhap_hang' || value === 'tra_hang') return 'success'
+  if (value === 'xuat_ban' || value === 'xuat_bom' || value === 'xuat_huy') return 'error'
+  if (value === 'kiem_ke') return 'warning'
   return 'default'
 }
 
+const columns: Column<StockLedgerRow>[] = [
+  { id: 'timestamp', label: 'Thời gian', sortable: true, render: (row) => formatDateTime(row.timestamp) },
+  { id: 'item_type', label: 'Loại lô', render: (row) => getBatchTypeLabel(row.item_type) },
+  { id: 'batch_id', label: 'Lô', numeric: true, sortable: true },
+  {
+    id: 'movement_type',
+    label: 'Giao dịch',
+    sortable: true,
+    render: (row) => <Chip size="small" color={movementColor(row.movement_type)} label={getMovementTypeLabel(row.movement_type)} />,
+  },
+  { id: 'quantity_before', label: 'Trước', numeric: true },
+  { id: 'quantity', label: 'Thay đổi', numeric: true },
+  { id: 'quantity_after', label: 'Sau', numeric: true },
+  { id: 'order_id', label: 'Đơn hàng', numeric: true, render: (row) => row.order_id ?? '-' },
+  { id: 'reason', label: 'Lý do', render: (row) => row.reason || '-' },
+]
+
 export default function AdminStockLedgerPage() {
+  const table = useDataTableState({
+    key: 'ledger',
+    defaultSortBy: 'timestamp',
+    defaultSortDir: 'desc',
+    defaultPageSize: 50,
+    filterKeys: ['item_type', 'movement_type', 'batch_id', 'order_id'],
+  })
   const [rows, setRows] = useState<StockLedgerRow[]>([])
-  const [loading, setLoading] = useState(false)
+  const [total, setTotal] = useState(0)
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [itemType, setItemType] = useState<BatchType | ''>('')
-  const [movementType, setMovementType] = useState<MovementType | ''>('')
-  const [batchId, setBatchId] = useState('')
-  const [orderId, setOrderId] = useState('')
 
   const loadLedger = useCallback(async () => {
-    setLoading(true)
+    setStatus('loading')
     setError(null)
     try {
-      const data = await getInventoryLedger({
-        item_type: itemType || undefined,
-        movement_type: movementType || undefined,
-        batch_id: batchId ? Number(batchId) : undefined,
-        order_id: orderId ? Number(orderId) : undefined,
-        limit: 200,
+      const page = await getInventoryLedger({
+        item_type: (table.filters.item_type || undefined) as BatchType | undefined,
+        movement_type: (table.filters.movement_type || undefined) as MovementType | undefined,
+        batch_id: table.filters.batch_id ? Number(table.filters.batch_id) : undefined,
+        order_id: table.filters.order_id ? Number(table.filters.order_id) : undefined,
+        skip: table.skip,
+        limit: table.pageSize,
+        sort_by: table.sortBy as 'timestamp' | 'movement_type',
+        sort_dir: table.sortDir,
       })
-      setRows(data)
-    } catch (err) {
+      setRows(page.items)
+      setTotal(page.total)
+      setStatus('idle')
+    } catch {
       setError('Không thể tải lịch sử kho')
-    } finally {
-      setLoading(false)
+      setStatus('error')
     }
-  }, [batchId, itemType, movementType, orderId])
+  }, [table.filters, table.pageSize, table.skip, table.sortBy, table.sortDir])
 
-  useEffect(() => {
-    loadLedger()
-  }, [loadLedger])
+  useEffect(() => { void loadLedger() }, [loadLedger])
+
+  const updateFilter = (name: string, value: string) => table.patch({ filters: { ...table.filters, [name]: value } })
+  const hasFilters = Object.keys(table.filters).length > 0
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F' }}>
-          Lịch sử kho
-        </Typography>
-        <Button startIcon={<RefreshIcon />} variant="outlined" onClick={loadLedger} disabled={loading}>
-          Làm mới
-        </Button>
-      </Box>
-
-      <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <TextField
-          select
-          size="small"
-          label="Loại lô"
-          value={itemType}
-          onChange={(event) => setItemType(event.target.value as BatchType | '')}
-          sx={{ minWidth: 160 }}
-        >
+    <AdminPage title="Nhật ký kho" breadcrumb={[{ label: 'Nhật ký kho' }]}>
+      <DataTableToolbar
+        title="Theo dõi biến động tồn kho"
+        actions={<button type="button" onClick={() => void loadLedger} disabled={status === 'loading'}><RefreshIcon fontSize="small" /> Làm mới</button>}
+      >
+        <TextField select size="small" label="Loại lô" value={table.filters.item_type || ''} onChange={(event) => updateFilter('item_type', event.target.value)}>
           <MenuItem value="">Tất cả</MenuItem>
-          {batchTypes.map((type) => (
-            <MenuItem key={type.value} value={type.value}>
-              {type.label}
-            </MenuItem>
-          ))}
+          {batchTypes.map((type) => <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>)}
         </TextField>
-        <TextField
-          select
-          size="small"
-          label="Giao dịch"
-          value={movementType}
-          onChange={(event) => setMovementType(event.target.value as MovementType | '')}
-          sx={{ minWidth: 160 }}
-        >
+        <TextField select size="small" label="Giao dịch" value={table.filters.movement_type || ''} onChange={(event) => updateFilter('movement_type', event.target.value)}>
           <MenuItem value="">Tất cả</MenuItem>
-          {movementTypes.map((type) => (
-            <MenuItem key={type.value} value={type.value}>
-              {type.label}
-            </MenuItem>
-          ))}
+          {movementTypes.map((type) => <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>)}
         </TextField>
-        <TextField
-          size="small"
-          label="Batch ID"
-          value={batchId}
-          onChange={(event) => setBatchId(event.target.value)}
-          type="number"
-        />
-        <TextField
-          size="small"
-          label="Order ID"
-          value={orderId}
-          onChange={(event) => setOrderId(event.target.value)}
-          type="number"
-        />
-      </Paper>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {loading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="360px">
-          <CircularProgress sx={{ color: '#C59B72' }} />
-        </Box>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Thời gian</TableCell>
-                <TableCell>Loại</TableCell>
-                <TableCell>Batch</TableCell>
-                <TableCell>Giao dịch</TableCell>
-                <TableCell align="right">Trước</TableCell>
-                <TableCell align="right">Thay đổi</TableCell>
-                <TableCell align="right">Sau</TableCell>
-                <TableCell>Đơn hàng</TableCell>
-                <TableCell>Lý do</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={`${row.item_type}-${row.ledger_id}`} hover>
-                  <TableCell>{formatDateTime(row.timestamp)}</TableCell>
-                  <TableCell>{getBatchTypeLabel(row.item_type)}</TableCell>
-                  <TableCell>{row.batch_id}</TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={getMovementTypeLabel(row.movement_type)}
-                      color={getMovementColor(row.movement_type)}
-                    />
-                  </TableCell>
-                  <TableCell align="right">{row.quantity_before}</TableCell>
-                  <TableCell align="right">{row.quantity}</TableCell>
-                  <TableCell align="right">{row.quantity_after}</TableCell>
-                  <TableCell>{row.order_id || '-'}</TableCell>
-                  <TableCell>{row.reason || '-'}</TableCell>
-                </TableRow>
-              ))}
-              {rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={9} align="center">
-                    Chưa có lịch sử kho phù hợp
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Box>
+        <TextField size="small" type="number" label="Mã lô" value={table.filters.batch_id || ''} onChange={(event) => updateFilter('batch_id', event.target.value)} />
+        <TextField size="small" type="number" label="Mã đơn" value={table.filters.order_id || ''} onChange={(event) => updateFilter('order_id', event.target.value)} />
+      </DataTableToolbar>
+      <DataTable
+        caption="Nhật ký biến động kho"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => `${row.item_type}-${row.ledger_id}`}
+        getRowLabel={(row) => `${getBatchTypeLabel(row.item_type)} #${row.batch_id}`}
+        total={total}
+        page={table.page}
+        pageSize={table.pageSize}
+        onPageChange={(page) => table.patch({ page })}
+        onPageSizeChange={(pageSize) => table.patch({ pageSize })}
+        sortBy={table.sortBy}
+        sortDir={table.sortDir}
+        onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })}
+        status={status}
+        error={error}
+        onRetry={() => void loadLedger()}
+        hasActiveFilters={hasFilters}
+        onClearFilters={() => table.patch({ filters: {} })}
+      />
+    </AdminPage>
   )
 }

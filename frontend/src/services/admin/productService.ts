@@ -3,6 +3,7 @@ import { ProductVariant } from '../../types/admin'
 import { Product, ProductVariant as BackendVariant } from '../../types/product'
 import { apiClient } from '../api'
 import { normalizeSize, getSizeCode } from '../../utils/sizeNormalizer'
+import type { Page } from '../../types/page'
 
 /**
  * Map backend Product + Variant to admin ProductVariant format
@@ -55,7 +56,8 @@ export async function getProductVariants(filters?: {
     // Fetch all products (including inactive for admin)
     // Don't filter by dang_hoat_dong to show all products in admin panel
     const params: Record<string, string | number | boolean | null> = {
-      limit: 1000, // Get all products
+      limit: 50,
+      paginated: true,
     }
     
     if (filters?.category) {
@@ -67,7 +69,8 @@ export async function getProductVariants(filters?: {
     }
     
     // Note: Not filtering by dang_hoat_dong to show all products in admin
-    const products = await apiClient.get<Product[]>('/products', params)
+    const productPage = await apiClient.get<Page<Product>>('/products', params)
+    const products = productPage.items
 
     // Fetch variants for each product that has type 'bien_the'
     const variantsMap = new Map<number, BackendVariant[]>()

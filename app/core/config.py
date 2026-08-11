@@ -31,6 +31,24 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
+    # Authentication provider. Keep the legacy provider as the default so a
+    # deployment cannot accidentally lock every existing user out while the
+    # Cognito variables are being configured.
+    AUTH_PROVIDER: str = os.getenv("AUTH_PROVIDER", "local").lower()
+    if AUTH_PROVIDER not in {"local", "cognito"}:
+        raise RuntimeError("AUTH_PROVIDER must be either 'local' or 'cognito'.")
+
+    COGNITO_REGION: str = os.getenv("COGNITO_REGION", "")
+    COGNITO_USER_POOL_ID: str = os.getenv("COGNITO_USER_POOL_ID", "")
+    COGNITO_APP_CLIENT_ID: str = os.getenv("COGNITO_APP_CLIENT_ID", "")
+    if AUTH_PROVIDER == "cognito" and not all(
+        (COGNITO_REGION, COGNITO_USER_POOL_ID, COGNITO_APP_CLIENT_ID)
+    ):
+        raise RuntimeError(
+            "COGNITO_REGION, COGNITO_USER_POOL_ID, and COGNITO_APP_CLIENT_ID "
+            "are required when AUTH_PROVIDER=cognito."
+        )
+
     FRONTEND_BASE_URL: str = os.getenv(
         "FRONTEND_BASE_URL",
         "http://localhost:5173" if IS_DEVELOPMENT else ""

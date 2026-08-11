@@ -25,6 +25,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat'
 import { Voucher } from '../../../types/admin'
 import { getProducts } from '../../../services/productService'
 import { Product } from '../../../types/product'
+import { useUnsavedChanges } from '../../../hooks/admin/useUnsavedChanges'
 
 // Configure dayjs
 dayjs.extend(customParseFormat)
@@ -55,6 +56,8 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
   const [products, setProducts] = useState<Product[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const isDirty = Boolean(formData.code || formData.discountValue || formData.targetId || formData.expiresAt)
+  useUnsavedChanges(open && isDirty && !loading)
   
   // Available categories
   const categories = ['Bánh kem', 'Bông lan', 'Mousse', 'Tiramisu']

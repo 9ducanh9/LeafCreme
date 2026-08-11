@@ -1,190 +1,36 @@
-// Payment QR Page - Giống MoMo Gateway
 import { useEffect, useState } from 'react'
-import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Check, Clock3, Copy, CreditCard } from 'lucide-react'
 import type { MomoQRPaymentInfo } from '../services/paymentService'
+import { formatPrice } from '../utils/formatPrice'
+import Card from '../components/ui/Card'
+import Button from '../components/ui/Button'
+import Alert from '../components/ui/Alert'
+import Container from '../components/layout/container'
 
 export default function PaymentQRPage() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
   const navigate = useNavigate()
-  const [timeLeft, setTimeLeft] = useState(600) // 10 phút = 600 giây
-  
   const paymentInfo = location.state?.paymentInfo as MomoQRPaymentInfo | undefined
+  const [timeLeft, setTimeLeft] = useState(600)
+  const [copied, setCopied] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!paymentInfo) {
-      navigate('/')
-    }
-  }, [paymentInfo, navigate])
+  useEffect(() => { if (!paymentInfo) navigate('/orders') }, [paymentInfo, navigate])
+  useEffect(() => { if (!paymentInfo || timeLeft <= 0) return; const timer = window.setInterval(() => setTimeLeft((value) => Math.max(0, value - 1)), 1000); return () => window.clearInterval(timer) }, [paymentInfo, timeLeft])
+  if (!paymentInfo) return null
 
-  // Countdown timer
-  useEffect(() => {
-    if (timeLeft <= 0) return
+  const copy = async (key: string, value: string) => { try { await navigator.clipboard.writeText(value); setCopied(key); window.setTimeout(() => setCopied(null), 1800) } catch { setCopied(null) } }
+  const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0')
+  const seconds = (timeLeft % 60).toString().padStart(2, '0')
+  const backToOrder = () => navigate(`/orders/${id}/success?payment_status=pending&payment_method=momo_qr`)
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [timeLeft])
-
-  if (!paymentInfo) {
-    return null
-  }
-
-  const minutes = Math.floor(timeLeft / 60)
-  const seconds = timeLeft % 60
-
-  const handleBack = () => {
-    navigate(`/orders/${id}/success?payment_status=pending&payment_method=momo_qr`)
-  }
-
-  return (
-    <div className="min-h-screen bg-white">
-      {/* Header giống MoMo */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-[1200px] mx-auto flex items-center gap-3">
-          <div className="w-12 h-12 bg-[#A50064] rounded-2xl flex items-center justify-center">
-            <span className="text-white font-bold text-xl">M</span>
-          </div>
-          <h1 className="text-xl font-semibold text-gray-800">
-            Cổng thanh toán MoMo
-          </h1>
-        </div>
-      </div>
-
-      {/* Main Content - Layout 2 cột giống MoMo */}
-      <div className="max-w-[1200px] mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* Bên trái - Thông tin đơn hàng */}
-          <div className="bg-white">
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">
-                Thông tin đơn hàng
-              </h2>
-
-              {/* Nhà cung cấp */}
-              <div className="mb-6">
-                <p className="text-sm text-gray-500 mb-2">Nhà cung cấp</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">LC</span>
-                  </div>
-                  <span className="font-semibold text-gray-800">{paymentInfo.account_name}</span>
-                </div>
-              </div>
-
-              {/* Mã đơn hàng */}
-              <div className="mb-6">
-                <p className="text-sm text-gray-500 mb-2">Mã đơn hàng</p>
-                <p className="font-semibold text-gray-800">{paymentInfo.transfer_content}</p>
-              </div>
-
-              {/* Mô tả */}
-              <div className="mb-6">
-                <p className="text-sm text-gray-500 mb-2">Mô tả</p>
-                <p className="text-gray-700">
-                  Thanh toán đơn {paymentInfo.transfer_content}
-                </p>
-              </div>
-
-              {/* Số tiền - BIG */}
-              <div className="mb-6">
-                <p className="text-sm text-gray-500 mb-2">Số tiền</p>
-                <p className="text-4xl font-bold text-gray-900">
-                  {(paymentInfo.amount / 1000).toFixed(3)}đ
-                </p>
-              </div>
-
-              {/* Countdown Timer */}
-              <div className="bg-pink-50 rounded-xl p-4">
-                <p className="text-sm text-gray-600 mb-3">Đơn hàng sẽ hết hạn sau:</p>
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
-                      <p className="text-3xl font-bold text-[#A50064]">
-                        {minutes.toString().padStart(2, '0')}
-                      </p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Phút</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
-                      <p className="text-3xl font-bold text-[#A50064]">
-                        {seconds.toString().padStart(2, '0')}
-                      </p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Giây</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Button Quay về */}
-              <button
-                onClick={handleBack}
-                className="w-full mt-6 py-3 text-[#A50064] font-semibold text-center hover:bg-pink-50 rounded-xl transition-colors"
-              >
-                Quay về
-              </button>
-            </div>
-          </div>
-
-          {/* Bên phải - QR Code với background gradient pink */}
-          <div className="bg-gradient-to-br from-[#D82D8B] to-[#A50064] rounded-2xl p-8 text-white flex flex-col items-center justify-center min-h-[600px]">
-            <h2 className="text-2xl font-bold mb-2 text-center">
-              Quét mã QR để thanh toán
-            </h2>
-            <p className="text-white/90 mb-8 text-center text-sm">
-              Sử dụng App MoMo hoặc ứng dụng Camera hỗ trợ QR code để quét mã
-            </p>
-
-            {/* QR Code - White background */}
-            <div className="bg-white rounded-3xl p-8 shadow-2xl mb-6">
-              {paymentInfo.qr_code ? (
-                <img 
-                  src={paymentInfo.qr_code} 
-                  alt="MoMo QR Code"
-                  className="w-80 h-80"
-                />
-              ) : paymentInfo.qr_image ? (
-                <img 
-                  src={paymentInfo.qr_image} 
-                  alt="MoMo QR Code"
-                  className="w-80 h-80"
-                />
-              ) : (
-                <div className="w-80 h-80 flex items-center justify-center bg-gray-100 rounded-2xl">
-                  <p className="text-gray-500">Đang tải QR...</p>
-                </div>
-              )}
-            </div>
-
-            {/* Instructions */}
-            <div className="text-center">
-              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
-                </svg>
-                <span className="text-sm font-medium">
-                  Sử dụng <strong>App MoMo</strong> hoặc ứng dụng camera hỗ trợ QR code để quét mã
-                </span>
-              </div>
-              
-              <p className="text-white/80 text-sm">
-                Gặp khó khăn khi thanh toán? <a href="#" className="underline font-semibold text-white hover:text-white/90">Xem Hướng dẫn</a>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+  return <div className="bg-bg-canvas py-8 sm:py-12"><Container>
+    <Button variant="ghost" onClick={backToOrder} className="mb-8 -ml-2"><ArrowLeft className="size-4" />Quay về đơn hàng</Button>
+    <div className="mb-8"><p className="text-xs font-semibold uppercase tracking-caps text-brand-fg">Thanh toán an toàn</p><h1 className="mt-2 text-h1">Thanh toán qua MoMo</h1><p className="mt-3 max-w-2xl text-fg-muted">Mở ứng dụng MoMo, quét mã và giữ nguyên nội dung chuyển khoản để hệ thống đối soát chính xác.</p></div>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+      <Card className="h-fit"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-full bg-brand text-lg font-bold text-fg-on-brand">M</span><div><h2 className="font-heading text-xl font-semibold text-fg-strong">Thông tin chuyển khoản</h2><p className="text-sm text-fg-muted">Đơn {paymentInfo.transfer_content}</p></div></div><dl className="mt-6 space-y-4 text-sm"><div><dt className="text-fg-subtle">Tài khoản nhận</dt><dd className="mt-1 font-semibold text-fg-strong">{paymentInfo.account_name}</dd></div><div><dt className="text-fg-subtle">Số điện thoại</dt><dd className="mt-1 flex items-center justify-between gap-3 font-semibold text-fg-strong">{paymentInfo.phone_number}<button type="button" onClick={() => void copy('phone', paymentInfo.phone_number)} className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-brand-fg hover:bg-brand-subtle focus-visible:ring-2 focus-visible:ring-focus"><Copy className="size-3.5" />{copied === 'phone' ? 'Đã copy' : 'Copy'}</button></dd></div><div><dt className="text-fg-subtle">Số tiền</dt><dd className="mt-1 text-2xl font-semibold tabular-nums text-brand-fg">{formatPrice(paymentInfo.amount)}</dd></div><div><dt className="text-fg-subtle">Nội dung chuyển khoản</dt><dd className="mt-1 flex items-center justify-between gap-3 rounded-md bg-bg-subtle px-3 py-2 font-mono text-sm font-semibold text-fg">{paymentInfo.transfer_content}<button type="button" onClick={() => void copy('content', paymentInfo.transfer_content)} className="flex items-center gap-1 rounded-md px-2 py-1 font-sans text-xs font-medium text-brand-fg hover:bg-bg-surface focus-visible:ring-2 focus-visible:ring-focus"><Copy className="size-3.5" />{copied === 'content' ? 'Đã copy' : 'Copy'}</button></dd></div></dl><div className="mt-6 flex items-center gap-3 rounded-md bg-warning-bg p-3 text-sm text-warning"><Clock3 className="size-5 shrink-0" /><span>Mã thanh toán còn hiệu lực <strong>{minutes}:{seconds}</strong>.</span></div><Button variant="outline" className="mt-6 w-full" onClick={backToOrder}><Check className="size-4" />Tôi đã thanh toán</Button></Card>
+      <div className="flex flex-col items-center rounded-xl bg-brand p-6 text-center text-fg-on-brand sm:p-10"><div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-caps text-fg-on-brand/80"><CreditCard className="size-4" />MoMo QR</div><h2 className="mt-4 font-heading text-2xl font-semibold text-fg-on-brand">Quét mã để thanh toán</h2><p className="mt-2 max-w-sm text-sm text-fg-on-brand/80">Sau khi thanh toán, bạn có thể quay về đơn hàng để xem trạng thái.</p><div className="mt-8 rounded-xl bg-fg-on-brand p-5 shadow-xl">{paymentInfo.qr_code || paymentInfo.qr_image ? <img src={paymentInfo.qr_code || paymentInfo.qr_image} alt="Mã QR thanh toán MoMo" width="320" height="320" className="size-64 object-contain sm:size-80" /> : <div className="grid size-64 place-items-center bg-bg-inset text-sm text-fg-muted sm:size-80">Mã QR chưa sẵn sàng</div>}</div>{timeLeft === 0 && <Alert variant="warning" className="mt-6 w-full text-left">Mã QR đã hết hạn. Vui lòng quay về đơn hàng và thử lại.</Alert>}<p className="mt-6 text-sm text-fg-on-brand/80">Cần trợ giúp? <Link to="/contact" className="font-semibold text-fg-on-brand underline underline-offset-4">Liên hệ Leaf Crème</Link>.</p></div>
     </div>
-  )
+  </Container></div>
 }
-

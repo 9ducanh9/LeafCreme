@@ -1,285 +1,44 @@
-// Product detail page - displays full product information with variants
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import Card from '../components/ui/Card'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Check, ShoppingBag } from 'lucide-react'
+import Card, { CardMedia } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
-import LoadingSpinner from '../components/ui/LoadingSpinner'
-import ErrorMessage from '../components/ui/ErrorMessage'
-import PriceDisplay from '../components/ui/PriceDisplay'
+import QuantityStepper from '../components/ui/QuantityStepper'
+import Skeleton from '../components/ui/Skeleton'
+import Alert from '../components/ui/Alert'
 import { getImageUrl } from '../utils/getImageUrl'
-import { getProductById, Product, getProductVariants, ProductVariant } from '../services/productService'
+import { getProductAvailability, getProductById, getProductVariants } from '../services/productService'
+import type { Product, ProductAvailability, ProductVariant } from '../types/product'
 import { useCart } from '../contexts/CartContext'
 import { useToast } from '../contexts/ToastContext'
-import { ArrowLeft } from 'lucide-react'
-
+import { formatPrice } from '../utils/formatPrice'
 import { FALLBACK_IMAGE } from '../constants/images'
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { addToCart } = useCart()
   const { showSuccess, showError, showWarning } = useToast()
   const [product, setProduct] = useState<Product | null>(null)
   const [variants, setVariants] = useState<ProductVariant[]>([])
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+  const [availability, setAvailability] = useState<ProductAvailability[]>([])
+  const [selected, setSelected] = useState<ProductVariant | null>(null)
+  const [quantity, setQuantity] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [addingToCart, setAddingToCart] = useState(false)
+  const [adding, setAdding] = useState(false)
 
-  useEffect(() => {
-    async function fetchProductData() {
-      if (!id) {
-        setError('Không tìm thấy sản phẩm')
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        const productId = parseInt(id, 10)
-        if (isNaN(productId)) {
-          throw new Error('ID sản phẩm không hợp lệ')
-        }
-
-        // Fetch product and variants in parallel
-        const [productData, variantsData] = await Promise.all([
-          getProductById(productId),
-          getProductVariants(productId).catch(() => []), // Variants are optional
-        ])
-
-        setProduct(productData)
-        setVariants(variantsData.filter((v) => v.dang_hoat_dong))
-
-        // Auto-select first variant if available
-        if (variantsData.length > 0 && variantsData[0].dang_hoat_dong) {
-          setSelectedVariant(variantsData[0])
-        }
-      } catch (err) {
-        console.error('Error fetching product:', err)
-        setError('Không thể tải thông tin sản phẩm. Vui lòng thử lại sau.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchProductData()
-  }, [id])
-
-  const handleAddToCart = async () => {
-    if (!product) return
-
-    // Check if variant is required but not selected
-    if (variants.length > 0 && !selectedVariant) {
-      showWarning('Vui lòng chọn biến thể sản phẩm')
-      return
-    }
-
-    // Check stock
-    if (selectedVariant && selectedVariant.muc_gioi_han_ton <= 0) {
-      showError('Sản phẩm đã hết hàng')
-      return
-    }
-
-    try {
-      setAddingToCart(true)
-
-      const price = selectedVariant
-        ? Number(selectedVariant.gia_bienthe)
-        : Number(product.gia_co_ban)
-
-      const variantLabel = selectedVariant
-        ? getVariantLabel(selectedVariant)
-        : undefined
-
-      addToCart({
-        productId: product.sanpham_id,
-        productName: product.ten,
-        productImage: product.hinh_anh_url,
-        variantId: selectedVariant?.bienthe_id,
-        variantLabel,
-        price,
-        sku: selectedVariant?.sku_bienthe || product.sku,
-      })
-
-      // Show success feedback
-      showSuccess('Đã thêm vào giỏ hàng!')
-    } catch (error) {
-      console.error('Error adding to cart:', error)
-      showError('Có lỗi xảy ra. Vui lòng thử lại.')
-    } finally {
-      setAddingToCart(false)
-    }
-  }
-
-  const getDisplayPrice = (): number => {
-    if (selectedVariant) {
-      return Number(selectedVariant.gia_bienthe)
-    }
-    if (product) {
-      return Number(product.gia_co_ban)
-    }
-    return 0
-  }
-
-  const getVariantLabel = (variant: ProductVariant): string => {
-    const parts: string[] = []
-    if (variant.huong_vi) parts.push(variant.huong_vi)
-    if (variant.kich_thuoc) parts.push(variant.kich_thuoc)
-    return parts.join(' - ') || 'Mặc định'
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background py-16">
-        <div className="max-w-[1440px] mx-auto px-6">
-          <div className="flex justify-center items-center min-h-[400px]">
-            <LoadingSpinner size="lg" />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !product) {
-    return (
-      <div className="min-h-screen bg-background py-16">
-        <div className="max-w-[1440px] mx-auto px-6">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/')}
-            className="mb-8"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Về trang chủ
-          </Button>
-          <ErrorMessage
-            message={error || 'Sản phẩm không tồn tại'}
-            onRetry={() => window.location.reload()}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-background py-8 md:py-12">
-      <div className="max-w-[1440px] mx-auto px-4 md:px-6">
-        {/* Back Button */}
-        <Button
-          variant="outline"
-          onClick={() => navigate('/')}
-          className="mb-6"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Về trang chủ
-        </Button>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[52%_48%] gap-8 lg:gap-10">
-          {/* Product Image - Limited height for balance */}
-          <div className="lg:sticky lg:top-6 lg:self-start">
-            <Card className="p-0 overflow-hidden" style={{ maxHeight: '75vh' }}>
-              <img
-                src={product.hinh_anh_url ? getImageUrl(product.hinh_anh_url) : FALLBACK_IMAGE.productDetail}
-                alt={product.ten}
-                className="w-full h-full object-cover"
-                style={{ maxHeight: '75vh' }}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.src = FALLBACK_IMAGE.productDetail
-                }}
-              />
-            </Card>
-          </div>
-
-          {/* Product Info */}
-          <div className="flex flex-col">
-            {/* Product Identity */}
-            <div className="mb-5">
-              {product.danh_muc && (
-                <Badge className="mb-3">{product.danh_muc}</Badge>
-              )}
-              <h1 className="font-heading text-3xl md:text-4xl font-semibold text-text-primary mb-3 leading-tight">
-                {product.ten}
-              </h1>
-              <p className="text-text-secondary text-base leading-relaxed">
-                {product.mo_ta || 'Sản phẩm chất lượng cao từ Leaf Creme.'}
-              </p>
-            </div>
-
-            {/* Purchase Decision Group */}
-            <div className="bg-background-secondary/30 rounded-2xl p-5 mb-5">
-              {/* Variants Selection */}
-              {variants.length > 0 && (
-                <div className="mb-5">
-                  <h3 className="font-semibold text-text-primary mb-2.5 text-sm">
-                    Chọn biến thể:
-                  </h3>
-                  <div className="flex flex-wrap gap-2.5">
-                    {variants.map((variant) => (
-                      <button
-                        key={variant.bienthe_id}
-                        onClick={() => setSelectedVariant(variant)}
-                        className={`px-3.5 py-2 rounded-lg border transition-default text-sm ${
-                          selectedVariant?.bienthe_id === variant.bienthe_id
-                            ? 'border-accent-brown bg-accent-brown/10 font-medium'
-                            : 'border-border hover:border-accent-brown'
-                        }`}
-                      >
-                        {getVariantLabel(variant)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Price */}
-              <div className="pt-4 border-t border-border/50">
-                <div className="flex items-baseline gap-3">
-                  <PriceDisplay 
-                    price={getDisplayPrice()} 
-                    className="text-3xl md:text-4xl font-medium"
-                  />
-                  {selectedVariant && (
-                    <PriceDisplay 
-                      price={Number(product.gia_co_ban)}
-                      className="text-sm"
-                      strikethrough
-                    />
-                  )}
-                </div>
-                {selectedVariant && (
-                  <p className="text-text-secondary text-sm mt-1.5">
-                    {selectedVariant.muc_gioi_han_ton > 0
-                      ? `Còn ${selectedVariant.muc_gioi_han_ton} sản phẩm`
-                      : 'Hết hàng'}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Add to Cart - Prominent CTA */}
-            <div>
-              <Button
-                variant="primary"
-                className="w-full py-3.5 text-base font-semibold shadow-md hover:shadow-lg"
-                onClick={handleAddToCart}
-                disabled={
-                  addingToCart ||
-                  (variants.length > 0 &&
-                    (!selectedVariant ||
-                      (selectedVariant.muc_gioi_han_ton <= 0)))
-                }
-              >
-                {addingToCart ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  useEffect(() => { if (!id) return; const productId = Number.parseInt(id, 10); if (Number.isNaN(productId)) { setError('Sản phẩm không hợp lệ.'); setLoading(false); return } let cancelled = false; Promise.all([getProductById(productId), getProductVariants(productId).catch(() => []), getProductAvailability(productId).catch(() => [])]).then(([data, variantData, stockData]) => { if (cancelled) return; const active = variantData.filter((variant) => variant.dang_hoat_dong); setProduct(data); setVariants(active); setAvailability(stockData); setSelected(active[0] || null) }).catch(() => { if (!cancelled) setError('Không thể tải thông tin sản phẩm.') }).finally(() => { if (!cancelled) setLoading(false) }); return () => { cancelled = true } }, [id])
+  const label = (variant: ProductVariant) => [variant.huong_vi, variant.kich_thuoc].filter(Boolean).join(' — ') || 'Mặc định'
+  const price = selected ? Number(selected.gia_bienthe) : Number(product?.gia_co_ban || 0)
+  const selectedStock = selected ? availability.find((item) => item.bienthe_id === selected.bienthe_id) : undefined
+  const max = selected ? selectedStock?.so_luong_con ?? 0 : undefined
+  const outOfStock = selected !== null && max === 0
+  const back = () => location.key === 'default' ? navigate('/search') : navigate(-1)
+  const add = async () => { if (!product) return; if (variants.length && !selected) { showWarning('Vui lòng chọn biến thể sản phẩm.'); return } if (outOfStock) { showError('Sản phẩm đã hết hàng.'); return } setAdding(true); try { addToCart({ productId: product.sanpham_id, productName: product.ten, productImage: product.hinh_anh_url, variantId: selected?.bienthe_id, variantLabel: selected ? label(selected) : undefined, price, sku: selected?.sku_bienthe || product.sku, quantity }); showSuccess('Đã thêm vào giỏ hàng.'); } catch { showError('Không thể thêm sản phẩm lúc này.') } finally { setAdding(false) } }
+  if (loading) return <div className="py-12"><div className="mx-auto grid max-w-container gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:px-8"><Skeleton className="aspect-square" /><div className="space-y-4"><Skeleton className="h-6 w-28" /><Skeleton className="h-12 w-3/4" /><Skeleton className="h-24 w-full" /><Skeleton className="h-32 w-full" /></div></div></div>
+  if (error || !product) return <div className="py-12"><div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8"><Button variant="ghost" onClick={back} className="mb-8 -ml-2"><ArrowLeft className="size-4" />Quay lại</Button><Alert variant="danger" title="Không tìm thấy sản phẩm">{error || 'Sản phẩm không tồn tại.'}</Alert></div></div>
+  return <div className="bg-bg-canvas py-8 sm:py-12"><div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8"><Button variant="ghost" onClick={back} className="mb-8 -ml-2"><ArrowLeft className="size-4" />Quay lại</Button><div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12"><div className="lg:sticky lg:top-24 lg:self-start"><Card className="overflow-hidden p-0"><CardMedia ratio="square"><img src={product.hinh_anh_url ? getImageUrl(product.hinh_anh_url) : FALLBACK_IMAGE.productDetail} alt={product.ten} width="900" height="900" className="size-full object-cover" onError={(event) => { event.currentTarget.src = FALLBACK_IMAGE.productDetail }} /></CardMedia></Card></div><div><div className="mb-7">{product.danh_muc && <Badge variant="brand">{product.danh_muc}</Badge>}<h1 className="mt-4 text-h1">{product.ten}</h1><p className="mt-4 text-base leading-relaxed text-fg-muted">{product.mo_ta || 'Sản phẩm chất lượng cao từ Leaf Crème.'}</p></div><Card className="bg-bg-subtle p-5 sm:p-6"><div className="flex items-end justify-between gap-4"><span className="font-heading text-3xl font-semibold tabular-nums text-brand-fg">{formatPrice(price)}</span>{outOfStock ? <Badge variant="danger">Hết hàng</Badge> : max !== undefined && max <= 3 ? <Badge variant="warning">Còn {max}</Badge> : <Badge variant="success">Đang có sẵn</Badge>}</div>{variants.length > 0 && <fieldset className="mt-6"><legend className="mb-3 text-sm font-semibold text-fg-strong">Chọn hương vị / kích thước</legend><div className="grid gap-2 sm:grid-cols-2">{variants.map((variant) => { const variantStock = availability.find((item) => item.bienthe_id === variant.bienthe_id)?.so_luong_con ?? 0; return <label key={variant.bienthe_id} className={`flex cursor-pointer items-center justify-between rounded-md border p-3 text-sm transition-colors ${selected?.bienthe_id === variant.bienthe_id ? 'border-brand bg-brand-subtle text-brand-fg' : 'border-interactive bg-bg-surface text-fg-muted hover:bg-bg-subtle'}`}><span className="flex items-center gap-2"><input type="radio" name="variant" checked={selected?.bienthe_id === variant.bienthe_id} onChange={() => { setSelected(variant); setQuantity(1) }} className="accent-brand" />{label(variant)}</span>{variantStock <= 0 ? <span className="text-xs text-danger">Hết hàng</span> : variantStock <= 3 ? <span className="text-xs text-warning">Còn {variantStock}</span> : null}</label> })}</div></fieldset>}<div className="mt-6 flex items-center justify-between gap-4"><span className="text-sm font-medium text-fg-muted">Số lượng</span><QuantityStepper value={quantity} onChange={setQuantity} max={max} disabled={outOfStock} label={`số lượng ${product.ten}`} /></div><Button type="button" variant="primary" size="lg" onClick={add} disabled={adding || outOfStock || (variants.length > 0 && !selected)} className="mt-6 w-full">{adding ? 'Đang thêm...' : <><ShoppingBag className="size-5" />Thêm vào giỏ hàng</>}</Button></Card><div className="mt-6 grid gap-3 text-sm text-fg-muted sm:grid-cols-2"><div className="rounded-md border border-border-subtle bg-bg-surface p-4"><Check className="mb-2 size-5 text-success" /><p className="font-medium text-fg">Làm theo mẻ nhỏ</p><p className="mt-1">Ưu tiên độ tươi và vị ngon.</p></div><div className="rounded-md border border-border-subtle bg-bg-surface p-4"><Check className="mb-2 size-5 text-success" /><p className="font-medium text-fg">Giao tại Sài Gòn</p><p className="mt-1">Chọn khung giờ khi thanh toán.</p></div></div></div></div></div></div>
 }
-

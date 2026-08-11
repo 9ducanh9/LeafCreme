@@ -89,6 +89,22 @@ class TestVisibility:
         assert inactive["hop_qua_id"] in admin_ids
 
 
+class TestDeleteGiftBox:
+    def test_soft_deletes_instead_of_removing_row(self, db_session, service):
+        created = service.create_gift_box(db_session, _GiftBoxPayload("Hộp sẽ xóa", sku="GB-DELETE-1"))
+
+        service.delete_gift_box(db_session, created["hop_qua_id"])
+
+        still_there = db_session.query(HopQua).filter(HopQua.hop_qua_id == created["hop_qua_id"]).first()
+        assert still_there is not None
+        assert still_there.dang_hoat_dong is False
+
+        # No longer visible to the public (active_only) list/get.
+        with pytest.raises(DomainError) as exc_info:
+            service.get_gift_box(db_session, created["hop_qua_id"], active_only=True)
+        assert exc_info.value.status_code == 404
+
+
 class TestBom:
     def test_add_bom_item(self, db_session, service, variant):
         gift_box = service.create_gift_box(db_session, _GiftBoxPayload("Hộp có BOM", sku="GB-BOM-1"))

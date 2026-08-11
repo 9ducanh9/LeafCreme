@@ -40,7 +40,7 @@ amount of line-count savings. They're moved here close to their original
 shape instead.
 """
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Callable, Optional
 
 from sqlalchemy import and_, or_
@@ -183,7 +183,7 @@ class BatchService:
             if existing_qr:
                 raise DomainError(status_code=400, detail=f"Mã QR '{payload.ma_qr}' đã tồn tại")
 
-        if payload.ngay_het_han <= datetime.now():
+        if payload.ngay_het_han.date() < date.today():
             raise DomainError(status_code=400, detail="Ngày hết hạn phải sau ngày nhập")
 
         batch = cfg.batch_model(**payload.model_dump())
@@ -223,7 +223,9 @@ class BatchService:
         ncc_id: Optional[int] = None,
         trang_thai: Optional[str] = None,
         search: Optional[str] = None,
-    ) -> list[dict]:
+        sort_by: str = "ngay_het_han",
+        sort_dir: str = "asc",
+    ) -> dict:
         cfg = self._kind(kind)
         query = db.query(cfg.batch_model)
 
@@ -242,11 +244,29 @@ class BatchService:
             else:
                 query = query.filter(cfg.batch_model.ma_lo.ilike(f"%{search}%"))
 
-        batches = query.order_by(cfg.batch_model.ngay_het_han.asc()).offset(skip).limit(limit).all()
-        return [
+        total = query.count()
+        sort_columns = {
+            "ngay_het_han": cfg.batch_model.ngay_het_han,
+            # The current schema calls production/import time `ngay_nhap`.
+            "ngay_san_xuat": cfg.batch_model.ngay_nhap,
+            "ngay_tao": cfg.batch_model.ngay_tao,
+        }
+        if sort_by == "so_luong_hien_tai":
+            query = query.outerjoin(
+                cfg.inventory_model,
+                getattr(cfg.inventory_model, cfg.inventory_fk_field) == cfg.batch_model.lohang_id,
+            )
+            sort_column = cfg.inventory_model.so_luong_hien_tai
+        else:
+            sort_column = sort_columns.get(sort_by, cfg.batch_model.ngay_het_han)
+
+        direction = sort_column.desc() if sort_dir == "desc" else sort_column.asc()
+        batches = query.order_by(direction, cfg.batch_model.lohang_id.asc()).offset(skip).limit(limit).all()
+        items = [
             self._to_response(cfg, batch, self._get_inventory(db, cfg, batch.lohang_id))
             for batch in batches
         ]
+        return {"items": items, "total": total, "skip": skip, "limit": limit}
 
     def get_batch(self, db: Session, kind: str, batch_id: int) -> dict:
         cfg = self._kind(kind)

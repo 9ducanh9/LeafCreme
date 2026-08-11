@@ -1,55 +1,27 @@
-// Gift box list page - displays all gift boxes with filters
 import { useState } from 'react'
 import { useGiftBoxes } from '../hooks/useGiftBoxes'
 import GiftBoxCard from '../components/bakery/GiftBoxCard'
 import GiftBoxFilters from '../components/bakery/GiftBoxFilters'
 import { GiftBoxFilters as GiftBoxFiltersType } from '../types/giftBox'
+import { Container, ProductGrid, Section, SectionHeader } from '../components/layout'
+import Skeleton from '../components/ui/Skeleton'
+import EmptyState from '../components/ui/EmptyState'
+import Alert from '../components/ui/Alert'
 
 export default function GiftBoxListPage() {
   const [filters, setFilters] = useState<GiftBoxFiltersType>({})
   const { giftBoxes, loading, error } = useGiftBoxes(filters)
 
   return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-8 md:py-12">
-      {/* Filters */}
-      <GiftBoxFilters onFiltersChange={setFilters} />
-
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center py-16">
-          <p className="text-text-secondary">Đang tải...</p>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && (
-        <div className="text-center py-16">
-          <p className="text-text-secondary">{error}</p>
-        </div>
-      )}
-
-      {/* Gift Boxes Grid */}
-      {!loading && !error && (
-        <>
-          {giftBoxes.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-text-secondary text-lg mb-4">
-                Không tìm thấy hộp quà nào phù hợp với bộ lọc của bạn.
-              </p>
-              <p className="text-text-secondary">
-                Vui lòng thử lại với bộ lọc khác.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {giftBoxes.map((giftBox) => (
-                <GiftBoxCard key={giftBox.id} giftBox={giftBox} />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+    <Section tone="canvas">
+      <Container>
+        <SectionHeader eyebrow="Tặng một điều êm ấm" title="Hộp quà Leaf Crème" description="Những set quà được gói sẵn cho các dịp cần một lời nhắn tinh tế." />
+        <GiftBoxFilters onFiltersChange={setFilters} />
+        {loading && <ProductGrid columns="four">{Array.from({ length: 8 }, (_, index) => <div key={index} className="space-y-3"><Skeleton className="aspect-product" /><Skeleton className="h-5 w-3/4" /><Skeleton className="h-4 w-full" /></div>)}</ProductGrid>}
+        {!loading && error && <Alert variant="danger" title="Không tải được hộp quà">{error}</Alert>}
+        {!loading && !error && giftBoxes.length === 0 && <EmptyState title="Chưa có hộp quà phù hợp" description="Thử thay đổi bộ lọc để xem các lựa chọn khác." />}
+        {!loading && !error && giftBoxes.length > 0 && <ProductGrid columns="four">{giftBoxes.map((giftBox) => <GiftBoxCard key={giftBox.id} giftBox={giftBox} />)}</ProductGrid>}
+      </Container>
+    </Section>
   )
 }
-

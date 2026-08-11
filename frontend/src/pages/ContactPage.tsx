@@ -1,9 +1,11 @@
 // Contact page - warm and inviting
 import Card from '../components/ui/Card'
+import Button from '../components/ui/Button'
+import Container from '../components/layout/container'
 
 export default function ContactPage() {
   return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-12 md:py-16">
+    <div className="bg-bg-canvas py-12 md:py-16"><Container>
       <div className="max-w-2xl mx-auto text-center mb-12">
         <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-4 leading-tight">
           Cứ nhắn gì đi
@@ -21,30 +23,30 @@ export default function ContactPage() {
           </h2>
           <div className="space-y-6 text-text-secondary">
             <div>
-              <p className="text-sm text-text-muted mb-1">Địa chỉ</p>
+              <p className="text-sm text-text-secondary mb-1">Địa chỉ</p>
               <p className="leading-relaxed">
                 123 Đường ABC, Quận 1, TP.HCM
               </p>
-              <p className="text-sm mt-1 text-text-muted">
+              <p className="text-sm mt-1 text-text-secondary">
                 (Mở cửa từ 8:00 đến 20:00, kể cả cuối tuần)
               </p>
             </div>
             <div>
-              <p className="text-sm text-text-muted mb-1">Điện thoại</p>
+              <p className="text-sm text-text-secondary mb-1">Điện thoại</p>
               <p>028 1234 5678</p>
-              <p className="text-sm mt-1 text-text-muted">
+              <p className="text-sm mt-1 text-text-secondary">
                 Nhắn tin hoặc gọi, chúng tôi đều nhận
               </p>
             </div>
             <div>
-              <p className="text-sm text-text-muted mb-1">Email</p>
+              <p className="text-sm text-text-secondary mb-1">Email</p>
               <p>hello@leafcreme.vn</p>
-              <p className="text-sm mt-1 text-text-muted">
+              <p className="text-sm mt-1 text-text-secondary">
                 Thường trả lời trong vòng 24 giờ
               </p>
             </div>
             <div className="pt-4 border-t border-border">
-              <p className="text-sm text-text-muted mb-2">Mạng xã hội</p>
+              <p className="text-sm text-text-secondary mb-2">Mạng xã hội</p>
               <p className="leading-relaxed">
                 Nếu bạn dùng Instagram hoặc Facebook,
                 tìm chúng tôi ở đó cũng được nhé.
@@ -58,30 +60,24 @@ export default function ContactPage() {
             Gửi tin nhắn trực tiếp
           </h2>
           <div className="space-y-6">
-            <div className="rounded-lg border border-border bg-background-secondary/30 p-4 text-sm text-text-secondary leading-relaxed">
+            <div className="rounded-lg border border-border bg-bg-alt/30 p-4 text-sm text-text-secondary leading-relaxed">
               Form liên hệ trên website chưa được kết nối backend. Để tránh gửi thất lạc,
               vui lòng dùng điện thoại hoặc email đang hoạt động bên dưới.
             </div>
             <div className="space-y-3">
-              <a
-                href="tel:02812345678"
-                className="w-full px-6 py-3 rounded-button font-medium transition-soft inline-flex items-center justify-center whitespace-nowrap bg-gradient-to-r from-[#C59B72] to-[#D4A574] text-white hover:from-[#B88A5F] hover:to-[#C59B72] border border-[#D4A574] shadow-md hover:shadow-lg"
-              >
+              <Button href="tel:02812345678" variant="primary" className="w-full">
                 Gọi: 028 1234 5678
-              </a>
-              <a
-                href="mailto:hello@leafcreme.vn"
-                className="w-full px-6 py-3 rounded-button font-medium transition-soft inline-flex items-center justify-center whitespace-nowrap bg-gradient-to-r from-[#F5C96A] to-[#F7D794] text-[#473C2F] hover:opacity-90 border border-[#F5C96A] shadow-sm"
-              >
+              </Button>
+              <Button href="mailto:hello@leafcreme.vn" variant="secondary" className="w-full">
                 Email: hello@leafcreme.vn
-              </a>
+              </Button>
             </div>
-            <p className="text-xs text-text-muted text-center">
+            <p className="text-xs text-text-secondary text-center">
               Kênh liên hệ trực tiếp đang hoạt động và được phản hồi thủ công.
             </p>
           </div>
         </Card>
       </div>
-    </div>
+    </Container></div>
   )
 }

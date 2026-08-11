@@ -1,6 +1,6 @@
-// Lightweight Modal component - uses design tokens
-import { ReactNode, useEffect } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { cn } from '../../lib/cn'
 
 interface ModalProps {
   isOpen: boolean
@@ -11,89 +11,47 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg'
 }
 
-export default function Modal({
-  isOpen,
-  onClose,
-  title,
-  children,
-  footer,
-  size = 'md',
-}: ModalProps) {
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+export default function Modal({ isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLElement | null>(null)
 
-  const sizeStyles = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-  }
+  useEffect(() => {
+    if (!isOpen) return
+    triggerRef.current = document.activeElement as HTMLElement
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Tab' || !contentRef.current) return
+      const focusable = Array.from(contentRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    requestAnimationFrame(() => contentRef.current?.querySelector<HTMLElement>('button, [href], input, textarea, select')?.focus())
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+      triggerRef.current?.focus()
+    }
+  }, [isOpen, onClose])
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-500 ${
-        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      }`}
-      onClick={onClose}
-      style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
-    >
-      {/* Backdrop */}
-      <div 
-        className={`absolute inset-0 bg-text-primary transition-opacity duration-500 ${
-          isOpen ? 'opacity-20' : 'opacity-0'
-        }`}
-        style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
-      />
-      
-      {/* Modal Content */}
-      <div
-        className={`
-          relative bg-surface border border-border rounded-card 
-          ${sizeStyles[size]} w-full max-h-[90vh] 
-          flex flex-col shadow-lg transition-all duration-500
-          ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
-        `}
-        onClick={(e) => e.stopPropagation()}
-        style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          {title ? (
-            <h2 className="font-heading text-xl font-semibold text-text-primary">
-              {title}
-            </h2>
-          ) : (
-            <div />
-          )}
-          <button
-            onClick={onClose}
-            className="p-2 text-text-secondary hover:text-text-primary transition-default rounded-input hover:bg-bg-main"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
+    <div className={cn('fixed inset-0 z-modal flex items-center justify-center p-4 transition-opacity duration-normal', isOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0')} aria-hidden={!isOpen}>
+      <button type="button" aria-label="Đóng hộp thoại" className="absolute inset-0 cursor-default bg-bg-overlay" onClick={onClose} tabIndex={-1} />
+      <div ref={contentRef} role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined} className={cn('relative z-modal flex max-h-[min(90dvh,44rem)] w-full flex-col overflow-hidden rounded-xl border border-border bg-bg-surface shadow-xl transition-transform duration-normal', size === 'sm' && 'max-w-sm', size === 'md' && 'max-w-lg', size === 'lg' && 'max-w-2xl', isOpen ? 'scale-100' : 'scale-95')}>
+        <div className="flex items-center justify-between border-b border-border-subtle p-5">
+          {title ? <h2 id="modal-title" className="font-heading text-xl font-semibold text-fg-strong">{title}</h2> : <span />}
+          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-md text-fg-subtle hover:bg-bg-subtle hover:text-fg" aria-label="Đóng">
+            <X className="size-5" aria-hidden />
           </button>
         </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 180px)' }}>
-          {children}
-        </div>
-
-        {/* Footer */}
-        {footer && (
-          <div className="p-6 border-t border-border">
-            {footer}
-          </div>
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">{children}</div>
+        {footer && <div className="border-t border-border-subtle p-5">{footer}</div>}
       </div>
     </div>
   )
 }
-

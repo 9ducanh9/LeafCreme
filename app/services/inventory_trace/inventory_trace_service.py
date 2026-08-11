@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -102,30 +103,60 @@ class InventoryTraceService:
         date_from: Optional[datetime] = None,
         date_to: Optional[datetime] = None,
         skip: int = 0,
-        limit: int = 100,
-    ) -> list[dict]:
-        rows: list[dict] = []
-
+        limit: int = 50,
+        sort_by: str = "timestamp",
+        sort_dir: str = "desc",
+    ) -> dict:
+        """Return one SQL-paginated view over the three inventory ledgers."""
+        selects = []
         kinds = _LEDGER_KINDS.items() if item_type is None else [(item_type, _LEDGER_KINDS[item_type])]
         for kind_name, kind in kinds:
-            batch_column = getattr(kind.ledger_model, kind.batch_fk_field)
-            query = self._apply_ledger_filters(
-                db.query(kind.ledger_model),
-                kind.ledger_model,
-                batch_column,
-                batch_id,
-                movement_type,
-                order_id,
-                date_from,
-                date_to,
-            )
-            rows.extend(
-                self._ledger_row(row, kind_name, getattr(row, kind.batch_fk_field))
-                for row in query.all()
+            model = kind.ledger_model
+            batch_column = getattr(model, kind.batch_fk_field)
+            filters = []
+            if batch_id is not None:
+                filters.append(batch_column == batch_id)
+            if movement_type:
+                filters.append(model.loai_giao_dich == movement_type)
+            if order_id is not None:
+                filters.append(model.donhang_id == order_id)
+            if date_from:
+                filters.append(model.ngay_tao >= date_from)
+            if date_to:
+                filters.append(model.ngay_tao <= date_to)
+            selects.append(
+                select(
+                    model.lichsu_id.label("ledger_id"),
+                    literal(kind_name).label("item_type"),
+                    batch_column.label("batch_id"),
+                    model.loai_giao_dich.label("movement_type"),
+                    model.so_luong.label("quantity"),
+                    model.so_luong_truoc.label("quantity_before"),
+                    model.so_luong_sau.label("quantity_after"),
+                    model.ly_do.label("reason"),
+                    model.donhang_id.label("order_id"),
+                    model.nguoidung_id.label("actor_user_id"),
+                    model.ngay_tao.label("timestamp"),
+                ).where(*filters)
             )
 
-        rows.sort(key=lambda row: row["timestamp"] or datetime.min, reverse=True)
-        return rows[skip : skip + limit]
+        ledger_query = union_all(*selects).subquery("inventory_ledger")
+        total = db.execute(select(func.count()).select_from(ledger_query)).scalar_one()
+        sort_column = ledger_query.c.movement_type if sort_by == "movement_type" else ledger_query.c.timestamp
+        direction = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
+        rows = db.execute(
+            select(ledger_query)
+            .order_by(direction, ledger_query.c.ledger_id.asc())
+            .offset(skip)
+            .limit(limit)
+        ).mappings().all()
+
+        return {
+            "items": [dict(row) for row in rows],
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+        }
 
     # ------------------------------------------------------------------
     # Batch trace (metadata + ledger + allocations)
@@ -218,7 +249,7 @@ class InventoryTraceService:
             raise DomainError(status_code=400, detail="Invalid batch type")
 
         metadata = self._batch_metadata(db, batch_type, batch_id)
-        movements = self.get_inventory_ledger(db, item_type=batch_type, batch_id=batch_id)
+        movements_page = self.get_inventory_ledger(db, item_type=batch_type, batch_id=batch_id)
 
         allocation_query = (
             db.query(PhanBoChiTietDonHang, ChiTietDonHang)
@@ -245,6 +276,6 @@ class InventoryTraceService:
 
         return {
             "batch": metadata,
-            "movements": movements,
+            "movements": movements_page["items"],
             "allocations": allocations,
         }

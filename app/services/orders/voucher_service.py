@@ -27,10 +27,19 @@ class VoucherService:
         vouchers_applied: List[VoucherAppliedInfo] = []
 
         for code in voucher_codes:
+            # Locked for the rest of this transaction — the usage-limit
+            # check below (so_lan_da_dung >= gioi_han_su_dung) used to run
+            # unlocked, so two concurrent orders using the last remaining
+            # slot of the same voucher could both pass the check before
+            # either committed its increment, letting a voucher be used
+            # more times than its limit. See docs/specs/02-orders.md
+            # Finding #2. The increment itself still happens in
+            # OrderService.create_order, inside the same session/
+            # transaction this lock is held for.
             voucher = db.query(PhieuGiamGia).filter(
                 PhieuGiamGia.ma_phieu == code,
                 PhieuGiamGia.dang_hoat_dong == True
-            ).first()
+            ).with_for_update().first()
 
             if not voucher:
                 raise DomainError(

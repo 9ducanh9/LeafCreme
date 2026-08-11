@@ -6,7 +6,8 @@ logic (moved out as part of the Phase 1 service-layer migration).
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from enum import Enum
+from typing import Literal, Optional, List, Union
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -14,6 +15,7 @@ from ..db import get_db
 from ..models import NguoiDung
 from ..core.dependencies import get_current_active_user, require_role
 from ..services.alerts import AlertService, DomainError
+from ..schemas import Page
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 alert_service = AlertService()
@@ -47,6 +49,11 @@ class AlertResponse(BaseModel):
         from_attributes = True
 
 
+class AlertSortField(str, Enum):
+    muc_do = "muc_do"
+    ngay_tao = "ngay_tao"
+
+
 class AlertUpdate(BaseModel):
     trang_thai: Optional[str] = Field(None, pattern="^(chua_xu_ly|dang_xu_ly|da_xu_ly|bo_qua)$")
     ghi_chu: Optional[str] = None
@@ -71,19 +78,23 @@ class GenerateAlertsResult(BaseModel):
 # =========================================================
 # GET /alerts - List all alerts
 # =========================================================
-@router.get("", response_model=List[AlertResponse])
+@router.get("", response_model=Union[List[AlertResponse], Page[AlertResponse]])
 def get_alerts(
     loai_canh_bao: Optional[str] = Query(None, description="Filter by type: ton_kho_thap, sap_het_han, het_han, qua_han"),
     muc_do: Optional[str] = Query(None, description="Filter by severity: thap, binh_thuong, cao"),
     trang_thai: Optional[str] = Query(None, description="Filter by status: chua_xu_ly, dang_xu_ly, da_xu_ly, bo_qua"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=200),
+    paginated: bool = Query(False),
+    sort_by: AlertSortField = Query(AlertSortField.ngay_tao),
+    sort_dir: Literal["asc", "desc"] = Query("desc"),
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_active_user)
 ):
     """Lấy danh sách cảnh báo tồn kho"""
     return alert_service.list_alerts(
         db, loai_canh_bao=loai_canh_bao, muc_do=muc_do, trang_thai=trang_thai, skip=skip, limit=limit,
+        paginated=paginated, sort_by=sort_by.value, sort_dir=sort_dir,
     )
 
 

@@ -35,7 +35,10 @@ class ProductService:
         danh_muc: Optional[str] = None,
         loai: Optional[str] = None,
         dang_hoat_dong: Optional[bool] = None,
-    ) -> list[SanPham]:
+        paginated: bool = False,
+        sort_by: str = "ngay_tao",
+        sort_dir: str = "desc",
+    ) -> list[SanPham] | dict:
         query = db.query(SanPham)
         if search:
             query = query.filter(or_(SanPham.ten.ilike(f"%{search}%"), SanPham.sku.ilike(f"%{search}%")))
@@ -46,7 +49,20 @@ class ProductService:
         if dang_hoat_dong is not None:
             query = query.filter(SanPham.dang_hoat_dong == dang_hoat_dong)
 
-        return query.order_by(SanPham.sanpham_id.desc()).offset(skip).limit(limit).all()
+        if not paginated:
+            return query.order_by(SanPham.sanpham_id.desc()).offset(skip).limit(limit).all()
+
+        total = query.count()
+        sort_map = {
+            "ten": SanPham.ten,
+            "gia_co_ban": SanPham.gia_co_ban,
+            "danh_muc": SanPham.danh_muc,
+            "ngay_tao": SanPham.ngay_tao,
+        }
+        sort_column = sort_map.get(sort_by, SanPham.ngay_tao)
+        direction = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
+        items = query.order_by(direction, SanPham.sanpham_id.asc()).offset(skip).limit(limit).all()
+        return {"items": items, "total": total, "skip": skip, "limit": limit}
 
     def get_product(self, db: Session, product_id: int) -> SanPham:
         product = db.query(SanPham).filter(SanPham.sanpham_id == product_id).first()

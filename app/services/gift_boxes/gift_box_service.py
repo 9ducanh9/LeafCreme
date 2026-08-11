@@ -77,7 +77,10 @@ class GiftBoxService:
         min_price: Optional[Any] = None,
         max_price: Optional[Any] = None,
         default_active_only: bool = False,
-    ) -> list[dict]:
+        paginated: bool = False,
+        sort_by: str = "ngay_tao",
+        sort_dir: str = "desc",
+    ) -> list[dict] | dict:
         query = db.query(HopQua)
 
         if dang_hoat_dong is None:
@@ -96,8 +99,16 @@ class GiftBoxService:
         if max_price:
             query = query.filter(HopQua.gia_ban <= max_price)
 
-        gift_boxes = query.order_by(HopQua.ngay_tao.desc()).offset(skip).limit(limit).all()
-        return [self._to_gift_box_response(gb) for gb in gift_boxes]
+        if not paginated:
+            gift_boxes = query.order_by(HopQua.ngay_tao.desc(), HopQua.hop_qua_id.asc()).offset(skip).limit(limit).all()
+            return [self._to_gift_box_response(gb) for gb in gift_boxes]
+
+        total = query.count()
+        sort_map = {"ten": HopQua.ten_hop_qua, "gia": HopQua.gia_ban, "ngay_tao": HopQua.ngay_tao}
+        sort_column = sort_map.get(sort_by, HopQua.ngay_tao)
+        direction = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
+        gift_boxes = query.order_by(direction, HopQua.hop_qua_id.asc()).offset(skip).limit(limit).all()
+        return {"items": [self._to_gift_box_response(gb) for gb in gift_boxes], "total": total, "skip": skip, "limit": limit}
 
     def get_gift_box(self, db: Session, gift_box_id: int, active_only: bool = False) -> dict:
         gift_box = self._get_gift_box_or_404(db, gift_box_id, active_only)
@@ -136,8 +147,20 @@ class GiftBoxService:
         return self._to_gift_box_response(gift_box)
 
     def delete_gift_box(self, db: Session, gift_box_id: int) -> None:
+        """Soft-delete — sets dang_hoat_dong=False, matching
+        ProductService.delete_product's pattern.
+
+        Was previously a real db.delete(gift_box). HopQuaBOM and
+        LoHangHopQua both cascade-delete with the gift box at the DB
+        level, so a gift box that had ever had inventory batches created
+        for it (even if never sold) would silently lose that batch/ledger
+        history. A gift box that had actually been sold (ChiTietDonHang
+        references it, no cascade there) would instead hit an unhandled
+        IntegrityError -> bare 500. See
+        docs/specs/05-products-giftboxes.md Finding #1.
+        """
         gift_box = self._get_gift_box_or_404(db, gift_box_id, active_only=False)
-        db.delete(gift_box)
+        gift_box.dang_hoat_dong = False
         db.commit()
 
     # ------------------------------------------------------------------

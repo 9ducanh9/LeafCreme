@@ -66,7 +66,7 @@ export async function getPreOrders(filters?: {
   try {
     // Fetch online orders
     const params: Record<string, any> = {
-      limit: 100,
+      limit: 50,
     }
     
     // Map frontend status filter to backend status
@@ -109,11 +109,6 @@ export async function getPreOrders(filters?: {
           (p.orderCode && p.orderCode.toLowerCase().includes(searchLower))
       )
     }
-
-    // Sort by created date (newest first)
-    transformed.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
 
     return transformed
   } catch (error) {

@@ -22,7 +22,10 @@ class ComponentService:
         limit: int = 200,
         search: Optional[str] = None,
         dang_hoat_dong: Optional[bool] = None,
-    ) -> list[LinhKien]:
+        paginated: bool = False,
+        sort_by: str = "ngay_tao",
+        sort_dir: str = "desc",
+    ) -> list[LinhKien] | dict:
         query = db.query(LinhKien)
 
         if dang_hoat_dong is not None:
@@ -32,7 +35,15 @@ class ComponentService:
             term = f"%{search}%"
             query = query.filter((LinhKien.ten_linh_kien.ilike(term)) | (LinhKien.sku.ilike(term)))
 
-        return query.order_by(LinhKien.linh_kien_id.desc()).offset(skip).limit(limit).all()
+        if not paginated:
+            return query.order_by(LinhKien.linh_kien_id.desc()).offset(skip).limit(limit).all()
+
+        total = query.count()
+        sort_map = {"ten": LinhKien.ten_linh_kien, "ngay_tao": LinhKien.linh_kien_id}
+        sort_column = sort_map.get(sort_by, LinhKien.linh_kien_id)
+        direction = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
+        items = query.order_by(direction, LinhKien.linh_kien_id.asc()).offset(skip).limit(limit).all()
+        return {"items": items, "total": total, "skip": skip, "limit": limit}
 
     @staticmethod
     def get_component(db: Session, component_id: int) -> LinhKien:

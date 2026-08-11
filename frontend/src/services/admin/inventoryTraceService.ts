@@ -1,4 +1,5 @@
 import { apiClient } from '../api'
+import type { Page } from '../../types/page'
 
 export type BatchType = 'sanpham' | 'linhkien' | 'hopqua'
 export type MovementType = 'nhap_hang' | 'xuat_ban' | 'xuat_huy' | 'dieu_chinh' | 'kiem_ke' | 'tra_hang' | 'xuat_bom'
@@ -26,6 +27,8 @@ export interface InventoryLedgerFilters {
   date_to?: string
   skip?: number
   limit?: number
+  sort_by?: 'timestamp' | 'movement_type'
+  sort_dir?: 'asc' | 'desc'
 }
 
 export interface BatchTraceMetadata {
@@ -59,12 +62,17 @@ export interface BatchTraceResponse {
 
 export const getInventoryLedger = (filters: InventoryLedgerFilters = {}) => {
   const params: Record<string, string | number | boolean | null> = {}
-  Object.entries({ ...filters, limit: filters.limit ?? 100 }).forEach(([key, value]) => {
+  Object.entries({
+    ...filters,
+    limit: filters.limit ?? 50,
+    sort_by: filters.sort_by ?? 'timestamp',
+    sort_dir: filters.sort_dir ?? 'desc',
+  }).forEach(([key, value]) => {
     if (value !== undefined) {
       params[key] = value
     }
   })
-  return apiClient.get<StockLedgerRow[]>('/inventory-ledger', params)
+  return apiClient.get<Page<StockLedgerRow>>('/inventory-ledger', params)
 }
 
 export const getBatchTrace = (batchType: BatchType, batchId: number) => {

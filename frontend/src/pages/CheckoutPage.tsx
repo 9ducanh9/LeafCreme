@@ -1,640 +1,126 @@
-// Checkout page - order placement
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import dayjs, { Dayjs } from 'dayjs'
-import 'dayjs/locale/vi'
-import customParseFormat from 'dayjs/plugin/customParseFormat'
+import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
+import { ArrowLeft, Check, CreditCard, MapPin, ShoppingBag } from 'lucide-react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
-import ErrorMessage from '../components/ui/ErrorMessage'
+import Alert from '../components/ui/Alert'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { formatPrice } from '../utils/formatPrice'
-import { createOrder, OrderCreate } from '../services/orderService'
+import { createOrder, type OrderCreate } from '../services/orderService'
 import { createMomoQRPayment } from '../services/paymentService'
-import { ArrowLeft } from 'lucide-react'
-import ProtectedRoute from '../components/routing/ProtectedRoute'
 import GiftBoxInfo from '../components/cart/GiftBoxInfo'
 import { parseGiftBoxMetadata } from '../utils/giftBoxHelpers'
 import { FALLBACK_IMAGE } from '../constants/images'
 
-// Configure dayjs
-dayjs.extend(customParseFormat)
 dayjs.extend(utc)
 dayjs.extend(timezone)
-dayjs.locale('vi')
 
-function CheckoutPageContent() {
+const STORE_TIMEZONE = 'Asia/Ho_Chi_Minh'
+const STORE_OPEN_HOUR = 8
+const STORE_CLOSE_HOUR = 20
+
+type ShippingInfo = { ten_khach_hang: string; so_dien_thoai_khach: string; dia_chi_giao_hang: string; ngay_giao_du_kien: string; ghi_chu: string }
+type FieldName = keyof ShippingInfo | 'voucherCode' | 'paymentMethod'
+
+function toStoreTime(value: string) {
+  return dayjs.tz(value, STORE_TIMEZONE)
+}
+
+function minDeliveryValue() {
+  const now = dayjs().tz(STORE_TIMEZONE)
+  let minimum = now.add(2, 'hour')
+  const open = now.hour(STORE_OPEN_HOUR).minute(0).second(0).millisecond(0)
+  const close = now.hour(STORE_CLOSE_HOUR).minute(0).second(0).millisecond(0)
+  if (minimum.isBefore(open)) minimum = open
+  if (minimum.isAfter(close)) minimum = now.add(1, 'day').hour(STORE_OPEN_HOUR).minute(0).second(0).millisecond(0)
+  return minimum.format('YYYY-MM-DDTHH:mm')
+}
+
+function validateDelivery(value: string) {
+  if (!value) return 'Vui lòng chọn ngày và giờ giao dự kiến.'
+  const selected = toStoreTime(value)
+  const now = dayjs().tz(STORE_TIMEZONE)
+  if (selected.hour() < STORE_OPEN_HOUR || selected.hour() >= STORE_CLOSE_HOUR) return 'Thời gian giao hàng phải trong khoảng 8:00 — 20:00.'
+  if (selected.isBefore(now.add(2, 'hour'))) return 'Vui lòng đặt trước tối thiểu 2 giờ để bếp chuẩn bị.'
+  return ''
+}
+
+function validatePhone(value: string) {
+  return /^(0|\+84)(3|5|7|8|9)\d{8}$/.test(value.replace(/[ .-]/g, '')) ? '' : 'Số điện thoại không hợp lệ (ví dụ: 0901234567).'
+}
+
+function Field({ id, label, error, children, required = false }: { id: string; label: string; error?: string; children: ReactNode; required?: boolean }) {
+  return <div><label htmlFor={id} className="mb-2 block text-sm font-medium text-fg">{label}{required && <span aria-hidden className="ml-1 text-danger">*</span>}</label>{children}{error && <p id={`${id}-error`} role="alert" className="mt-1.5 text-sm font-medium text-danger">{error}</p>}</div>
+}
+
+export default function CheckoutPage() {
   const navigate = useNavigate()
   const { cart, clearCart, appliedVoucher } = useCart()
   const { user } = useAuth()
   const { showSuccess } = useToast()
+  const firstErrorRef = useRef<HTMLElement | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const [shippingInfo, setShippingInfo] = useState({
-    ten_khach_hang: user?.ho_ten || '',
-    so_dien_thoai_khach: user?.so_dien_thoai || '',
-    dia_chi_giao_hang: user?.dia_chi || '',
-    ngay_giao_du_kien: '',
-    ghi_chu: '',
-  })
-  const [deliveryDateTime, setDeliveryDateTime] = useState<Dayjs | null>(null)
-  const [deliveryTimeError, setDeliveryTimeError] = useState<string>('')
-  const [deliveryTimeTouched, setDeliveryTimeTouched] = useState(false)
-
-  const [voucherCode, setVoucherCode] = useState('')
-  const [voucherError, setVoucherError] = useState<string>('')
+  const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({})
+  const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({ ten_khach_hang: user?.ho_ten || '', so_dien_thoai_khach: user?.so_dien_thoai || '', dia_chi_giao_hang: user?.dia_chi || '', ngay_giao_du_kien: '', ghi_chu: '' })
+  const [voucherCode, setVoucherCode] = useState(appliedVoucher?.code || '')
   const [paymentMethod, setPaymentMethod] = useState<'pay_later' | 'momo_qr'>('pay_later')
+  const minDelivery = useMemo(minDeliveryValue, [])
 
-  // Auto-fill voucher code from cart if applied
-  useEffect(() => {
-    if (appliedVoucher?.code) {
-      setVoucherCode(appliedVoucher.code)
-      setVoucherError('') // Clear error when voucher is applied from cart
-    }
-  }, [appliedVoucher])
+  useEffect(() => { if (!cart.items.length) navigate('/cart') }, [cart.items.length, navigate])
+  useEffect(() => { if (appliedVoucher?.code) setVoucherCode(appliedVoucher.code) }, [appliedVoucher])
 
-  useEffect(() => {
-    if (cart.items.length === 0) {
-      navigate('/cart')
-    }
-  }, [cart.items.length, navigate])
+  const updateShipping = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { const { name, value } = event.target; setShippingInfo((current) => ({ ...current, [name]: value })); setErrors((current) => ({ ...current, [name]: undefined })); setError(null) }
+  const inputClass = (name: FieldName) => `w-full rounded-md border bg-bg-surface px-4 py-3 text-base text-fg placeholder:text-fg-subtle outline-none transition-[border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-focus ${errors[name] ? 'border-danger focus-visible:ring-danger' : 'border-interactive'}`
 
-  const handleShippingChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setShippingInfo({
-      ...shippingInfo,
-      [e.target.name]: e.target.value,
-    })
+  const validate = () => {
+    const next: Partial<Record<FieldName, string>> = {}
+    if (!shippingInfo.ten_khach_hang.trim()) next.ten_khach_hang = 'Vui lòng nhập tên khách hàng.'
+    if (!shippingInfo.so_dien_thoai_khach.trim()) next.so_dien_thoai_khach = 'Vui lòng nhập số điện thoại.'
+    else next.so_dien_thoai_khach = validatePhone(shippingInfo.so_dien_thoai_khach)
+    if (!shippingInfo.dia_chi_giao_hang.trim()) next.dia_chi_giao_hang = 'Vui lòng nhập địa chỉ giao hàng.'
+    next.ngay_giao_du_kien = validateDelivery(shippingInfo.ngay_giao_du_kien)
+    Object.keys(next).forEach((key) => { if (!next[key as FieldName]) delete next[key as FieldName] })
+    setErrors(next)
+    const first = Object.keys(next)[0] as FieldName | undefined
+    if (first) { const element = document.getElementById(first); element?.focus(); firstErrorRef.current = element; return false }
+    return true
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
-    // Validation - Tất cả trường đều bắt buộc (trừ mã giảm giá và ghi chú)
-    if (!shippingInfo.ten_khach_hang.trim()) {
-      setError('Vui lòng nhập tên khách hàng')
-      return
-    }
-
-    if (!shippingInfo.so_dien_thoai_khach.trim()) {
-      setError('Vui lòng nhập số điện thoại')
-      return
-    }
-
-    if (!shippingInfo.dia_chi_giao_hang.trim()) {
-      setError('Vui lòng nhập địa chỉ giao hàng')
-      return
-    }
-
-    // Ngày giao dự kiến là bắt buộc
-    if (!deliveryDateTime) {
-      setDeliveryTimeTouched(true)
-      setError('Vui lòng chọn ngày và giờ giao dự kiến')
-      return
-    }
-
-    // Validate delivery time
-    const timeError = validateDeliveryTime(deliveryDateTime)
-    if (timeError) {
-      setError(timeError)
-      return
-    }
-
-    // Convert cart items to order items
-    // Gift boxes use hop_qua_id, products use bienthe_id
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault(); setError(null)
+    if (!validate()) return
     const orderItems = cart.items.map((item) => {
-      // Check if this is a gift box (SKU starts with "GIFTBOX-" or variantLabel contains gift_box metadata)
-      const isGiftBox = item.sku?.startsWith('GIFTBOX-') || 
-                       (item.variantLabel && parseGiftBoxMetadata(item.variantLabel) !== null)
-      
-      if (isGiftBox) {
-        // Extract gift box ID from SKU (format: GIFTBOX-{id})
-        const giftBoxId = item.sku?.replace('GIFTBOX-', '')
-        return {
-          hop_qua_id: giftBoxId ? parseInt(giftBoxId) : undefined,
-          so_luong: item.quantity,
-        }
-      } else {
-        // Regular product variant
-        return {
-          bienthe_id: item.variantId || undefined,
-          so_luong: item.quantity,
-        }
-      }
-    })
-
-    // Filter out items without valid ID (either bienthe_id or hop_qua_id)
-    const validItems = orderItems.filter((item) => 
-      'bienthe_id' in item ? item.bienthe_id : item.hop_qua_id
-    )
-
-    if (validItems.length === 0) {
-      setError('Giỏ hàng không hợp lệ. Vui lòng kiểm tra lại.')
-      return
-    }
-
+      const isGiftBox = item.sku?.startsWith('GIFTBOX-') || Boolean(item.variantLabel && parseGiftBoxMetadata(item.variantLabel))
+      if (isGiftBox) { const giftBoxId = item.sku?.replace('GIFTBOX-', ''); return { hop_qua_id: giftBoxId ? Number.parseInt(giftBoxId, 10) : undefined, so_luong: item.quantity } }
+      return { bienthe_id: item.variantId || undefined, so_luong: item.quantity }
+    }).filter((item) => ('bienthe_id' in item ? item.bienthe_id : item.hop_qua_id))
+    if (!orderItems.length) { setError('Giỏ hàng không hợp lệ. Vui lòng kiểm tra lại sản phẩm.'); return }
     setLoading(true)
-
     try {
-      const orderData: OrderCreate = {
-        items: validItems,
-        ten_khach_hang: shippingInfo.ten_khach_hang,
-        so_dien_thoai_khach: shippingInfo.so_dien_thoai_khach,
-        dia_chi_giao_hang: shippingInfo.dia_chi_giao_hang,
-        ngay_giao_du_kien: deliveryDateTime
-          ? deliveryDateTime.toISOString()
-          : undefined,
-        ghi_chu: shippingInfo.ghi_chu || undefined,
-        phieu_giam_gia_codes: voucherCode ? [voucherCode] : undefined,
-      }
-
+      const orderData: OrderCreate = { items: orderItems, ten_khach_hang: shippingInfo.ten_khach_hang.trim(), so_dien_thoai_khach: shippingInfo.so_dien_thoai_khach.trim(), dia_chi_giao_hang: shippingInfo.dia_chi_giao_hang.trim(), ngay_giao_du_kien: toStoreTime(shippingInfo.ngay_giao_du_kien).toISOString(), ghi_chu: shippingInfo.ghi_chu.trim() || undefined, phieu_giam_gia_codes: voucherCode.trim() ? [voucherCode.trim()] : undefined }
       const order = await createOrder(orderData, 'online')
-
-      // Clear cart after successful order
-      clearCart()
-
-      // Show success notification
-      showSuccess(`Đơn hàng ${order.ma_don_hang} đã được tạo thành công! Chúng tôi sẽ xử lý đơn hàng của bạn sớm nhất.`)
-
       if (paymentMethod === 'momo_qr') {
         const paymentInfo = await createMomoQRPayment(order.donhang_id)
-        // Redirect to payment QR page
-        navigate(`/orders/${order.donhang_id}/payment-qr`, { 
-          state: { paymentInfo } 
-        })
-        return
+        clearCart()
+        showSuccess(`Đơn hàng ${order.ma_don_hang} đã được tạo. Tiếp tục thanh toán qua MoMo.`)
+        navigate(`/orders/${order.donhang_id}/payment-qr`, { state: { paymentInfo } })
+      } else {
+        clearCart()
+        showSuccess(`Đơn hàng ${order.ma_don_hang} đã được tạo thành công!`)
+        navigate(`/orders/${order.donhang_id}/success`)
       }
-
-      navigate(`/orders/${order.donhang_id}/success`)
     } catch (err: unknown) {
-      console.error('Error creating order:', err)
-      
-      // Handle specific error cases
-      let errorMessage = 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại.'
-
-      const status =
-        err && typeof err === 'object' && 'status' in err ? (err as { status?: unknown }).status : undefined
-      const detail =
-        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
-      const errorText =
-        err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : undefined
-      
-      if (status === 404 && typeof detail === 'string' && detail.includes('Hộp quà')) {
-        // Gift box not found in database
-        errorMessage = 'Hộp quà này hiện chưa có sẵn trong hệ thống. Vui lòng liên hệ cửa hàng để đặt hàng hoặc chọn sản phẩm khác.'
-      } else if (typeof detail === 'string' && detail) {
-        errorMessage = detail
-        // Check if error is voucher related
-        if (detail.toLowerCase().includes('voucher') || detail.toLowerCase().includes('mã') || detail.toLowerCase().includes('giảm giá')) {
-          setVoucherError(detail)
-          setError(null) // Don't show in main error, only in voucher field
-          return
-        }
-      } else if (typeof errorText === 'string' && errorText) {
-        errorMessage = errorText
-      }
-      
-      setError(errorMessage)
-    } finally {
-      setLoading(false)
-    }
+      const detail = err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      setError(typeof detail === 'string' && detail ? detail : 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại.')
+    } finally { setLoading(false) }
   }
 
-  // Calculate minimum delivery time: current time + 2 hours
-  // But must be within store hours (8AM - 8PM)
-  const getMinDeliveryTime = (): Dayjs => {
-    const now = dayjs()
-    const minTime = now.add(2, 'hour')
-    
-    // If minimum time is before 8AM today, set to 8AM today
-    const today8AM = now.hour(8).minute(0).second(0).millisecond(0)
-    if (minTime.isBefore(today8AM)) {
-      return today8AM
-    }
-    
-    // If minimum time is after 8PM today, set to 8AM tomorrow
-    const today8PM = now.hour(20).minute(0).second(0).millisecond(0)
-    if (minTime.isAfter(today8PM)) {
-      return now.add(1, 'day').hour(8).minute(0).second(0).millisecond(0)
-    }
-    
-    return minTime
-  }
-
-  const minDeliveryTime = getMinDeliveryTime()
-  
-  // Store hours: 8AM - 8PM
-  const storeOpenHour = 8
-  const storeCloseHour = 20
-
-  const validateDeliveryTime = (selectedTime: Dayjs | null): string => {
-    if (!selectedTime) return ''
-    
-    const hour = selectedTime.hour()
-    
-    // Check if within store hours
-    if (hour < storeOpenHour || hour >= storeCloseHour) {
-      return 'Thời gian giao hàng phải trong khoảng 8:00 - 20:00'
-    }
-    
-    // Check if at least 2 hours from now
-    const now = dayjs()
-    const minTime = now.add(2, 'hour')
-    if (selectedTime.isBefore(minTime)) {
-      return 'Phải đặt trước tối thiểu 2 giờ để chuẩn bị'
-    }
-    
-    return ''
-  }
-
-  return (
-    <div className="min-h-screen bg-background py-16">
-      <div className="max-w-[1440px] mx-auto px-6">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/cart')}
-          className="mb-8"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Quay lại giỏ hàng
-        </Button>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Show the order total before the form on mobile; keep the existing left column on desktop. */}
-          <div className="lg:col-span-1 order-1 lg:order-1">
-            <Card className="sticky top-24">
-              <h2 className="font-heading text-2xl font-semibold text-text-primary mb-6">
-                Đơn hàng của bạn
-              </h2>
-
-              <div className="space-y-4 mb-6">
-                {cart.items.map((item) => {
-                  const isGiftBox = item.sku?.startsWith('GIFTBOX-') || 
-                                   (item.variantLabel && parseGiftBoxMetadata(item.variantLabel) !== null)
-                  
-                  return (
-                    <div 
-                      key={`${item.productId}-${item.variantId || 'none'}`} 
-                      className={`flex gap-3 ${isGiftBox ? 'pb-4 border-b border-border last:border-b-0' : ''}`}
-                    >
-                      <div className="relative flex-shrink-0">
-                        <img
-                          src={item.productImage || FALLBACK_IMAGE.cart}
-                          alt={item.productName}
-                          className={`object-cover rounded-card ${
-                            isGiftBox ? 'w-20 h-20' : 'w-16 h-16'
-                          }`}
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.src = FALLBACK_IMAGE.cart
-                          }}
-                        />
-                        {isGiftBox && (
-                          <div className="absolute -top-1 -right-1 bg-accent-brown text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
-                            Quà
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium text-text-primary ${isGiftBox ? 'text-base mb-1' : 'text-sm'}`}>
-                          {item.productName}
-                        </p>
-                        {isGiftBox && (
-                          <div className="mt-2 space-y-1.5">
-                            <GiftBoxInfo variantLabel={item.variantLabel} />
-                          </div>
-                        )}
-                        {!isGiftBox && !parseGiftBoxMetadata(item.variantLabel) && item.variantLabel && (
-                          <p className="text-xs text-text-secondary mt-0.5">
-                            {item.variantLabel}
-                          </p>
-                        )}
-                        <p className={`text-text-secondary mt-1 ${isGiftBox ? 'text-sm font-medium' : 'text-sm'}`}>
-                          {item.quantity} x {formatPrice(item.price)}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="border-t border-border pt-4 space-y-2">
-                <div className="flex justify-between text-text-secondary">
-                  <span>Tạm tính:</span>
-                  <span className="font-medium text-text-primary">
-                    {formatPrice(cart.total)}
-                  </span>
-                </div>
-                {appliedVoucher && appliedVoucher.discountAmount > 0 && (
-                  <div className="flex justify-between text-accent-brown">
-                    <span>Giảm giá ({appliedVoucher.code}):</span>
-                    <span className="font-medium">
-                      -{formatPrice(appliedVoucher.discountAmount)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between text-text-secondary">
-                  <span>Phí vận chuyển:</span>
-                  <span className="font-medium text-text-primary">
-                    {formatPrice(0)}
-                  </span>
-                </div>
-                <div className="border-t border-border pt-2">
-                  <div className="flex justify-between">
-                    <span className="font-heading text-xl font-semibold text-text-primary">
-                      Tổng cộng:
-                    </span>
-                    <span className="font-heading text-xl font-semibold text-text-primary">
-                      {formatPrice(cart.total - (appliedVoucher?.discountAmount || 0))}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Checkout Form */}
-          <div className="lg:col-span-2 order-2 lg:order-2">
-            <Card>
-              <h2 className="font-heading text-3xl font-semibold text-text-primary mb-6">
-                Thông tin giao hàng
-              </h2>
-
-              {error && <ErrorMessage message={error} />}
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label
-                      htmlFor="ten_khach_hang"
-                      className="block text-sm font-medium text-text-primary mb-2"
-                    >
-                      Tên khách hàng <span className="text-accent-brown">*</span>
-                    </label>
-                    <input
-                      id="ten_khach_hang"
-                      name="ten_khach_hang"
-                      type="text"
-                      value={shippingInfo.ten_khach_hang}
-                      onChange={handleShippingChange}
-                      required
-                      className="w-full px-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default"
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="so_dien_thoai_khach"
-                      className="block text-sm font-medium text-text-primary mb-2"
-                    >
-                      Số điện thoại <span className="text-accent-brown">*</span>
-                    </label>
-                    <input
-                      id="so_dien_thoai_khach"
-                      name="so_dien_thoai_khach"
-                      type="tel"
-                      value={shippingInfo.so_dien_thoai_khach}
-                      onChange={handleShippingChange}
-                      required
-                      className="w-full px-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="dia_chi_giao_hang"
-                    className="block text-sm font-medium text-text-primary mb-2"
-                  >
-                    Địa chỉ giao hàng <span className="text-accent-brown">*</span>
-                  </label>
-                  <textarea
-                    id="dia_chi_giao_hang"
-                    name="dia_chi_giao_hang"
-                    value={shippingInfo.dia_chi_giao_hang}
-                    onChange={handleShippingChange}
-                    required
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default resize-none"
-                    disabled={loading}
-                    placeholder="Nhập địa chỉ chi tiết"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    Ngày và giờ giao dự kiến <span className="text-accent-brown">*</span>
-                  </label>
-                  <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
-                    <DateTimePicker
-                      label="Chọn ngày và giờ"
-                      value={deliveryDateTime}
-                      onChange={(newValue) => {
-                        setDeliveryDateTime(newValue)
-                        setDeliveryTimeTouched(true)
-                        const error = validateDeliveryTime(newValue)
-                        setDeliveryTimeError(error)
-                        
-                        if (newValue && !error) {
-                          setShippingInfo({
-                            ...shippingInfo,
-                            ngay_giao_du_kien: newValue.format('YYYY-MM-DD HH:mm'),
-                          })
-                        } else {
-                          setShippingInfo({
-                            ...shippingInfo,
-                            ngay_giao_du_kien: '',
-                          })
-                        }
-                      }}
-                      minDateTime={minDeliveryTime}
-                      shouldDisableTime={(value, view) => {
-                        if (view === 'hours') {
-                          const hour = value.hour()
-                          return hour < storeOpenHour || hour >= storeCloseHour
-                        }
-                        return false
-                      }}
-                      format="DD/MM/YYYY HH:mm"
-                      // Colors reference the real design tokens (tokens.css)
-                      // via CSS var() instead of hardcoded hex, so this MUI
-                      // picker can't silently drift from the rest of the
-                      // (Tailwind) storefront if the brand palette changes.
-                      // This is the one MUI element left on the storefront —
-                      // kept as-is for now; revisit if the storefront later
-                      // standardizes on one component system.
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          disabled: loading,
-                          required: true,
-                          error: !!deliveryTimeError || (!deliveryDateTime && deliveryTimeTouched),
-                          helperText: deliveryTimeError || (!deliveryDateTime && deliveryTimeTouched ? 'Vui lòng chọn ngày và giờ giao dự kiến' : 'Giờ cửa hàng: 8:00 - 20:00. Đặt trước tối thiểu 2 giờ'),
-                          className: 'w-full',
-                          sx: {
-                            '& .MuiOutlinedInput-root': {
-                              borderRadius: 'var(--radius-input)',
-                              borderColor: 'var(--color-border)',
-                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'var(--color-accent-brown)',
-                              },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'var(--color-accent-brown)',
-                              },
-                              '&.Mui-error .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'var(--color-accent-pink)',
-                              },
-                            },
-                            '& .MuiInputLabel-root': {
-                              color: 'var(--color-text-secondary)',
-                              fontSize: '0.875rem',
-                              fontWeight: 500,
-                              '&.Mui-focused': {
-                                color: 'var(--color-accent-brown)',
-                              },
-                            },
-                            '& .MuiInputBase-input': {
-                              padding: '12px 16px',
-                              color: 'var(--color-text-primary)',
-                            },
-                            '& .MuiFormHelperText-root': {
-                              color: 'var(--color-text-secondary)',
-                              fontSize: '0.75rem',
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </LocalizationProvider>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="voucherCode"
-                    className="block text-sm font-medium text-text-primary mb-2"
-                  >
-                    Mã giảm giá (nếu có)
-                  </label>
-                  <input
-                    id="voucherCode"
-                    type="text"
-                    value={voucherCode}
-                    onChange={(e) => {
-                      setVoucherCode(e.target.value.toUpperCase())
-                      setVoucherError('') // Clear error when user types
-                    }}
-                    className={`w-full px-4 py-3 rounded-input border ${
-                      voucherError ? 'border-red-500' : 'border-border'
-                    } focus:outline-none focus:border-accent-brown transition-default uppercase`}
-                    disabled={loading}
-                    placeholder="Nhập mã giảm giá (nếu có)"
-                  />
-                  {voucherError && (
-                    <p className="mt-1 text-xs text-red-500">{voucherError}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="ghi_chu"
-                    className="block text-sm font-medium text-text-primary mb-2"
-                  >
-                    Ghi chú đơn hàng
-                  </label>
-                  <textarea
-                    id="ghi_chu"
-                    name="ghi_chu"
-                    value={shippingInfo.ghi_chu}
-                    onChange={handleShippingChange}
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default resize-none"
-                    disabled={loading}
-                    placeholder="Ghi chú thêm cho đơn hàng (tùy chọn)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    Phương thức thanh toán
-                  </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-text-secondary">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="pay_later"
-                        checked={paymentMethod === 'pay_later'}
-                        onChange={() => setPaymentMethod('pay_later')}
-                        disabled={loading}
-                      />
-                      Thanh toán khi nhận hàng
-                    </label>
-                    <label className="flex items-center gap-2 text-text-secondary">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="momo_qr"
-                        checked={paymentMethod === 'momo_qr'}
-                        onChange={() => setPaymentMethod('momo_qr')}
-                        disabled={loading}
-                      />
-                      Thanh toán MoMo
-                    </label>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    className="w-full py-4 text-lg"
-                    disabled={
-                      loading || 
-                      cart.items.length === 0 ||
-                      !shippingInfo.ten_khach_hang.trim() ||
-                      !shippingInfo.so_dien_thoai_khach.trim() ||
-                      !shippingInfo.dia_chi_giao_hang.trim() ||
-                      !deliveryDateTime
-                    }
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <LoadingSpinner size="sm" />
-                        Đang xử lý...
-                      </span>
-                    ) : (
-                      'Đặt hàng'
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  return <div className="bg-bg-canvas py-8 sm:py-12"><div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8"><Button variant="ghost" onClick={() => navigate('/cart')} className="mb-6 -ml-2"><ArrowLeft className="size-4" />Quay lại giỏ hàng</Button><div className="mb-8"><p className="text-xs font-semibold uppercase tracking-caps text-brand-fg">Bước cuối</p><h1 className="mt-2 text-h1">Hoàn tất đơn hàng</h1><p className="mt-3 max-w-2xl text-fg-muted">Kiểm tra thông tin giao hàng và chọn cách thanh toán phù hợp với bạn.</p></div>{error && <Alert variant="danger" title="Chưa thể đặt hàng" className="mb-6">{error}</Alert>}<div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]"><Card className="order-2 lg:order-1"><form onSubmit={handleSubmit} noValidate className="space-y-7"><fieldset><legend className="flex items-center gap-2 font-heading text-xl font-semibold text-fg-strong"><MapPin className="size-5 text-brand-fg" />Thông tin giao hàng</legend><div className="mt-5 grid gap-5 sm:grid-cols-2"><Field id="ten_khach_hang" label="Tên khách hàng" required error={errors.ten_khach_hang}><input id="ten_khach_hang" name="ten_khach_hang" value={shippingInfo.ten_khach_hang} onChange={updateShipping} autoComplete="name" disabled={loading} className={inputClass('ten_khach_hang')} /></Field><Field id="so_dien_thoai_khach" label="Số điện thoại" required error={errors.so_dien_thoai_khach}><input id="so_dien_thoai_khach" name="so_dien_thoai_khach" type="tel" value={shippingInfo.so_dien_thoai_khach} onChange={updateShipping} autoComplete="tel" placeholder="0901234567" disabled={loading} className={inputClass('so_dien_thoai_khach')} /></Field></div><div className="mt-5"><Field id="dia_chi_giao_hang" label="Địa chỉ giao hàng" required error={errors.dia_chi_giao_hang}><textarea id="dia_chi_giao_hang" name="dia_chi_giao_hang" rows={3} value={shippingInfo.dia_chi_giao_hang} onChange={updateShipping} autoComplete="street-address" placeholder="Số nhà, đường, phường/xã, quận/huyện" disabled={loading} className={inputClass('dia_chi_giao_hang')} /></Field></div><div className="mt-5"><Field id="ngay_giao_du_kien" label="Ngày và giờ giao dự kiến" required error={errors.ngay_giao_du_kien}><input id="ngay_giao_du_kien" name="ngay_giao_du_kien" type="datetime-local" min={minDelivery} value={shippingInfo.ngay_giao_du_kien} onChange={updateShipping} disabled={loading} className={inputClass('ngay_giao_du_kien')} /></Field><p className="mt-2 text-sm text-fg-subtle">Giờ cửa hàng: 8:00 — 20:00 · Cần đặt trước tối thiểu 2 giờ · Múi giờ: Việt Nam</p></div><div className="mt-5"><Field id="ghi_chu" label="Ghi chú đơn hàng"><textarea id="ghi_chu" name="ghi_chu" rows={3} value={shippingInfo.ghi_chu} onChange={updateShipping} placeholder="Ví dụ: gọi trước khi giao (không bắt buộc)" disabled={loading} className={inputClass('ghi_chu')} /></Field></div></fieldset><fieldset className="border-t border-border-subtle pt-7"><legend className="flex items-center gap-2 font-heading text-xl font-semibold text-fg-strong"><CreditCard className="size-5 text-brand-fg" />Phương thức thanh toán</legend><div className="mt-5 grid gap-3 sm:grid-cols-2"><label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${paymentMethod === 'pay_later' ? 'border-brand bg-brand-subtle' : 'border-border-interactive hover:bg-bg-subtle'}`}><input type="radio" name="paymentMethod" value="pay_later" checked={paymentMethod === 'pay_later'} onChange={() => setPaymentMethod('pay_later')} disabled={loading} className="mt-1 accent-brand" /><span><span className="block font-medium text-fg-strong">Thanh toán khi nhận</span><span className="mt-1 block text-sm text-fg-muted">Thanh toán trực tiếp với nhân viên giao hàng.</span></span></label><label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${paymentMethod === 'momo_qr' ? 'border-brand bg-brand-subtle' : 'border-border-interactive hover:bg-bg-subtle'}`}><input type="radio" name="paymentMethod" value="momo_qr" checked={paymentMethod === 'momo_qr'} onChange={() => setPaymentMethod('momo_qr')} disabled={loading} className="mt-1 accent-brand" /><span><span className="block font-medium text-fg-strong">MoMo QR</span><span className="mt-1 block text-sm text-fg-muted">Quét mã sau khi tạo đơn để thanh toán.</span></span></label></div></fieldset><Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>{loading ? <><LoadingSpinner size="sm" />Đang xử lý...</> : <><Check className="size-5" />Đặt hàng</>}</Button></form></Card><Card className="order-1 h-fit lg:sticky lg:top-24 lg:order-2"><div className="flex items-center gap-2"><ShoppingBag className="size-5 text-brand-fg" /><h2 className="font-heading text-xl font-semibold text-fg-strong">Đơn hàng của bạn</h2></div><div className="mt-5 space-y-4">{cart.items.map((item) => { const isGiftBox = item.sku?.startsWith('GIFTBOX-') || Boolean(item.variantLabel && parseGiftBoxMetadata(item.variantLabel)); return <div key={`${item.productId}-${item.variantId || 'none'}`} className="flex gap-3 border-b border-border-subtle pb-4 last:border-0"><div className="relative shrink-0"><img src={item.productImage || FALLBACK_IMAGE.cart} alt="" className={`rounded-md object-cover ${isGiftBox ? 'size-20' : 'size-16'}`} onError={(event) => { event.currentTarget.src = FALLBACK_IMAGE.cart }} />{isGiftBox && <span className="absolute -right-1 -top-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-fg-on-brand">Quà</span>}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-fg-strong">{item.productName}</p>{isGiftBox ? <GiftBoxInfo variantLabel={item.variantLabel} /> : item.variantLabel && <p className="mt-1 text-xs text-fg-subtle">{item.variantLabel}</p>}<p className="mt-1 text-sm text-fg-muted">{item.quantity} × {formatPrice(item.price)}</p></div></div> })}</div><div className="mt-2 space-y-3 border-t border-border-subtle pt-4 text-sm"><div className="flex justify-between text-fg-muted"><span>Tạm tính</span><span className="font-medium text-fg">{formatPrice(cart.total)}</span></div>{appliedVoucher && appliedVoucher.discountAmount > 0 && <div className="flex justify-between text-success"><span>Giảm giá ({appliedVoucher.code})</span><span>-{formatPrice(appliedVoucher.discountAmount)}</span></div>}<div className="flex justify-between text-fg-muted"><span>Phí vận chuyển</span><span className="text-fg">Miễn phí</span></div><div className="flex justify-between border-t border-border-subtle pt-3 text-base font-semibold text-fg-strong"><span>Tổng cộng</span><span>{formatPrice(cart.total - (appliedVoucher?.discountAmount || 0))}</span></div></div></Card></div></div></div>
 }
-
-export default function CheckoutPage() {
-  return (
-    <ProtectedRoute>
-      <CheckoutPageContent />
-    </ProtectedRoute>
-  )
-}
-
-

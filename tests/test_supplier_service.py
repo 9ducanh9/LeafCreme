@@ -2,9 +2,12 @@
 Tests for app.services.suppliers.SupplierService — Phase 1 service-layer
 migration (see app/services/suppliers/supplier_service.py).
 """
+from datetime import datetime, timedelta
+from decimal import Decimal
+
 import pytest
 
-from app.models import NhaCungCap
+from app.models import BienTheSanPham, LoHangSanPham, NhaCungCap, SanPham
 from app.services.suppliers import DomainError, SupplierService
 
 
@@ -65,6 +68,40 @@ class TestDeleteSupplier:
         with pytest.raises(DomainError) as exc_info:
             service.delete_supplier(db_session, 999999)
         assert exc_info.value.status_code == 404
+
+    def test_hard_delete_blocked_when_supplier_has_a_batch(self, db_session, service):
+        """See docs/specs/06-users-suppliers.md Finding #2 — hard-deleting a
+        supplier that has ever had a batch logged against it must raise a
+        clean 400, not an unhandled IntegrityError -> bare 500."""
+        supplier = service.create_supplier(db_session, _SupplierPayload("NCC Có Lô Hàng"))
+
+        product = SanPham(ten="SP cho lô hàng", sku="SP-BATCH-TEST", gia_co_ban=Decimal("10000"))
+        db_session.add(product)
+        db_session.flush()
+        variant = BienTheSanPham(sanpham_id=product.sanpham_id, huong_vi="Vani", gia_bienthe=Decimal("10000"))
+        db_session.add(variant)
+        db_session.flush()
+
+        batch = LoHangSanPham(
+            bienthe_sanpham_id=variant.bienthe_id,
+            ncc_id=supplier.ncc_id,
+            ma_lo="LOT-SUPPLIER-BLOCK-1",
+            ngay_het_han=datetime.utcnow() + timedelta(days=30),
+            so_luong=10,
+            gia_don_vi=Decimal("5000"),
+        )
+        db_session.add(batch)
+        db_session.commit()
+
+        with pytest.raises(DomainError) as exc_info:
+            service.delete_supplier(db_session, supplier.ncc_id, hard_delete=True)
+        assert exc_info.value.status_code == 400
+
+        # Supplier row must still exist untouched — the delete was rejected
+        # outright, not partially applied.
+        still_there = db_session.query(NhaCungCap).filter(NhaCungCap.ncc_id == supplier.ncc_id).first()
+        assert still_there is not None
+        assert still_there.dang_hoat_dong is True
 
 
 class TestUpdateSupplier:

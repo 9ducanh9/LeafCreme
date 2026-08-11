@@ -1,0 +1,32 @@
+sku,product_id,size,size_unit,weight,weight_unit,servings,servings_status,price,price_currency,price_data_origin,data_origin
+OFF-TIRA-750608,OFF-TIRA-0001,170 g (2x85g),package,170.0,g,,missing,48000,VND,synthetic,real
+OFF-TIRA-337179,OFF-TIRA-0002,500 g,package,500.0,g,,missing,140000,VND,synthetic,real
+OFF-TIRA-901556,OFF-TIRA-0003,2 x 80 g,package,160.0,g,,missing,45000,VND,synthetic,real
+OFF-TIRA-233174,OFF-TIRA-0004,180 g (2 x 90 g),package,180,g,,missing,50000,VND,synthetic,real
+OFF-TIRA-411432,OFF-TIRA-0005,80g,package,80.0,g,,missing,22000,VND,synthetic,real
+OFF-TIRA-404946,OFF-TIRA-0006,80 g,package,80,g,,missing,22000,VND,synthetic,real
+OFF-TIRA-874810,OFF-TIRA-0007,180 g,package,180,g,,missing,50000,VND,synthetic,real
+OFF-TIRA-471712,OFF-TIRA-0008,320 g,package,320.0,g,,missing,90000,VND,synthetic,real
+OFF-SPNG-038331,OFF-SPNG-0001,120 g,package,120.0,g,,missing,34000,VND,synthetic,real
+OFF-SPNG-290829,OFF-SPNG-0002,8 x 30 g = 240 g,package,240.0,g,,missing,67000,VND,synthetic,real
+OFF-SPNG-038706,OFF-SPNG-0003,120 g e,package,120,g,,missing,34000,VND,synthetic,real
+OFF-SPNG-000917,OFF-SPNG-0004,260g,package,260.0,g,,missing,73000,VND,synthetic,real
+OFF-SPNG-001945,OFF-SPNG-0005,800 g,package,800.0,g,,missing,224000,VND,synthetic,real
+OFF-SPNG-062439,OFF-SPNG-0006,150 g,package,150,g,,missing,42000,VND,synthetic,real
+OFF-SPNG-529393,OFF-SPNG-0007,150 g,package,150.0,g,,missing,42000,VND,synthetic,real
+OFF-SPNG-529386,OFF-SPNG-0008,150 g,package,150.0,g,,missing,42000,VND,synthetic,real
+BANHKEMD-16cm,LC-SYN-0001,16cm,cm,600,g,6,estimated,320000,VND,synthetic,synthetic
+BANHKEMD-20cm,LC-SYN-0001,20cm,cm,1000,g,10,estimated,464000,VND,synthetic,synthetic
+BANHKEMD-25cm,LC-SYN-0001,25cm,cm,1600,g,16,estimated,656000,VND,synthetic,synthetic
+BANHKEMS-16cm,LC-SYN-0002,16cm,cm,600,g,6,estimated,340000,VND,synthetic,synthetic
+BANHKEMS-20cm,LC-SYN-0002,20cm,cm,1000,g,10,estimated,493000,VND,synthetic,synthetic
+BANHKEMS-25cm,LC-SYN-0002,25cm,cm,1600,g,16,estimated,697000,VND,synthetic,synthetic
+BANHKEMV-16cm,LC-SYN-0003,16cm,cm,600,g,6,estimated,300000,VND,synthetic,synthetic
+BANHKEMV-20cm,LC-SYN-0003,20cm,cm,1000,g,10,estimated,435000,VND,synthetic,synthetic
+BANHKEMV-25cm,LC-SYN-0003,25cm,cm,1600,g,16,estimated,615000,VND,synthetic,synthetic
+MOUSSEXO-16cm,LC-SYN-0004,16cm,cm,600,g,6,estimated,280000,VND,synthetic,synthetic
+MOUSSEXO-20cm,LC-SYN-0004,20cm,cm,1000,g,10,estimated,406000,VND,synthetic,synthetic
+MOUSSEXO-25cm,LC-SYN-0004,25cm,cm,1600,g,16,estimated,574000,VND,synthetic,synthetic
+MOUSSESO-16cm,LC-SYN-0005,16cm,cm,600,g,6,estimated,300000,VND,synthetic,synthetic
+MOUSSESO-20cm,LC-SYN-0005,20cm,cm,1000,g,10,estimated,435000,VND,synthetic,synthetic
+MOUSSESO-25cm,LC-SYN-0005,25cm,cm,1600,g,16,estimated,615000,VND,synthetic,synthetic

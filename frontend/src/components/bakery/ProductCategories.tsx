@@ -1,159 +1,21 @@
-// Product Categories section with 4 main category cards - fetches product counts from API
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Card from '../ui/Card'
-import { Leaf } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowUpRight } from 'lucide-react'
+import Card, { CardMedia } from '../ui/Card'
+import Skeleton from '../ui/Skeleton'
 import { getProducts } from '../../services/productService'
+import { IMAGE_PATHS, FALLBACK_IMAGE } from '../../constants/images'
 
-interface Category {
-  id: number
-  name: string
-  description: string
-  image: string
-  danh_muc: string 
-}
-
-const CATEGORY_DEFINITIONS: Category[] = [
-  {
-    id: 1,
-    name: 'Bánh kem',
-    description: 'Cho những khoảnh khắc đáng nhớ, ngọt ngào và ấm áp.',
-    image: 'https://img.freepik.com/premium-photo/cake-with-white-chocolate-icing-whipped-cream-strawberries_538646-12060.jpg',
-    danh_muc: 'Bánh kem',
-  },
-  {
-    id: 2,
-    name: 'Bông lan',
-    description: 'Mềm mại, nhẹ nhàng như một cái ôm ấm áp.',
-    image: 'https://emvaobep.com/wp-content/uploads/2016/03/cach-lam-banh-bong-lan-pho-mai-ngon.jpg',
-    danh_muc: 'Bông lan',
-  },
-  {
-    id: 3,
-    name: 'Mousse',
-    description: 'Mịn màng, thanh nhẹ cho những phút giây thư giãn.',
-    image: 'https://tse3.mm.bing.net/th/id/OIP.ETTQBVy32BL-CCchIwNmpgHaJQ?rs=1&pid=ImgDetMain&o=7&rm=3',
-    danh_muc: 'Mousse',
-  },
-  {
-    id: 4,
-    name: 'Tiramisu',
-    description: 'Cổ điển và đậm đà, như một tách cà phê buổi sáng.',
-    image: 'https://th.bing.com/th/id/R.f3e848071ba4d9a47996663b087377f3?rik=Ni5E%2bc4P4TfI5A&pid=ImgRaw&r=0',
-    danh_muc: 'Tiramisu',
-  },
+const definitions = [
+  { name: 'Bánh kem', description: 'Cho những khoảnh khắc đáng nhớ, ngọt ngào và ấm áp.', image: IMAGE_PATHS.categories.banhKem },
+  { name: 'Bông lan', description: 'Mềm mại, nhẹ nhàng như một cái ôm ấm áp.', image: IMAGE_PATHS.categories.bongLan },
+  { name: 'Mousse', description: 'Mịn màng, thanh nhẹ cho những phút giây thư giãn.', image: IMAGE_PATHS.categories.mousse },
+  { name: 'Tiramisu', description: 'Cổ điển và đậm đà, như một tách cà phê buổi sáng.', image: IMAGE_PATHS.categories.tiramisu },
 ]
 
-interface CategoryWithCount extends Category {
-  productCount: number
-}
-
 export default function ProductCategories() {
-  const navigate = useNavigate()
-  const [categories, setCategories] = useState<CategoryWithCount[]>([])
+  const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchCategoryCounts() {
-      try {
-        setLoading(true)
-        
-        // Fetch all active products to count by category
-        const allProducts = await getProducts({ 
-          dang_hoat_dong: true,
-          limit: 1000 
-        })
-        
-        // Map categories with product counts
-        const categoriesWithCounts: CategoryWithCount[] = CATEGORY_DEFINITIONS.map((cat) => {
-          const count = allProducts.filter(
-            (p) => p.danh_muc && p.danh_muc.toLowerCase() === cat.danh_muc.toLowerCase()
-          ).length
-          
-          return {
-            ...cat,
-            productCount: count,
-          }
-        })
-        
-        setCategories(categoriesWithCounts)
-      } catch (error) {
-        // Fallback to categories without counts
-        setCategories(
-          CATEGORY_DEFINITIONS.map((cat) => ({ ...cat, productCount: 0 }))
-        )
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCategoryCounts()
-  }, [])
-
-  return (
-    <section className="py-16 bg-gradient-to-b from-[#FFF8F0] to-[#FFF5E6]">
-      <div className="max-w-[1440px] mx-auto px-6">
-        {/* Section Header */}
-        <div className="text-center mb-12 relative">
-          <div className="absolute top-0 left-0 text-[#D4A574] text-xl animate-twinkle">⭐</div>
-          <h2 className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-3 leading-tight flex items-center justify-center gap-2">
-            Explore our main lines
-          </h2>
-          <p className="text-text-secondary text-base md:text-lg leading-relaxed">
-            Bốn dòng bánh chính từ bếp Leaf Creme.
-          </p>
-        </div>
-
-        {/* Category Cards Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="cursor-pointer">
-                <div className="relative mb-4 -mx-6 -mt-6 h-64 bg-border animate-pulse rounded-t-card" />
-                <div className="h-6 bg-border rounded animate-pulse mb-2" />
-                <div className="h-4 bg-border rounded animate-pulse" />
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {categories.map((category) => (
-              <Card
-                key={category.id}
-                className="cursor-pointer hover:border-accent-brown transition-default hover:scale-[1.01]"
-                onClick={() => navigate(`/categories/${encodeURIComponent(category.danh_muc)}`)}
-              >
-                {/* Category Image */}
-                <div className="relative mb-4 -mx-6 -mt-6">
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-64 object-cover rounded-t-card"
-                  />
-                  <div className="absolute top-3 right-3 flex items-center gap-1">
-                    <Leaf className="w-5 h-5 text-[#C59B72] opacity-70" />
-                    <span className="text-[#D4A574] text-xs animate-sparkle">✨</span>
-                  </div>
-                </div>
-
-                {/* Category Info */}
-                <h3 className="font-heading text-lg font-medium text-text-primary mb-2 leading-tight">
-                  {category.name}
-                </h3>
-                <p className="text-text-secondary text-sm mb-2">
-                  {category.description}
-                </p>
-                {category.productCount > 0 && (
-                  <p className="text-text-secondary text-xs">
-                    {category.productCount} sản phẩm
-                  </p>
-                )}
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  )
+  useEffect(() => { getProducts({ dang_hoat_dong: true, limit: 100 }).then((products) => { const next: Record<string, number> = {}; definitions.forEach((definition) => { next[definition.name] = products.filter((product) => product.danh_muc?.toLowerCase() === definition.name.toLowerCase()).length }); setCounts(next) }).catch(() => undefined).finally(() => setLoading(false)) }, [])
+  return <section className="bg-bg-subtle py-12 sm:py-16"><div className="mx-auto max-w-container px-4 sm:px-6 lg:px-8"><div className="mb-8 flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-caps text-brand-fg">Từ căn bếp nhỏ</p><h2 className="mt-2 text-h2">Chọn theo cảm hứng</h2></div><Link to="/search" className="hidden items-center gap-1 text-sm font-medium text-brand-fg hover:text-brand-hover sm:flex">Xem tất cả <ArrowUpRight className="size-4" /></Link></div><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{loading ? definitions.map((definition) => <div key={definition.name} className="space-y-3"><Skeleton className="aspect-[4/3]" /><Skeleton className="h-5 w-2/3" /><Skeleton className="h-4 w-full" /></div>) : definitions.map((definition) => <Link key={definition.name} to={`/categories/${encodeURIComponent(definition.name)}`} className="group rounded-lg focus-visible:ring-2 focus-visible:ring-focus"><Card className="h-full p-0 transition-[box-shadow,transform] duration-normal group-hover:-translate-y-1 group-hover:shadow-md"><CardMedia ratio="square"><img src={definition.image} alt={definition.name} width="600" height="600" loading="lazy" className="size-full object-cover transition-transform duration-slow group-hover:scale-105" onError={(event) => { event.currentTarget.src = FALLBACK_IMAGE.product }} /></CardMedia><div className="p-5"><h3 className="font-heading text-lg font-semibold text-fg-strong">{definition.name}</h3><p className="mt-2 text-sm leading-relaxed text-fg-muted">{definition.description}</p>{counts[definition.name] > 0 && <p className="mt-3 text-xs font-medium text-brand-fg">{counts[definition.name]} sản phẩm</p>}</div></Card></Link>)}</div></div></section>
 }
-

@@ -35,3 +35,10 @@ export interface ProductVariant {
   ngay_tao: string
 }
 
+export interface ProductAvailability {
+  bienthe_id: number
+  so_luong_con: number
+  ngay_het_han_som_nhat?: string | null
+  dang_ban_duoc: boolean
+}
+

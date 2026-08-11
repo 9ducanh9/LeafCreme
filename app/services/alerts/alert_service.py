@@ -151,7 +151,10 @@ class AlertService:
         trang_thai: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
-    ) -> list[dict]:
+        paginated: bool = False,
+        sort_by: str = "ngay_tao",
+        sort_dir: str = "desc",
+    ) -> list[dict] | dict:
         query = db.query(CanhBaoTonKho)
         if loai_canh_bao:
             query = query.filter(CanhBaoTonKho.loai_canh_bao == loai_canh_bao)
@@ -160,11 +163,19 @@ class AlertService:
         if trang_thai:
             query = query.filter(CanhBaoTonKho.trang_thai == trang_thai)
 
+        if paginated:
+            total = query.count()
+            sort_map = {"muc_do": CanhBaoTonKho.muc_do_nghiem_trong, "ngay_tao": CanhBaoTonKho.ngay_canh_bao}
+            sort_column = sort_map.get(sort_by, CanhBaoTonKho.ngay_canh_bao)
+            direction = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
+            alerts = query.order_by(direction, CanhBaoTonKho.canhbao_id.asc()).offset(skip).limit(limit).all()
+            return {"items": [self._enrich_with_batch_info(db, alert) for alert in alerts], "total": total, "skip": skip, "limit": limit}
+
         alerts = query.order_by(
             CanhBaoTonKho.muc_do_nghiem_trong.desc(),
             CanhBaoTonKho.ngay_canh_bao.desc(),
+            CanhBaoTonKho.canhbao_id.asc(),
         ).offset(skip).limit(limit).all()
-
         return [self._enrich_with_batch_info(db, alert) for alert in alerts]
 
     def get_summary(self, db: Session) -> dict:

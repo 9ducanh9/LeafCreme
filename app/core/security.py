@@ -2,9 +2,13 @@
 Security utilities: Password hashing và JWT tokens
 """
 from datetime import datetime, timedelta
+from functools import lru_cache
+from time import time
 from typing import Optional, Dict
-from jose import JWTError, jwt
+from jose import JWTError, jwk, jwt
+from jose.utils import base64url_decode
 import bcrypt
+import requests
 from app.core.config import settings
 
 
@@ -71,5 +75,69 @@ def decode_token(token: str) -> Optional[Dict]:
         return None
     except Exception as e:
         logger.error(f"Unexpected error decoding token: {str(e)}")
+        return None
+
+
+def _cognito_issuer() -> str:
+    return (
+        f"https://cognito-idp.{settings.COGNITO_REGION}.amazonaws.com/"
+        f"{settings.COGNITO_USER_POOL_ID}"
+    )
+
+
+@lru_cache(maxsize=1)
+def _cognito_jwks() -> dict:
+    """Fetch Cognito public keys once per process, never trusting token keys."""
+    response = requests.get(f"{_cognito_issuer()}/.well-known/jwks.json", timeout=5)
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload.get("keys"), list):
+        raise ValueError("Invalid Cognito JWKS response")
+    return payload
+
+
+def decode_cognito_token(token: str, expected_token_use: str) -> Optional[Dict]:
+    """Verify a Cognito RS256 token against the configured pool and client.
+
+    Access and ID tokens have different audience claims, so callers must state
+    which type they accept. Returning ``None`` intentionally matches the
+    legacy decoder contract used by request dependencies.
+    """
+    if settings.AUTH_PROVIDER != "cognito":
+        return None
+
+    try:
+        header = jwt.get_unverified_header(token)
+        key_id = header.get("kid")
+        if header.get("alg") != "RS256" or not key_id:
+            return None
+
+        key_data = next((key for key in _cognito_jwks()["keys"] if key.get("kid") == key_id), None)
+        if key_data is None:
+            _cognito_jwks.cache_clear()
+            key_data = next((key for key in _cognito_jwks()["keys"] if key.get("kid") == key_id), None)
+        if key_data is None:
+            return None
+
+        signing_input, encoded_signature = token.rsplit(".", 1)
+        key = jwk.construct(key_data)
+        if not key.verify(signing_input.encode("utf-8"), base64url_decode(encoded_signature.encode("utf-8"))):
+            return None
+
+        claims = jwt.get_unverified_claims(token)
+        if claims.get("iss") != _cognito_issuer():
+            return None
+        if claims.get("token_use") != expected_token_use:
+            return None
+        if int(claims.get("exp", 0)) <= time():
+            return None
+
+        client_claim = "client_id" if expected_token_use == "access" else "aud"
+        if claims.get(client_claim) != settings.COGNITO_APP_CLIENT_ID:
+            return None
+        if not claims.get("sub"):
+            return None
+        return claims
+    except (JWTError, ValueError, requests.RequestException, TypeError):
         return None
 

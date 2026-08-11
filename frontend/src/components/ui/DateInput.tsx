@@ -81,8 +81,8 @@ export default function DateInput({
   return (
     <div>
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-text-primary mb-2">
-          {label} {required && <span className="text-accent-brown">*</span>}
+        <label htmlFor={id} className="mb-2 block text-sm font-medium text-fg">
+          {label} {required && <span className="text-danger">*</span>}
         </label>
       )}
       <input
@@ -96,7 +96,7 @@ export default function DateInput({
         required={required}
         disabled={disabled}
         maxLength={10}
-        className={className || 'w-full px-4 py-3 rounded-input border border-border focus:outline-none focus:border-accent-brown transition-default'}
+        className={className || 'h-11 w-full rounded-md border border-interactive bg-bg-surface px-4 text-fg outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus'}
       />
     </div>
   )

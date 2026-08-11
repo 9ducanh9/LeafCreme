@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  Alert,
   TextField,
   Select,
   MenuItem,
@@ -19,6 +20,8 @@ import {
 import { ProductVariant } from '../../../types/admin'
 import { getCategories } from '../../../services/admin/categoryService'
 import { getImageUrl } from '../../../utils/getImageUrl'
+import { useAdminForm, type FieldErrors } from '../../../hooks/admin/useAdminForm'
+import { useUnsavedChanges } from '../../../hooks/admin/useUnsavedChanges'
 
 interface ProductFormProps {
   open: boolean
@@ -61,6 +64,20 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
   const [imagePreview, setImagePreview] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [categories, setCategories] = useState<string[]>([])
+  const [formError, setFormError] = useState<string | null>(null)
+
+  const validate = (values: Omit<ProductVariant, 'id'>): FieldErrors => {
+    const next: FieldErrors = {}
+    if (!values.name.trim()) next.name = 'Tên sản phẩm là bắt buộc'
+    if (!values.description.trim()) next.description = 'Mô tả sản phẩm là bắt buộc'
+    if (!values.category.trim()) next.category = 'Danh mục là bắt buộc'
+    if (values.price <= 0) next.price = 'Giá phải lớn hơn 0'
+    return next
+  }
+  const adminForm = useAdminForm({ initialValues: formData, validate })
+  const { validateForm, errors: fieldErrors, setValues } = adminForm
+  useEffect(() => { setValues(formData) }, [formData, setValues])
+  useUnsavedChanges(open && !loading && Boolean(formData.name || formData.description || formData.image))
 
   useEffect(() => {
     // Load categories whenever form opens
@@ -110,13 +127,13 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chọn file ảnh')
+      setFormError('Vui lòng chọn file ảnh')
       return
     }
     
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File ảnh không được vượt quá 5MB')
+      setFormError('File ảnh không được vượt quá 5MB')
       return
     }
 
@@ -159,7 +176,7 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
       setImagePreview(getImageUrl(result.image_path))
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert(error instanceof Error ? error.message : 'Upload ảnh thất bại')
+      setFormError(error instanceof Error ? error.message : 'Upload ảnh thất bại')
       setImagePreview('')
     } finally {
       setLoading(false)
@@ -168,6 +185,8 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
+    if (!validateForm()) return
     
     // Convert full URL back to relative path if needed
     let imagePath = formData.image
@@ -181,9 +200,6 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
         // But if it does, we need to upload it first
         console.warn('Base64 image detected, should have been uploaded already')
         imagePath = '' // Clear it, user needs to upload file again
-      } else if (imagePath.startsWith('http') && !imagePath.includes('/uploads/')) {
-        // External URL, keep as is
-        imagePath = imagePath
       }
       // If already relative path (product/xxx.jpg), keep as is
     }
@@ -246,6 +262,7 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
           {variant ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
+          {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <TextField
               label="Tên sản phẩm"
@@ -253,6 +270,8 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
               fullWidth
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              error={Boolean(fieldErrors.name)}
+              helperText={fieldErrors.name}
               sx={inputStyles}
             />
 
@@ -264,6 +283,7 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              error={Boolean(fieldErrors.description)}
               sx={inputStyles}
               helperText="Mô tả chi tiết về sản phẩm"
             />

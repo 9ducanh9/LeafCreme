@@ -16,7 +16,7 @@ export async function buildLeafieContext(): Promise<LeafieContextBase> {
     // Fetch ALL active products (not limited)
     const allProducts = await getProducts({
       dang_hoat_dong: true,
-      limit: 1000, // Get all products
+      limit: 100, // Keep the assistant request bounded; the API default is paginated.
     })
 
     // Count variants for each product

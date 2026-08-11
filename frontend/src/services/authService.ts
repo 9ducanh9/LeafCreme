@@ -1,12 +1,27 @@
 // Authentication service for login, register, token management
 import { apiClient } from './api'
 import { API_BASE_URL } from '../config/runtimeConfig'
+import { cognitoEnabled } from '../config/cognito'
+import { cognitoLogin, cognitoLogout, cognitoRegister } from './cognitoService'
 import type { LoginCredentials, RegisterData, AuthResponse, User } from '../types/user'
 
 // Re-export types for backward compatibility
 export type { LoginCredentials, RegisterData, AuthResponse, User }
 
+export interface RegisterResult {
+  confirmationRequired: boolean
+  email: string
+}
+
 export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
+  if (cognitoEnabled) {
+    await cognitoLogin(credentials.username || credentials.email || '', credentials.password)
+    return {
+      access_token: localStorage.getItem('access_token') || '',
+      refresh_token: localStorage.getItem('refresh_token') || '',
+      token_type: 'bearer',
+    }
+  }
   try {
     // OAuth2PasswordRequestForm expects form data, not JSON
     const formData = new URLSearchParams()
@@ -49,7 +64,12 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
   }
 }
 
-export async function register(data: RegisterData): Promise<AuthResponse> {
+export async function register(data: RegisterData): Promise<RegisterResult> {
+  if (cognitoEnabled) {
+    await cognitoRegister(data)
+    return { confirmationRequired: true, email: data.email }
+  }
+
   try {
     const response = await apiClient.post<AuthResponse>('/auth/register', data)
 
@@ -58,7 +78,7 @@ export async function register(data: RegisterData): Promise<AuthResponse> {
       localStorage.setItem('refresh_token', response.refresh_token)
     }
 
-    return response
+    return { confirmationRequired: false, email: data.email }
   } catch (error) {
     throw error
   }
@@ -83,6 +103,7 @@ export async function getCurrentUser(): Promise<User> {
 export function logout(): void {
   localStorage.removeItem('access_token')
   localStorage.removeItem('refresh_token')
+  cognitoLogout()
 }
 
 export function isAuthenticated(): boolean {
