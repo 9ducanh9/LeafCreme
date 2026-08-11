@@ -134,22 +134,22 @@ class TestGetInventoryLedger:
         batch_service.create_batch(db_session, "components", _ComponentBatchPayload(component.linh_kien_id, "COMP-TRACE-1"), staff_user)
 
         product_rows = service.get_inventory_ledger(db_session, item_type="sanpham")
-        assert all(row["item_type"] == "sanpham" for row in product_rows)
-        assert len(product_rows) == 1
+        assert all(row["item_type"] == "sanpham" for row in product_rows["items"])
+        assert product_rows["total"] == 1
 
         component_rows = service.get_inventory_ledger(db_session, item_type="linhkien")
-        assert all(row["item_type"] == "linhkien" for row in component_rows)
-        assert len(component_rows) == 1
+        assert all(row["item_type"] == "linhkien" for row in component_rows["items"])
+        assert component_rows["total"] == 1
 
     def test_no_item_type_merges_and_sorts_all_kinds_by_recency(self, db_session, service, batch_service, staff_user, variant, component):
         batch_service.create_batch(db_session, "products", _ProductBatchPayload(variant.bienthe_id, "LOT-TRACE-2"), staff_user)
         batch_service.create_batch(db_session, "components", _ComponentBatchPayload(component.linh_kien_id, "COMP-TRACE-2"), staff_user)
 
         rows = service.get_inventory_ledger(db_session)
-        item_types = {row["item_type"] for row in rows}
+        item_types = {row["item_type"] for row in rows["items"]}
         assert {"sanpham", "linhkien"}.issubset(item_types)
         # Descending by timestamp.
-        timestamps = [row["timestamp"] for row in rows]
+        timestamps = [row["timestamp"] for row in rows["items"]]
         assert timestamps == sorted(timestamps, reverse=True)
 
     def test_filters_by_batch_id(self, db_session, service, batch_service, staff_user, variant):
@@ -157,8 +157,8 @@ class TestGetInventoryLedger:
         batch_service.create_batch(db_session, "products", _ProductBatchPayload(variant.bienthe_id, "LOT-TRACE-3B"), staff_user)
 
         rows = service.get_inventory_ledger(db_session, item_type="sanpham", batch_id=b1["lohang_id"])
-        assert len(rows) == 1
-        assert rows[0]["batch_id"] == b1["lohang_id"]
+        assert rows["total"] == 1
+        assert rows["items"][0]["batch_id"] == b1["lohang_id"]
 
     def test_pagination_skip_and_limit(self, db_session, service, batch_service, staff_user, variant):
         for i in range(5):
@@ -166,9 +166,10 @@ class TestGetInventoryLedger:
 
         page1 = service.get_inventory_ledger(db_session, item_type="sanpham", skip=0, limit=2)
         page2 = service.get_inventory_ledger(db_session, item_type="sanpham", skip=2, limit=2)
-        assert len(page1) == 2
-        assert len(page2) == 2
-        assert {r["ledger_id"] for r in page1}.isdisjoint({r["ledger_id"] for r in page2})
+        assert len(page1["items"]) == 2
+        assert len(page2["items"]) == 2
+        assert page1["total"] == page2["total"] == 5
+        assert {r["ledger_id"] for r in page1["items"]}.isdisjoint({r["ledger_id"] for r in page2["items"]})
 
 
 class TestGetBatchTrace:

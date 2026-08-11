@@ -245,7 +245,8 @@ class TestListBatchesSearch:
         )
 
         results = service.list_batches(db_session, "products", search="FINDME-QR")
-        assert len(results) == 1
+        assert results["total"] == 1
+        assert len(results["items"]) == 1
 
     def test_component_search_does_not_match_ma_qr(self, db_session, service, staff_user, component):
         service.create_batch(
@@ -257,10 +258,12 @@ class TestListBatchesSearch:
         # Searching by the QR code should NOT find it for components — only
         # ma_lo is searched for this kind (existing behavior, preserved).
         results = service.list_batches(db_session, "components", search="FINDME-QR-2")
-        assert len(results) == 0
+        assert results["total"] == 0
+        assert results["items"] == []
 
         results_by_lo = service.list_batches(db_session, "components", search="COMP-LOT-SEARCH")
-        assert len(results_by_lo) == 1
+        assert results_by_lo["total"] == 1
+        assert len(results_by_lo["items"]) == 1
 
 
 class TestUpdateBatch:
