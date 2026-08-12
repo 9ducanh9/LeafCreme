@@ -23,7 +23,7 @@ export default function HeroBanner() {
 
   return (
     <section className="relative isolate overflow-hidden bg-[#fff7ef]" aria-roledescription="carousel" aria-label="Câu chuyện Leaf Creme">
-      <div className="relative aspect-video w-full lg:h-[calc(100svh-5rem)] lg:aspect-auto">
+      <div className="relative aspect-video w-full lg:h-[calc(100svh-9rem)] lg:aspect-auto">
         {HERO_SLIDES.map((slide, index) => {
           const isActive = index === activeSlide
 

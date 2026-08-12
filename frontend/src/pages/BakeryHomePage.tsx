@@ -9,19 +9,18 @@ import Container from '../components/layout/container'
 export default function BakeryHomePage() {
   return (
     <>
-      <HeroBanner />
-      <section className="border-b border-border-subtle bg-bg-canvas py-10 sm:py-12" aria-labelledby="leaf-creme-purpose">
+      <section className="border-b border-border-subtle bg-bg-canvas py-3" aria-labelledby="leaf-creme-purpose">
         <Container>
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-end">
+          <div className="grid gap-2 lg:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.75fr)] lg:items-center lg:gap-8">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-caps text-brand-fg">Tiệm bánh trực tuyến tại Sài Gòn</p>
-              <h1 id="leaf-creme-purpose" className="mt-2 text-h2">Leaf Creme giúp bạn chọn bánh và gửi quà cho những dịp đáng nhớ.</h1>
-              <p className="mt-3 max-w-3xl leading-relaxed text-fg-muted">Khách hàng có thể xem menu, chọn hộp quà, đặt bánh và theo dõi đơn hàng trên website.</p>
+              <h1 id="leaf-creme-purpose" className="text-sm font-semibold text-fg-strong">Leaf Creme is an online bakery in Saigon.</h1>
+              <p className="mt-1 text-sm text-fg-muted">Browse cakes and gift boxes, place orders, and track deliveries.</p>
             </div>
-            <p className="text-sm leading-relaxed text-fg-muted">Khi bạn chủ động đăng nhập bằng Google, Leaf Creme dùng tên hiển thị, email và ảnh đại diện công khai để xác thực và tạo tài khoản. Xem <Link to="/privacy-policy" className="font-medium text-brand-fg underline underline-offset-4 hover:no-underline">Chính sách quyền riêng tư</Link>.</p>
+            <p className="text-xs leading-relaxed text-fg-muted">When you choose Sign in with Google, Leaf Creme uses your profile name, email, and public profile picture only to create or authenticate your account. See our <Link to="/privacy-policy" className="font-medium text-brand-fg underline underline-offset-4 hover:no-underline">Privacy Policy</Link>.</p>
           </div>
         </Container>
       </section>
+      <HeroBanner />
       <BestSellers />
       <ProductCategories />
       <IntroMessage />
