@@ -46,7 +46,7 @@ export default function BestSellers() {
         <SectionHeader
           eyebrow="Được yêu thích"
           title="Best sellers"
-          description="Bốn món bánh được chọn nhiều nhất từ bếp Leaf Crème."
+          description="Bốn món bánh được chọn nhiều nhất từ bếp Leaf Creme."
           align="center"
         />
         {loading && (

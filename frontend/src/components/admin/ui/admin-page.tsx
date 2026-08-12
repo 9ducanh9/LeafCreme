@@ -10,7 +10,7 @@ interface AdminPageProps {
 
 export default function AdminPage({ title, breadcrumb = [], children }: AdminPageProps) {
   const location = useLocation()
-  useEffect(() => { document.title = `${title} · Leaf Crème Admin` }, [title])
+  useEffect(() => { document.title = `${title} · Leaf Creme Admin` }, [title])
   return (
     <Box>
       <Breadcrumbs aria-label="Đường dẫn trang" sx={{ mb: 1 }}>

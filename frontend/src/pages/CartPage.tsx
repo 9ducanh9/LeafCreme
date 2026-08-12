@@ -22,7 +22,7 @@ export default function CartPage() {
   }
 
   if (cartItems.length === 0) {
-    return <Section tone="canvas"><Container><Button variant="ghost" onClick={() => navigate('/')} className="mb-8"><ArrowLeft className="size-4" />Tiếp tục mua sắm</Button><EmptyState icon={<Cake className="size-12" />} title="Giỏ hàng đang trống" description="Hãy để Leaf Crème làm ngọt ngào thêm ngày của bạn." action={<Button href="/search">Xem bánh ngon</Button>} /></Container></Section>
+    return <Section tone="canvas"><Container><Button variant="ghost" onClick={() => navigate('/')} className="mb-8"><ArrowLeft className="size-4" />Tiếp tục mua sắm</Button><EmptyState icon={<Cake className="size-12" />} title="Giỏ hàng đang trống" description="Hãy để Leaf Creme làm ngọt ngào thêm ngày của bạn." action={<Button href="/search">Xem bánh ngon</Button>} /></Container></Section>
   }
 
   return (

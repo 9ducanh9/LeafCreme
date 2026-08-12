@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
           Chính sách quyền riêng tư
         </h1>
         <p className="text-text-secondary text-base md:text-lg leading-relaxed">
-          Chính sách này giải thích Leaf Crème thu thập, sử dụng, chia sẻ và bảo vệ thông tin cá nhân của bạn
+          Chính sách này giải thích Leaf Creme thu thập, sử dụng, chia sẻ và bảo vệ thông tin cá nhân của bạn
           như thế nào khi bạn dùng website, đặt hàng, hoặc đăng nhập bằng tài khoản mạng xã hội.
         </p>
       </div>

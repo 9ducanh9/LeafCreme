@@ -15,7 +15,7 @@ export default function GiftBoxListPage() {
   return (
     <Section tone="canvas">
       <Container>
-        <SectionHeader eyebrow="Tặng một điều êm ấm" title="Hộp quà Leaf Crème" description="Những set quà được gói sẵn cho các dịp cần một lời nhắn tinh tế." />
+        <SectionHeader eyebrow="Tặng một điều êm ấm" title="Hộp quà Leaf Creme" description="Những set quà được gói sẵn cho các dịp cần một lời nhắn tinh tế." />
         <GiftBoxFilters onFiltersChange={setFilters} />
         {loading && <ProductGrid columns="four">{Array.from({ length: 8 }, (_, index) => <div key={index} className="space-y-3"><Skeleton className="aspect-product" /><Skeleton className="h-5 w-3/4" /><Skeleton className="h-4 w-full" /></div>)}</ProductGrid>}
         {!loading && error && <Alert variant="danger" title="Không tải được hộp quà">{error}</Alert>}

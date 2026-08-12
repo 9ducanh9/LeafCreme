@@ -71,13 +71,13 @@ export default function RegisterPage() {
         <img src={FALLBACK_IMAGE.giftBoxDetail} alt="Hộp bánh thủ công Leaf Creme" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-bg-overlay" />
         <div className="relative flex h-full max-w-xl flex-col justify-between px-12 py-12 text-fg-on-brand xl:px-16">
-          <Link to="/" className="font-heading text-3xl leading-none text-fg-on-brand">Leaf Crème</Link>
+          <Link to="/" className="font-heading text-3xl leading-none text-fg-on-brand">Leaf Creme</Link>
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.16em] text-fg-on-brand/70">Bắt đầu thật ngọt ngào</p>
             <h1 className="mt-4 max-w-md text-5xl leading-tight text-fg-on-brand">Những chiếc bánh được làm dành cho bạn.</h1>
             <p className="mt-4 max-w-sm text-base leading-7 text-fg-on-brand/80">Tạo tài khoản để lưu đơn hàng, nhận ưu đãi và quay lại bất cứ lúc nào.</p>
           </div>
-          <p className="text-xs tracking-wide text-fg-on-brand/65">Leaf Crème · Bánh làm theo từng mẻ nhỏ</p>
+          <p className="text-xs tracking-wide text-fg-on-brand/65">Leaf Creme · Bánh làm theo từng mẻ nhỏ</p>
         </div>
       </section>
 

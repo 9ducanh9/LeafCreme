@@ -15,10 +15,10 @@ export default function BakeryHomePage() {
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-end">
             <div>
               <p className="text-xs font-semibold uppercase tracking-caps text-brand-fg">Tiệm bánh trực tuyến tại Sài Gòn</p>
-              <h1 id="leaf-creme-purpose" className="mt-2 text-h2">Leaf Crème giúp bạn chọn bánh và gửi quà cho những dịp đáng nhớ.</h1>
+              <h1 id="leaf-creme-purpose" className="mt-2 text-h2">Leaf Creme giúp bạn chọn bánh và gửi quà cho những dịp đáng nhớ.</h1>
               <p className="mt-3 max-w-3xl leading-relaxed text-fg-muted">Khách hàng có thể xem menu, chọn hộp quà, đặt bánh và theo dõi đơn hàng trên website.</p>
             </div>
-            <p className="text-sm leading-relaxed text-fg-muted">Khi bạn chủ động đăng nhập bằng Google, Leaf Crème dùng tên hiển thị, email và ảnh đại diện công khai để xác thực và tạo tài khoản. Xem <Link to="/privacy-policy" className="font-medium text-brand-fg underline underline-offset-4 hover:no-underline">Chính sách quyền riêng tư</Link>.</p>
+            <p className="text-sm leading-relaxed text-fg-muted">Khi bạn chủ động đăng nhập bằng Google, Leaf Creme dùng tên hiển thị, email và ảnh đại diện công khai để xác thực và tạo tài khoản. Xem <Link to="/privacy-policy" className="font-medium text-brand-fg underline underline-offset-4 hover:no-underline">Chính sách quyền riêng tư</Link>.</p>
           </div>
         </Container>
       </section>

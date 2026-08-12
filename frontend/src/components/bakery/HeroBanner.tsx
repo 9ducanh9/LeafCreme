@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 
 const HERO_SLIDES = [
-  { src: '/banners/leaf-creme-01.jpg', highResolutionSrc: '/banners/leaf-creme-01-4k.jpg', alt: 'Leaf Crème - bánh ngọt thủ công' },
-  { src: '/banners/leaf-creme-02.jpg', highResolutionSrc: '/banners/leaf-creme-02-4k.jpg', alt: 'Câu chuyện về Leaf Crème' },
-  { src: '/banners/leaf-creme-03.jpg', highResolutionSrc: '/banners/leaf-creme-03-4k.jpg', alt: 'Thông điệp của Leaf Crème' },
-  { src: '/banners/leaf-creme-04.jpg', highResolutionSrc: '/banners/leaf-creme-04-4k.jpg', alt: 'Những món bánh của Leaf Crème' },
-  { src: '/banners/leaf-creme-05.jpg', highResolutionSrc: '/banners/leaf-creme-05-4k.jpg', alt: 'Không gian ấm áp của Leaf Crème' },
-  { src: '/banners/leaf-creme-06.jpg', highResolutionSrc: '/banners/leaf-creme-06-4k.jpg', alt: 'Lý do chọn Leaf Crème' },
-  { src: '/banners/leaf-creme-07.jpg', highResolutionSrc: '/banners/leaf-creme-07-4k.jpg', alt: 'Đặt bánh cùng Leaf Crème' },
+  { src: '/banners/leaf-creme-01.jpg', highResolutionSrc: '/banners/leaf-creme-01-4k.jpg', alt: 'Leaf Creme - bánh ngọt thủ công' },
+  { src: '/banners/leaf-creme-02.jpg', highResolutionSrc: '/banners/leaf-creme-02-4k.jpg', alt: 'Câu chuyện về Leaf Creme' },
+  { src: '/banners/leaf-creme-03.jpg', highResolutionSrc: '/banners/leaf-creme-03-4k.jpg', alt: 'Thông điệp của Leaf Creme' },
+  { src: '/banners/leaf-creme-04.jpg', highResolutionSrc: '/banners/leaf-creme-04-4k.jpg', alt: 'Những món bánh của Leaf Creme' },
+  { src: '/banners/leaf-creme-05.jpg', highResolutionSrc: '/banners/leaf-creme-05-4k.jpg', alt: 'Không gian ấm áp của Leaf Creme' },
+  { src: '/banners/leaf-creme-06.jpg', highResolutionSrc: '/banners/leaf-creme-06-4k.jpg', alt: 'Lý do chọn Leaf Creme' },
+  { src: '/banners/leaf-creme-07.jpg', highResolutionSrc: '/banners/leaf-creme-07-4k.jpg', alt: 'Đặt bánh cùng Leaf Creme' },
 ] as const
 
 export default function HeroBanner() {
@@ -22,7 +22,7 @@ export default function HeroBanner() {
   }, [])
 
   return (
-    <section className="relative isolate overflow-hidden bg-[#fff7ef]" aria-roledescription="carousel" aria-label="Câu chuyện Leaf Crème">
+    <section className="relative isolate overflow-hidden bg-[#fff7ef]" aria-roledescription="carousel" aria-label="Câu chuyện Leaf Creme">
       <div className="relative aspect-video w-full lg:h-[calc(100svh-5rem)] lg:aspect-auto">
         {HERO_SLIDES.map((slide, index) => {
           const isActive = index === activeSlide

@@ -16,7 +16,7 @@ export default function DataDeletionPage() {
           Yêu cầu xoá dữ liệu
         </h1>
         <p className="text-text-secondary text-base md:text-lg leading-relaxed">
-          Bạn có quyền yêu cầu xoá tài khoản và toàn bộ dữ liệu cá nhân của mình khỏi hệ thống Leaf Crème,
+          Bạn có quyền yêu cầu xoá tài khoản và toàn bộ dữ liệu cá nhân của mình khỏi hệ thống Leaf Creme,
           bất kể bạn đăng ký trực tiếp hay đăng nhập qua Facebook/Google.
         </p>
       </div>
@@ -26,7 +26,7 @@ export default function DataDeletionPage() {
         <Card>
           <h2 className="font-heading text-xl font-medium text-text-primary mb-4">Cách yêu cầu xoá dữ liệu</h2>
           <div className="space-y-3 text-text-secondary leading-relaxed">
-            <p>Hiện tại việc xoá dữ liệu được xử lý thủ công bởi đội ngũ Leaf Crème để đảm bảo đúng tài khoản. Gửi yêu cầu bằng một trong hai cách:</p>
+            <p>Hiện tại việc xoá dữ liệu được xử lý thủ công bởi đội ngũ Leaf Creme để đảm bảo đúng tài khoản. Gửi yêu cầu bằng một trong hai cách:</p>
             <ol className="list-decimal pl-5 space-y-2">
               <li>
                 <strong className="text-text-primary">Email:</strong> gửi tới{' '}
