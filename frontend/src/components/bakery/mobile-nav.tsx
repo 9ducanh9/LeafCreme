@@ -1,5 +1,5 @@
 import { useRef, type FormEvent } from 'react'
-import { FileText, Gift, Home, Mail, Menu, Search, User, X } from 'lucide-react'
+import { Gift, Home, Menu, Search, User, X } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 import type { User as AuthUser } from '../../types/user'
 import Button from '../ui/Button'
@@ -9,8 +9,6 @@ const navItems = [
   { to: '/', label: 'Trang chủ', icon: Home },
   { to: '/search', label: 'Sản phẩm', icon: Search },
   { to: '/gift-boxes', label: 'Hộp quà', icon: Gift },
-  { to: '/contact', label: 'Liên hệ', icon: Mail },
-  { to: '/policies', label: 'Chính sách', icon: FileText },
 ]
 
 interface MobileNavProps {
