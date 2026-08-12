@@ -3,13 +3,15 @@ Security utilities: Password hashing và JWT tokens
 """
 from datetime import datetime, timedelta
 from functools import lru_cache
-from time import time
+import logging
 from typing import Optional, Dict
-from jose import JWTError, jwk, jwt
-from jose.utils import base64url_decode
+from jose import JWTError, jwt
 import bcrypt
 import requests
 from app.core.config import settings
+
+
+logger = logging.getLogger("bakeryonl.api")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -64,9 +66,6 @@ def create_refresh_token(data: Dict) -> str:
 
 def decode_token(token: str) -> Optional[Dict]:
     """Decode và verify JWT token"""
-    import logging
-    logger = logging.getLogger("bakeryonl.api")
-    
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
@@ -119,17 +118,16 @@ def decode_cognito_token(token: str, expected_token_use: str) -> Optional[Dict]:
         if key_data is None:
             return None
 
-        signing_input, encoded_signature = token.rsplit(".", 1)
-        key = jwk.construct(key_data)
-        if not key.verify(signing_input.encode("utf-8"), base64url_decode(encoded_signature.encode("utf-8"))):
-            return None
-
-        claims = jwt.get_unverified_claims(token)
-        if claims.get("iss") != _cognito_issuer():
-            return None
+        # Use the library verifier for the JWK signature and registered claims.
+        claims = jwt.decode(
+            token,
+            key_data,
+            algorithms=["RS256"],
+            issuer=_cognito_issuer(),
+            audience=settings.COGNITO_APP_CLIENT_ID if expected_token_use == "id" else None,
+            options={"verify_aud": expected_token_use == "id"},
+        )
         if claims.get("token_use") != expected_token_use:
-            return None
-        if int(claims.get("exp", 0)) <= time():
             return None
 
         client_claim = "client_id" if expected_token_use == "access" else "aud"
@@ -138,6 +136,7 @@ def decode_cognito_token(token: str, expected_token_use: str) -> Optional[Dict]:
         if not claims.get("sub"):
             return None
         return claims
-    except (JWTError, ValueError, requests.RequestException, TypeError):
+    except (JWTError, ValueError, requests.RequestException, TypeError) as exc:
+        logger.warning("Cognito token verification failed: %s", exc)
         return None
 
