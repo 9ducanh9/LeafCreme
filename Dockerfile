@@ -30,6 +30,8 @@ COPY --from=builder /root/.local /home/appuser/.local
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
+COPY scripts/apply_approved_catalog.py ./scripts/apply_approved_catalog.py
+COPY uploads/product ./uploads/product
 
 # uploads/ is served via StaticFiles at /uploads and receives new files at
 # runtime (product images, avatars, MoMo QR) — must exist and be writable.
