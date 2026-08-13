@@ -27,6 +27,9 @@ ENV/
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
+!.env.*.example
 
 # Database
 *.db
@@ -52,3 +55,13 @@ test_db_connection.py
 server_log*.txt
 scratch/
 .ruff_cache/
+.pytest_cache/
+.coverage
+coverage/
+.vercel/
+
+# Local runtime uploads. Versioned catalog and gift-box assets stay under uploads/product
+# and uploads/giftboxes; frontend banner assets live in frontend/public/banners.
+uploads/avatars/
+uploads/banners/
+uploads/logos/
