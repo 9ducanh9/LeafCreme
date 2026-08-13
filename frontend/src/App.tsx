@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
 import { CartProvider } from './contexts/CartContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -45,6 +45,126 @@ import AdminAlertsPage from './pages/admin/AdminAlertsPage'
 import AdminStockLedgerPage from './pages/admin/AdminStockLedgerPage'
 import AdminBatchTracePage from './pages/admin/AdminBatchTracePage'
 
+// useBlocker (see hooks/admin/useUnsavedChanges) only works within a data
+// router, so routes are declared via createBrowserRouter/RouterProvider
+// rather than <BrowserRouter>/<Routes>.
+function RootLayout() {
+  return (
+    <>
+      <MainLayout>
+        <Outlet />
+      </MainLayout>
+      <ToastContainer />
+    </>
+  )
+}
+
+const router = createBrowserRouter(
+  [
+    {
+      element: <RootLayout />,
+      children: [
+        { path: '/', element: <BakeryHomePage /> },
+        { path: '/products/:id', element: <ProductDetailPage /> },
+        { path: '/categories/:category', element: <CategoryListingPage /> },
+        { path: '/search', element: <SearchPage /> },
+        { path: '/gift-boxes', element: <GiftBoxListPage /> },
+        { path: '/gift-boxes/:id', element: <GiftBoxDetailPage /> },
+        { path: '/contact', element: <ContactPage /> },
+        { path: '/policies', element: <PolicyPage /> },
+        { path: '/privacy-policy', element: <PrivacyPolicyPage /> },
+        { path: '/data-deletion', element: <DataDeletionPage /> },
+        { path: '/cart', element: <CartPage /> },
+        { path: '/login', element: <LoginPage /> },
+        { path: '/register', element: <RegisterPage /> },
+        { path: '/auth/callback', element: <AuthCallbackPage /> },
+        { path: '/verify-email', element: <VerifyEmailPage /> },
+        {
+          path: '/profile',
+          element: (
+            <ProtectedRoute>
+              <UserProfilePage />
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: '/orders',
+          element: (
+            <ProtectedRoute>
+              <MyOrdersPage />
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: '/orders/:id',
+          element: (
+            <ProtectedRoute>
+              <OrderDetailPage />
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: '/checkout',
+          element: (
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: '/orders/:id/payment-qr',
+          element: (
+            <ProtectedRoute>
+              <PaymentQRPage />
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: '/orders/:id/success',
+          element: (
+            <ProtectedRoute>
+              <OrderSuccessPage />
+            </ProtectedRoute>
+          ),
+        },
+
+        // Admin Routes
+        {
+          path: '/admin',
+          element: (
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          ),
+          children: [
+            { index: true, element: <AdminDashboardPage /> },
+            { path: 'dashboard', element: <AdminDashboardPage /> },
+            { path: 'products', element: <AdminProductPage /> },
+            { path: 'gift-boxes', element: <AdminGiftBoxPage /> },
+            { path: 'gift-boxes/:id/bom', element: <AdminGiftBoxBomPage /> },
+            { path: 'vouchers', element: <AdminVoucherPage /> },
+            { path: 'preorders', element: <AdminPreOrderPage /> },
+            { path: 'preorders/:id', element: <AdminPreOrderDetailPage /> },
+            { path: 'sales', element: <AdminSalesPage /> },
+            { path: 'sales/:id', element: <AdminSalesDetailPage /> },
+            { path: 'inventory', element: <AdminInventoryPage /> },
+            { path: 'stock-ledger', element: <AdminStockLedgerPage /> },
+            { path: 'batch-trace', element: <AdminBatchTracePage /> },
+            { path: 'batch-trace/:batchType/:batchId', element: <AdminBatchTracePage /> },
+            { path: 'batches', element: <AdminBatchCreatePage /> },
+            { path: 'alerts', element: <AdminAlertsPage /> },
+          ],
+        },
+      ],
+    },
+  ],
+  {
+    future: {
+      v7_relativeSplatPath: true,
+    },
+  },
+)
+
 function App() {
   return (
     <AuthProvider>
@@ -52,108 +172,7 @@ function App() {
         <ToastProvider>
           <LeafieProvider>
             <ErrorBoundary>
-            <BrowserRouter
-              future={{
-                v7_startTransition: true,
-                v7_relativeSplatPath: true,
-              }}
-            >
-              <MainLayout>
-                <Routes>
-                <Route path="/" element={<BakeryHomePage />} />
-                <Route path="/products/:id" element={<ProductDetailPage />} />
-                <Route path="/categories/:category" element={<CategoryListingPage />} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/gift-boxes" element={<GiftBoxListPage />} />
-                <Route path="/gift-boxes/:id" element={<GiftBoxDetailPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/policies" element={<PolicyPage />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-                <Route path="/data-deletion" element={<DataDeletionPage />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/auth/callback" element={<AuthCallbackPage />} />
-                <Route path="/verify-email" element={<VerifyEmailPage />} />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <UserProfilePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders"
-                  element={
-                    <ProtectedRoute>
-                      <MyOrdersPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders/:id"
-                  element={
-                    <ProtectedRoute>
-                      <OrderDetailPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/checkout"
-                  element={
-                    <ProtectedRoute>
-                      <CheckoutPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders/:id/payment-qr"
-                  element={
-                    <ProtectedRoute>
-                      <PaymentQRPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders/:id/success"
-                  element={
-                    <ProtectedRoute>
-                      <OrderSuccessPage />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Admin Routes */}
-                <Route
-                  path="/admin/*"
-                  element={
-                    <AdminProtectedRoute>
-                      <AdminLayout />
-                    </AdminProtectedRoute>
-                  }
-                >
-                  <Route index element={<AdminDashboardPage />} />
-                  <Route path="dashboard" element={<AdminDashboardPage />} />
-                  <Route path="products" element={<AdminProductPage />} />
-                  <Route path="gift-boxes" element={<AdminGiftBoxPage />} />
-                  <Route path="gift-boxes/:id/bom" element={<AdminGiftBoxBomPage />} />
-                  <Route path="vouchers" element={<AdminVoucherPage />} />
-                  <Route path="preorders" element={<AdminPreOrderPage />} />
-                  <Route path="preorders/:id" element={<AdminPreOrderDetailPage />} />
-                  <Route path="sales" element={<AdminSalesPage />} />
-                  <Route path="sales/:id" element={<AdminSalesDetailPage />} />
-                  <Route path="inventory" element={<AdminInventoryPage />} />
-                  <Route path="stock-ledger" element={<AdminStockLedgerPage />} />
-                  <Route path="batch-trace" element={<AdminBatchTracePage />} />
-                  <Route path="batch-trace/:batchType/:batchId" element={<AdminBatchTracePage />} />
-                  <Route path="batches" element={<AdminBatchCreatePage />} />
-                  <Route path="alerts" element={<AdminAlertsPage />} />
-                </Route>
-                </Routes>
-              </MainLayout>
-              <ToastContainer />
-            </BrowserRouter>
+              <RouterProvider router={router} future={{ v7_startTransition: true }} />
             </ErrorBoundary>
           </LeafieProvider>
         </ToastProvider>
