@@ -13,6 +13,12 @@ type PendingProfile = Pick<RegisterData, 'ten_dang_nhap' | 'email' | 'ho_ten' | 
 const STATE_KEY = 'cognito_oauth_state'
 const VERIFIER_KEY = 'cognito_pkce_verifier'
 const PENDING_PROFILE_KEY = 'cognito_pending_profile'
+const OAUTH_TRANSACTION_COOKIE = 'leafcreme_cognito_oauth'
+
+type OAuthTransaction = {
+  state: string
+  verifier: string
+}
 
 function toBase64Url(bytes: Uint8Array): string {
   let binary = ''
@@ -24,6 +30,41 @@ function randomValue(): string {
   const bytes = new Uint8Array(32)
   crypto.getRandomValues(bytes)
   return toBase64Url(bytes)
+}
+
+function sharedOAuthCookieDomain(): string | undefined {
+  const host = window.location.hostname
+  return host === 'logantai.com' || host.endsWith('.logantai.com') ? '.logantai.com' : undefined
+}
+
+function readOAuthCookie(): OAuthTransaction | undefined {
+  const prefix = `${OAUTH_TRANSACTION_COOKIE}=`
+  const entry = document.cookie.split('; ').find((item) => item.startsWith(prefix))
+  if (!entry) return undefined
+  try {
+    return JSON.parse(decodeURIComponent(entry.slice(prefix.length))) as OAuthTransaction
+  } catch {
+    return undefined
+  }
+}
+
+function clearOAuthTransaction(): void {
+  localStorage.removeItem(STATE_KEY)
+  localStorage.removeItem(VERIFIER_KEY)
+  const domain = sharedOAuthCookieDomain()
+  if (domain) {
+    document.cookie = `${OAUTH_TRANSACTION_COOKIE}=; Path=/; Domain=${domain}; Max-Age=0; SameSite=Lax; Secure`
+  }
+}
+
+function persistOAuthTransaction(transaction: OAuthTransaction): void {
+  localStorage.setItem(STATE_KEY, transaction.state)
+  localStorage.setItem(VERIFIER_KEY, transaction.verifier)
+  const domain = sharedOAuthCookieDomain()
+  if (domain) {
+    // Fallback for the public logantai.com and leafcr.logantai.com aliases.
+    document.cookie = `${OAUTH_TRANSACTION_COOKIE}=${encodeURIComponent(JSON.stringify(transaction))}; Path=/; Domain=${domain}; Max-Age=600; SameSite=Lax; Secure`
+  }
 }
 
 async function cognitoApi<T>(action: string, body: Record<string, unknown>): Promise<T> {
@@ -170,8 +211,7 @@ export async function beginCognitoSocialLogin(provider: string): Promise<void> {
   const verifier = randomValue()
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
   const challenge = toBase64Url(new Uint8Array(digest))
-  localStorage.setItem(STATE_KEY, state)
-  localStorage.setItem(VERIFIER_KEY, verifier)
+  persistOAuthTransaction({ state, verifier })
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -191,12 +231,17 @@ export async function completeCognitoOAuthCallback(search: string): Promise<User
   const params = new URLSearchParams(search)
   const code = params.get('code')
   const state = params.get('state')
-  const expectedState = localStorage.getItem(STATE_KEY)
-  const verifier = localStorage.getItem(VERIFIER_KEY)
-  localStorage.removeItem(STATE_KEY)
-  localStorage.removeItem(VERIFIER_KEY)
+  const localTransaction: OAuthTransaction = {
+    state: localStorage.getItem(STATE_KEY) || '',
+    verifier: localStorage.getItem(VERIFIER_KEY) || '',
+  }
+  const sharedTransaction = readOAuthCookie()
+  const transaction = [localTransaction, sharedTransaction].find(
+    (candidate): candidate is OAuthTransaction => Boolean(candidate?.state && candidate.verifier && candidate.state === state),
+  )
+  clearOAuthTransaction()
 
-  if (!code || !state || state !== expectedState || !verifier) {
+  if (!code || !state || !transaction) {
     throw new Error('Phiên đăng nhập không hợp lệ. Vui lòng thử lại.')
   }
 
@@ -208,7 +253,7 @@ export async function completeCognitoOAuthCallback(search: string): Promise<User
       client_id: appClientId,
       code,
       redirect_uri: cognitoRedirectUri(),
-      code_verifier: verifier,
+      code_verifier: transaction.verifier,
     }),
   })
   const payload = await response.json().catch(() => ({}))
@@ -233,7 +278,6 @@ export async function completeCognitoOAuthCallback(search: string): Promise<User
 
 export function cognitoLogout(): void {
   clearPersistedTokens()
-  localStorage.removeItem(STATE_KEY)
-  localStorage.removeItem(VERIFIER_KEY)
+  clearOAuthTransaction()
   sessionStorage.removeItem(PENDING_PROFILE_KEY)
 }
