@@ -224,7 +224,16 @@ class TestCognitoProvisioning:
         assert user.cognito_sub == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
         assert user.vaitro_id == admin_role.vaitro_id
 
-    def test_rejects_unverified_email(self, db_session, service, customer_role):
+    def test_creates_customer_without_email_verified_claim(self, db_session, service, customer_role):
+        result = service.provision_cognito_user(db_session, self._claims(email_verified=False))
+
+        user = db_session.query(NguoiDung).filter(NguoiDung.nguoidung_id == result["nguoidung_id"]).first()
+        assert user is not None
+        assert user.vaitro_id == customer_role.vaitro_id
+
+    def test_rejects_unverified_email_when_linking_existing_user(self, db_session, service, admin_role):
+        _make_user(db_session, admin_role)
+
         with pytest.raises(DomainError) as exc_info:
             service.provision_cognito_user(db_session, self._claims(email_verified=False))
         assert exc_info.value.status_code == 401

@@ -149,7 +149,7 @@ class AuthService:
         return self._token_payload(user, vaitro_ten)
 
     def provision_cognito_user(self, db: Session, claims: dict, profile: Any | None = None) -> dict:
-        """Link a verified Cognito identity to a local user or create a customer.
+        """Link a Cognito identity to a local user or create a customer.
 
         Roles remain exclusively in PostgreSQL. An existing account is linked
         only when Cognito has verified the same email, preserving current admin
@@ -157,13 +157,20 @@ class AuthService:
         """
         subject = claims.get("sub")
         email = str(claims.get("email") or "").strip().lower()
-        if not subject or not email or claims.get("email_verified") is not True:
-            raise DomainError(status_code=401, detail="Cognito identity must have a verified email")
+        if not subject or not email:
+            raise DomainError(status_code=401, detail="Cognito identity must include an email")
+
+        # Federated providers can omit email_verified even after Cognito has
+        # authenticated the user. Such an identity may create its own customer
+        # account, but it must never be used to take over an existing account.
+        has_verified_email = claims.get("email_verified") is True
 
         user = db.query(NguoiDung).filter(NguoiDung.cognito_sub == subject).first()
         if user is None:
             user = db.query(NguoiDung).filter(func.lower(NguoiDung.email) == email).first()
             if user is not None:
+                if not has_verified_email:
+                    raise DomainError(status_code=401, detail="Cognito identity must have a verified email to link an existing account")
                 if user.cognito_sub and user.cognito_sub != subject:
                     raise DomainError(status_code=409, detail="Email is already linked to another Cognito identity")
                 user.cognito_sub = subject
