@@ -126,13 +126,20 @@ def decode_cognito_token(token: str, expected_token_use: str) -> Optional[Dict]:
             return None
 
         # Use the library verifier for the JWK signature and registered claims.
+        # verify_at_hash is disabled: Cognito ID tokens carry an at_hash claim
+        # (a hash of the paired access token), and python-jose refuses to
+        # verify it without that access token being passed in separately. We
+        # never receive the access token here (frontend only forwards the ID
+        # token), and at_hash is a supplementary cross-check on top of the
+        # signature/issuer/audience/expiry verification already enforced
+        # below — not required for trusting the ID token itself.
         claims = jwt.decode(
             token,
             key_data,
             algorithms=["RS256"],
             issuer=_cognito_issuer(),
             audience=settings.COGNITO_APP_CLIENT_ID if expected_token_use == "id" else None,
-            options={"verify_aud": expected_token_use == "id"},
+            options={"verify_aud": expected_token_use == "id", "verify_at_hash": False},
         )
         if claims.get("token_use") != expected_token_use:
             _reject_cognito_token("unexpected_token_use")
