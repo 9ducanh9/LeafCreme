@@ -11,7 +11,9 @@ export const cognitoEnabled = requestedProvider === 'cognito'
 export const cognitoSocialProviders = String(import.meta.env.VITE_COGNITO_SOCIAL_PROVIDERS || '')
   .split(',')
   .map((provider) => provider.trim())
-  .filter(Boolean)
+  // Keep the provider configured in Cognito so it can be restored later, but
+  // do not expose Facebook while the Meta app is disabled.
+  .filter((provider) => provider && provider.toLowerCase() !== 'facebook')
 
 export function getCognitoConfig(): CognitoConfig {
   const config = {
