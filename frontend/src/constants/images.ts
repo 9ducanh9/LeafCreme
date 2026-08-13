@@ -66,6 +66,14 @@ export const IMAGE_PATHS = {
   about: {
     bakery: getImageUrl(`${IMAGES_BASE_PATH}/about/bakery.jpg`),
   },
+
+  // Social login provider marks (Google / Facebook "Continue with" buttons).
+  // Served from /uploads/logos, not /uploads/images — matches the on-disk
+  // layout the files were dropped at.
+  logos: {
+    google: '/branding/google.png',
+    facebook: getImageUrl('/uploads/logos/facebook.png'),
+  },
 } as const
 
 // Fallback images (using external URLs as backup)

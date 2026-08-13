@@ -3,11 +3,16 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, LockKeyhole, Mail, ShoppingBag } from 'lucide-react'
 import Button from '../components/ui/Button'
 import { useAuth } from '../contexts/AuthContext'
-import { FALLBACK_IMAGE } from '../constants/images'
+import { FALLBACK_IMAGE, IMAGE_PATHS } from '../constants/images'
 import { cognitoEnabled, cognitoSocialProviders } from '../config/cognito'
 import { beginCognitoSocialLogin } from '../services/cognitoService'
 
 const inputClassName = 'w-full rounded-md border border-interactive bg-bg-surface px-11 py-3 text-fg placeholder:text-fg-subtle outline-none transition-[border-color,box-shadow] focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:bg-bg-inset disabled:opacity-70'
+
+const SOCIAL_PROVIDER_LOGOS: Record<string, string> = {
+  google: IMAGE_PATHS.logos.google,
+  facebook: IMAGE_PATHS.logos.facebook,
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -76,7 +81,7 @@ export default function LoginPage() {
               Đăng nhập để theo dõi đơn hàng, lưu những chiếc bánh yêu thích và nhận ưu đãi riêng.
             </p>
           </div>
-          <p className="text-xs tracking-wide text-fg-on-brand/65">Leaf Crème · Bánh làm theo từng mẻ nhỏ</p>
+          <p className="text-xs tracking-wide text-fg-on-brand/65">Leaf Creme · Bánh làm theo từng mẻ nhỏ</p>
         </div>
       </section>
 
@@ -153,11 +158,15 @@ export default function LoginPage() {
           {cognitoSocialProviders.length > 0 && (
             <div className="mt-6 space-y-3">
               <div className="flex items-center gap-3 text-xs text-text-secondary"><span className="h-px flex-1 bg-border" />Or continue with<span className="h-px flex-1 bg-border" /></div>
-              {cognitoSocialProviders.map((provider) => (
-                <button key={provider} type="button" onClick={() => handleSocialLogin(provider)} disabled={loading || !!socialLoading} className="w-full rounded-md border border-interactive px-4 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-subtle disabled:cursor-not-allowed disabled:opacity-60">
-                  {socialLoading === provider ? 'Redirecting...' : `Continue with ${provider}`}
-                </button>
-              ))}
+              {cognitoSocialProviders.map((provider) => {
+                const logo = SOCIAL_PROVIDER_LOGOS[provider.toLowerCase()]
+                return (
+                  <button key={provider} type="button" onClick={() => handleSocialLogin(provider)} disabled={loading || !!socialLoading} className="flex w-full items-center justify-center gap-2.5 rounded-md border border-interactive px-4 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-subtle disabled:cursor-not-allowed disabled:opacity-60">
+                    {logo && <img src={logo} alt="" aria-hidden="true" className="size-5 shrink-0" />}
+                    {socialLoading === provider ? 'Redirecting...' : `Continue with ${provider}`}
+                  </button>
+                )
+              })}
             </div>
           )}
 
