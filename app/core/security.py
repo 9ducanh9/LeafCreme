@@ -86,7 +86,7 @@ def _cognito_issuer() -> str:
 
 def _reject_cognito_token(reason: str) -> None:
     """Record a safe rejection reason without ever logging a bearer token."""
-    logger.warning("Cognito token verification rejected: %s", reason)
+    logger.info("Cognito token verification rejected: %s", reason)
 
 
 @lru_cache(maxsize=1)
@@ -154,6 +154,6 @@ def decode_cognito_token(token: str, expected_token_use: str) -> Optional[Dict]:
             return None
         return claims
     except (JWTError, ValueError, requests.RequestException, TypeError) as exc:
-        logger.warning("Cognito token verification failed: %s", exc)
+        logger.info("Cognito token verification failed: %s", exc)
         return None
 
