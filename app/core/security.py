@@ -84,6 +84,11 @@ def _cognito_issuer() -> str:
     )
 
 
+def _reject_cognito_token(reason: str) -> None:
+    """Record a safe rejection reason without ever logging a bearer token."""
+    logger.warning("Cognito token verification rejected: %s", reason)
+
+
 @lru_cache(maxsize=1)
 def _cognito_jwks() -> dict:
     """Fetch Cognito public keys once per process, never trusting token keys."""
@@ -109,6 +114,7 @@ def decode_cognito_token(token: str, expected_token_use: str) -> Optional[Dict]:
         header = jwt.get_unverified_header(token)
         key_id = header.get("kid")
         if header.get("alg") != "RS256" or not key_id:
+            _reject_cognito_token("missing_kid_or_non_rs256_algorithm")
             return None
 
         key_data = next((key for key in _cognito_jwks()["keys"] if key.get("kid") == key_id), None)
@@ -116,6 +122,7 @@ def decode_cognito_token(token: str, expected_token_use: str) -> Optional[Dict]:
             _cognito_jwks.cache_clear()
             key_data = next((key for key in _cognito_jwks()["keys"] if key.get("kid") == key_id), None)
         if key_data is None:
+            _reject_cognito_token("signing_key_not_found_in_pool_jwks")
             return None
 
         # Use the library verifier for the JWK signature and registered claims.
@@ -128,12 +135,15 @@ def decode_cognito_token(token: str, expected_token_use: str) -> Optional[Dict]:
             options={"verify_aud": expected_token_use == "id"},
         )
         if claims.get("token_use") != expected_token_use:
+            _reject_cognito_token("unexpected_token_use")
             return None
 
         client_claim = "client_id" if expected_token_use == "access" else "aud"
         if claims.get(client_claim) != settings.COGNITO_APP_CLIENT_ID:
+            _reject_cognito_token("cognito_client_claim_mismatch")
             return None
         if not claims.get("sub"):
+            _reject_cognito_token("missing_subject_claim")
             return None
         return claims
     except (JWTError, ValueError, requests.RequestException, TypeError) as exc:
