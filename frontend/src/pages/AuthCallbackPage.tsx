@@ -17,7 +17,7 @@ export default function AuthCallbackPage() {
       try {
         await completeCognitoOAuthCallback(window.location.search)
         await refreshUser()
-        if (active) navigate('/', { replace: true })
+        navigate('/', { replace: true })
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : 'Unable to complete sign in.')
       }
