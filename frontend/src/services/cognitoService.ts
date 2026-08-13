@@ -56,6 +56,12 @@ function persistTokens(tokens: CognitoAuthResult): void {
   }
 }
 
+function clearPersistedTokens(): void {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('id_token')
+  localStorage.removeItem('refresh_token')
+}
+
 function pendingProfile(): PendingProfile | undefined {
   const value = sessionStorage.getItem(PENDING_PROFILE_KEY)
   if (!value) return undefined
@@ -210,16 +216,23 @@ export async function completeCognitoOAuthCallback(search: string): Promise<User
     throw new Error(payload.error_description || 'Không thể hoàn tất đăng nhập.')
   }
 
-  persistTokens({
+  const tokens = {
     AccessToken: payload.access_token,
     IdToken: payload.id_token,
     RefreshToken: payload.refresh_token,
-  })
-  return synchronizeUser(payload.id_token)
+  }
+  persistTokens(tokens)
+  try {
+    return await synchronizeUser(tokens.IdToken)
+  } catch (error) {
+    // Do not leave a rejected social-login token to poison the next page load.
+    clearPersistedTokens()
+    throw error
+  }
 }
 
 export function cognitoLogout(): void {
-  localStorage.removeItem('id_token')
+  clearPersistedTokens()
   localStorage.removeItem(STATE_KEY)
   localStorage.removeItem(VERIFIER_KEY)
   sessionStorage.removeItem(PENDING_PROFILE_KEY)
