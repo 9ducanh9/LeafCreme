@@ -112,7 +112,13 @@ def get_blocking_references(db, product_ids: list[int], variant_ids: list[int], 
     return {name: count for name, count in blockers.items() if count}
 
 
-def purge_test_dependents(db, product_ids: list[int], variant_ids: list[int], lot_ids: list[int]) -> None:
+def purge_test_dependents(
+    db,
+    product_ids: list[int],
+    variant_ids: list[int],
+    lot_ids: list[int],
+    purge_mixed_orders: bool,
+) -> None:
     """Delete only dependent rows belonging to the temporary catalog.
 
     A target order must contain exclusively temporary-product items. This is a
@@ -139,7 +145,7 @@ def purge_test_dependents(db, product_ids: list[int], variant_ids: list[int], lo
                 {"order_ids": target_order_ids, "lot_ids": lot_ids},
             ).scalar_one()
         )
-        if non_test_item_count:
+        if non_test_item_count and not purge_mixed_orders:
             raise RuntimeError(
                 "Refusing to purge orders that also contain non-test items "
                 f"({non_test_item_count} item(s))."
@@ -161,7 +167,7 @@ def purge_test_dependents(db, product_ids: list[int], variant_ids: list[int], lo
     )
 
 
-def replace_catalog(apply: bool, purge_test_data: bool) -> None:
+def replace_catalog(apply: bool, purge_test_data: bool, purge_mixed_orders: bool) -> None:
     from sqlalchemy import delete, or_
 
     from app.db import SessionLocal
@@ -187,7 +193,13 @@ def replace_catalog(apply: bool, purge_test_data: bool) -> None:
             return
 
         if blockers:
-            purge_test_dependents(db, target_ids, target_variant_ids, target_lot_ids)
+            purge_test_dependents(
+                db,
+                target_ids,
+                target_variant_ids,
+                target_lot_ids,
+                purge_mixed_orders=purge_mixed_orders,
+            )
 
         # Use a SQL DELETE so PostgreSQL applies its on-delete cascades from
         # sanpham -> bienthesanpham -> lohangsanpham consistently.
@@ -250,6 +262,11 @@ def main() -> None:
         action="store_true",
         help="With --apply, remove test-only order, cart, inventory, alert, price, and statistic rows that block deletion.",
     )
+    parser.add_argument(
+        "--purge-mixed-orders",
+        action="store_true",
+        help="With --apply and --purge-test-data, also delete an order that contains a temporary-catalog item plus another item.",
+    )
     args = parser.parse_args()
 
     validate_catalog()
@@ -258,7 +275,13 @@ def main() -> None:
         return
     if args.purge_test_data and not (args.apply or args.dry_run):
         parser.error("--purge-test-data requires --apply or --dry-run")
-    replace_catalog(apply=args.apply, purge_test_data=args.purge_test_data)
+    if args.purge_mixed_orders and not (args.apply and args.purge_test_data):
+        parser.error("--purge-mixed-orders requires --apply and --purge-test-data")
+    replace_catalog(
+        apply=args.apply,
+        purge_test_data=args.purge_test_data,
+        purge_mixed_orders=args.purge_mixed_orders,
+    )
 
 
 if __name__ == "__main__":
