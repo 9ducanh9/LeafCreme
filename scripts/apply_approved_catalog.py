@@ -151,9 +151,6 @@ def purge_test_dependents(
                 f"({non_test_item_count} item(s))."
             )
 
-        # Order cascades remove payments, returns, items, and item allocations.
-        db.execute(text("DELETE FROM donhang WHERE donhang_id = ANY(:order_ids)"), {"order_ids": target_order_ids})
-
     db.execute(text("DELETE FROM chitietgiohang WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
     db.execute(text("DELETE FROM lichsukhosanpham WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
     db.execute(text("DELETE FROM canhbaotonkho WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
@@ -165,6 +162,10 @@ def purge_test_dependents(
         text("DELETE FROM thongkesanpham WHERE sanpham_id = ANY(:product_ids) OR bienthe_id = ANY(:variant_ids)"),
         {"product_ids": product_ids, "variant_ids": variant_ids},
     )
+    if target_order_ids:
+        # History rows are purged first because they also reference their order.
+        # The order cascade then removes payments, returns, items, and allocations.
+        db.execute(text("DELETE FROM donhang WHERE donhang_id = ANY(:order_ids)"), {"order_ids": target_order_ids})
 
 
 def replace_catalog(apply: bool, purge_test_data: bool, purge_mixed_orders: bool) -> None:
