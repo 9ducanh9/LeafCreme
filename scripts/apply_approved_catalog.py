@@ -152,7 +152,12 @@ def purge_test_dependents(
             )
 
     db.execute(text("DELETE FROM chitietgiohang WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
-    db.execute(text("DELETE FROM lichsukhosanpham WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
+    db.execute(
+        text("DELETE FROM lichsukhosanpham WHERE lohang_sanpham_id = ANY(:lot_ids) OR donhang_id = ANY(:order_ids)"),
+        {"lot_ids": lot_ids, "order_ids": target_order_ids},
+    )
+    db.execute(text("DELETE FROM lichsukholinhkien WHERE donhang_id = ANY(:order_ids)"), {"order_ids": target_order_ids})
+    db.execute(text("DELETE FROM lichsukhohopqua WHERE donhang_id = ANY(:order_ids)"), {"order_ids": target_order_ids})
     db.execute(text("DELETE FROM canhbaotonkho WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
     db.execute(
         text("DELETE FROM lichsugia WHERE sanpham_id = ANY(:product_ids) OR bienthe_id = ANY(:variant_ids)"),
