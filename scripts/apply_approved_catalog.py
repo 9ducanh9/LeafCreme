@@ -95,8 +95,8 @@ def print_catalog_summary(prefix: str = "") -> None:
     print(f"{prefix}categories: {', '.join(dict.fromkeys(product.category for product in CATALOG))}")
 
 
-def check_blocking_references(db, product_ids: list[int], variant_ids: list[int], lot_ids: list[int]) -> None:
-    """Refuse to remove demo records once sales or inventory history exists."""
+def get_blocking_references(db, product_ids: list[int], variant_ids: list[int], lot_ids: list[int]) -> dict[str, int]:
+    """Return dependent records that make a regular catalog replacement unsafe."""
     from sqlalchemy import text
 
     checks = {
@@ -109,12 +109,59 @@ def check_blocking_references(db, product_ids: list[int], variant_ids: list[int]
         "sales statistics": ("SELECT count(*) FROM thongkesanpham WHERE sanpham_id = ANY(:product_ids) OR bienthe_id = ANY(:variant_ids)", {"product_ids": product_ids, "variant_ids": variant_ids}),
     }
     blockers = {name: int(db.execute(text(sql), params).scalar_one()) for name, (sql, params) in checks.items()}
-    active_blockers = {name: count for name, count in blockers.items() if count}
-    if active_blockers:
-        raise RuntimeError(f"Refusing to delete catalog rows with dependent records: {active_blockers}")
+    return {name: count for name, count in blockers.items() if count}
 
 
-def replace_catalog(apply: bool) -> None:
+def purge_test_dependents(db, product_ids: list[int], variant_ids: list[int], lot_ids: list[int]) -> None:
+    """Delete only dependent rows belonging to the temporary catalog.
+
+    A target order must contain exclusively temporary-product items. This is a
+    hard stop if it has another item, preventing an import from removing part
+    of a real customer's order.
+    """
+    from sqlalchemy import text
+
+    target_order_ids = [
+        int(row[0])
+        for row in db.execute(
+            text("SELECT DISTINCT donhang_id FROM chitietdonhang WHERE lohang_sanpham_id = ANY(:lot_ids)"),
+            {"lot_ids": lot_ids},
+        ).all()
+    ]
+    if target_order_ids:
+        non_test_item_count = int(
+            db.execute(
+                text(
+                    "SELECT count(*) FROM chitietdonhang "
+                    "WHERE donhang_id = ANY(:order_ids) "
+                    "AND (lohang_sanpham_id IS NULL OR NOT (lohang_sanpham_id = ANY(:lot_ids)))"
+                ),
+                {"order_ids": target_order_ids, "lot_ids": lot_ids},
+            ).scalar_one()
+        )
+        if non_test_item_count:
+            raise RuntimeError(
+                "Refusing to purge orders that also contain non-test items "
+                f"({non_test_item_count} item(s))."
+            )
+
+        # Order cascades remove payments, returns, items, and item allocations.
+        db.execute(text("DELETE FROM donhang WHERE donhang_id = ANY(:order_ids)"), {"order_ids": target_order_ids})
+
+    db.execute(text("DELETE FROM chitietgiohang WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
+    db.execute(text("DELETE FROM lichsukhosanpham WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
+    db.execute(text("DELETE FROM canhbaotonkho WHERE lohang_sanpham_id = ANY(:lot_ids)"), {"lot_ids": lot_ids})
+    db.execute(
+        text("DELETE FROM lichsugia WHERE sanpham_id = ANY(:product_ids) OR bienthe_id = ANY(:variant_ids)"),
+        {"product_ids": product_ids, "variant_ids": variant_ids},
+    )
+    db.execute(
+        text("DELETE FROM thongkesanpham WHERE sanpham_id = ANY(:product_ids) OR bienthe_id = ANY(:variant_ids)"),
+        {"product_ids": product_ids, "variant_ids": variant_ids},
+    )
+
+
+def replace_catalog(apply: bool, purge_test_data: bool) -> None:
     from sqlalchemy import delete, or_
 
     from app.db import SessionLocal
@@ -128,13 +175,19 @@ def replace_catalog(apply: bool) -> None:
         target_variant_ids = [variant.bienthe_id for variant in target_variants]
         target_lots = db.query(LoHangSanPham).filter(LoHangSanPham.bienthe_sanpham_id.in_(target_variant_ids)).all() if target_variant_ids else []
         target_lot_ids = [lot.lohang_id for lot in target_lots]
-        if target_ids:
-            check_blocking_references(db, target_ids, target_variant_ids, target_lot_ids)
+        blockers = get_blocking_references(db, target_ids, target_variant_ids, target_lot_ids) if target_ids else {}
+        if blockers and not purge_test_data:
+            raise RuntimeError(f"Refusing to delete catalog rows with dependent records: {blockers}")
 
         if not apply:
             print(f"Dry run: would remove {len(target_ids)} temporary products, {len(target_variant_ids)} variants, and {len(target_lot_ids)} lots.")
+            if blockers:
+                print(f"Dry run: would purge dependent test data: {blockers}")
             print_catalog_summary("Would create/update ")
             return
+
+        if blockers:
+            purge_test_dependents(db, target_ids, target_variant_ids, target_lot_ids)
 
         # Use a SQL DELETE so PostgreSQL applies its on-delete cascades from
         # sanpham -> bienthesanpham -> lohangsanpham consistently.
@@ -192,13 +245,20 @@ def main() -> None:
     mode.add_argument("--validate", action="store_true", help="Validate the static catalog and local image assets only")
     mode.add_argument("--dry-run", action="store_true", help="Check the production DB without writing")
     mode.add_argument("--apply", action="store_true", help="Delete approved temporary rows and import the approved catalog")
+    parser.add_argument(
+        "--purge-test-data",
+        action="store_true",
+        help="With --apply, remove test-only order, cart, inventory, alert, price, and statistic rows that block deletion.",
+    )
     args = parser.parse_args()
 
     validate_catalog()
     if args.validate:
         print_catalog_summary("Validated ")
         return
-    replace_catalog(apply=args.apply)
+    if args.purge_test_data and not (args.apply or args.dry_run):
+        parser.error("--purge-test-data requires --apply or --dry-run")
+    replace_catalog(apply=args.apply, purge_test_data=args.purge_test_data)
 
 
 if __name__ == "__main__":
