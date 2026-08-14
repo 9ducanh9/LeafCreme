@@ -99,6 +99,36 @@ class TestVariantCrud:
         assert variants[0].huong_vi == "Dâu"
 
 
+    def test_deleting_last_variant_hides_parent_product(self, db_session, service):
+        product = service.create_product(db_session, _ProductPayload("Last variant cake", "SKU-LAST-VARIANT"))
+        variant = service.create_variant(db_session, _VariantPayload(product.sanpham_id, sku_bienthe="LAST-VARIANT"))
+
+        service.delete_variant(db_session, variant.bienthe_id)
+
+        assert service.get_variant(db_session, variant.bienthe_id).dang_hoat_dong is False
+        assert service.get_product(db_session, product.sanpham_id).dang_hoat_dong is False
+
+    def test_deleting_one_of_multiple_variants_keeps_parent_product_active(self, db_session, service):
+        product = service.create_product(db_session, _ProductPayload("Multiple variant cake", "SKU-MULTI-VARIANT"))
+        first = service.create_variant(db_session, _VariantPayload(product.sanpham_id, sku_bienthe="MULTI-ONE"))
+        service.create_variant(db_session, _VariantPayload(product.sanpham_id, sku_bienthe="MULTI-TWO"))
+
+        service.delete_variant(db_session, first.bienthe_id)
+
+        assert service.get_product(db_session, product.sanpham_id).dang_hoat_dong is True
+
+    def test_active_catalog_excludes_product_without_an_active_variant(self, db_session, service):
+        product = service.create_product(db_session, _ProductPayload("Inactive variant cake", "SKU-INACTIVE-VARIANT"))
+        product.loai = "bien_the"
+        variant = service.create_variant(db_session, _VariantPayload(product.sanpham_id, sku_bienthe="INACTIVE-VARIANT"))
+        variant.dang_hoat_dong = False
+        db_session.commit()
+
+        products = service.list_products(db_session, dang_hoat_dong=True)
+
+        assert product.sanpham_id not in {item.sanpham_id for item in products}
+
+
 class TestImageUpload:
     def test_rejects_non_image_content_type(self, service):
         with pytest.raises(DomainError) as exc_info:

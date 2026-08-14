@@ -48,6 +48,11 @@ class ProductService:
             query = query.filter(SanPham.loai == loai)
         if dang_hoat_dong is not None:
             query = query.filter(SanPham.dang_hoat_dong == dang_hoat_dong)
+            if dang_hoat_dong:
+                query = query.filter(or_(
+                    SanPham.loai != "bien_the",
+                    SanPham.bienthe_list.any(BienTheSanPham.dang_hoat_dong.is_(True)),
+                ))
 
         if not paginated:
             return query.order_by(SanPham.sanpham_id.desc()).offset(skip).limit(limit).all()
@@ -156,6 +161,14 @@ class ProductService:
         """Soft delete — set dang_hoat_dong=False."""
         variant = self.get_variant(db, variant_id)
         variant.dang_hoat_dong = False
+
+        has_active_variant = db.query(BienTheSanPham.bienthe_id).filter(
+            BienTheSanPham.sanpham_id == variant.sanpham_id,
+            BienTheSanPham.dang_hoat_dong.is_(True),
+        ).first()
+        if not has_active_variant:
+            variant.sanpham.dang_hoat_dong = False
+
         db.commit()
 
     def get_product_variants(self, db: Session, product_id: int) -> list[BienTheSanPham]:

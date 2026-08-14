@@ -71,8 +71,8 @@ export async function getProductVariants(filters?: {
   search?: string
 }): Promise<ProductVariant[]> {
   try {
-    // Fetch all products (including inactive for admin)
-    // Don't filter by dang_hoat_dong to show all products in admin panel
+    // Deleted records are soft-deleted in the API. They should not remain in
+    // the default admin list after a successful delete action.
     const params: Record<string, string | number | boolean | null> = {
       limit: 50,
       paginated: true,
@@ -86,9 +86,8 @@ export async function getProductVariants(filters?: {
       params.search = filters.search
     }
     
-    // Note: Not filtering by dang_hoat_dong to show all products in admin
     const productPage = await apiClient.get<Page<Product>>('/products', params)
-    const products = productPage.items
+    const products = productPage.items.filter((product) => product.dang_hoat_dong)
 
     // Fetch variants for each product that has type 'bien_the'
     const variantsMap = new Map<number, BackendVariant[]>()
@@ -119,7 +118,7 @@ export async function getProductVariants(filters?: {
         // For variant products, create one admin variant per backend variant
         const variants = variantsMap.get(product.sanpham_id) || []
         if (variants.length > 0) {
-          for (const variant of variants) {
+          for (const variant of variants.filter((item) => item.dang_hoat_dong)) {
             const adminVariant = mapToAdminVariant(product, variant)
             
             // Apply size filter
