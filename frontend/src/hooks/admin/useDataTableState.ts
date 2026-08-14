@@ -31,7 +31,16 @@ export function useDataTableState({
   const pageSize = Math.min(200, Math.max(25, Number(read('pageSize', String(defaultPageSize))) || defaultPageSize))
   const sortBy = read('sortBy', defaultSortBy)
   const sortDir = (read('sortDir', defaultSortDir) === 'desc' ? 'desc' : 'asc') as SortDirection
-  const filters = useMemo(() => Object.fromEntries(filterKeys.map((filterKey) => [filterKey, searchParams.get(`${key}_${filterKey}`) || '']).filter(([, value]) => value)), [filterKeys, searchParams, key])
+  // filterKeys is passed as a fresh array literal by callers on every render
+  // (e.g. `filterKeys: ['search', 'trang_thai']`), so its reference changes
+  // every render even though its contents don't. Deriving a primitive string
+  // key keeps the memo/callback dependencies stable across renders and
+  // prevents them from being reconstructed every render, which would
+  // otherwise retrigger any effect that depends on `filters` (infinite
+  // fetch loop) on the pages that consume this hook.
+  const filterKeysDep = filterKeys.join('|')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filters = useMemo(() => Object.fromEntries(filterKeys.map((filterKey) => [filterKey, searchParams.get(`${key}_${filterKey}`) || '']).filter(([, value]) => value)), [filterKeysDep, searchParams, key])
 
   const patch = useCallback((next: TablePatch) => {
     const params = new URLSearchParams(searchParams)
@@ -54,7 +63,8 @@ export function useDataTableState({
       })
     }
     setSearchParams(params, { replace: true })
-  }, [defaultPageSize, defaultSortBy, defaultSortDir, filterKeys, key, searchParams, setSearchParams])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultPageSize, defaultSortBy, defaultSortDir, filterKeysDep, key, searchParams, setSearchParams])
 
   return { page, pageSize, skip: page * pageSize, sortBy, sortDir, filters, patch }
 }

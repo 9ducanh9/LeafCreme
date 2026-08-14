@@ -100,7 +100,7 @@ export default function AdminStockLedgerPage() {
     <AdminPage title="Nhật ký kho" breadcrumb={[{ label: 'Nhật ký kho' }]}>
       <DataTableToolbar
         title="Theo dõi biến động tồn kho"
-        actions={<button type="button" onClick={() => void loadLedger} disabled={status === 'loading'}><RefreshIcon fontSize="small" /> Làm mới</button>}
+        actions={<button type="button" onClick={() => void loadLedger()} disabled={status === 'loading'}><RefreshIcon fontSize="small" /> Làm mới</button>}
       >
         <TextField select size="small" label="Loại lô" value={table.filters.item_type || ''} onChange={(event) => updateFilter('item_type', event.target.value)}>
           <MenuItem value="">Tất cả</MenuItem>
