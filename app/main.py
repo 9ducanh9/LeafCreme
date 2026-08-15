@@ -3,6 +3,7 @@ BakeryOnl API - Main application entry point
 """
 
 from fastapi import FastAPI, Request, status, Depends
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -47,13 +48,22 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # exc.errors() can contain non-JSON-native types (Decimal, datetime, ...)
+    # pulled straight from the failed field/constraint — e.g. a `gia_co_ban`
+    # (Decimal) validation error embeds a Decimal in its `ctx`. JSONResponse
+    # renders via plain json.dumps, which can't serialize those, so without
+    # jsonable_encoder this handler itself raises and every such validation
+    # error surfaces to the client as an opaque 500 instead of the intended
+    # 422 with the actual field error. jsonable_encoder is what FastAPI's
+    # own request handling normally uses to make response bodies JSON-safe;
+    # this handler needs it too since it builds the JSONResponse manually.
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
+        content=jsonable_encoder({
             "error": "Validation Error",
             "detail": exc.errors(),
             "body": exc.body
-        }
+        })
     )
 
 
