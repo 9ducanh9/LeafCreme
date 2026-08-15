@@ -104,28 +104,38 @@ class TestCreateProductValidation:
         assert res.json()["gia_co_ban"] == 99999.99
 
 
-class TestDuplicateSkuCaseSensitivity:
-    """Documents current behavior rather than asserting a `should`: the SKU
-    uniqueness check (both the app-level pre-check in ProductService and the
-    DB unique constraint on sanpham.sku) is case-sensitive. 'CAKE-001' and
-    'cake-001' are treated as different SKUs today, so the same physical SKU
-    can be entered twice with different casing (e.g. a barcode scan vs. a
-    manually-typed duplicate) and both will be accepted. Flagging as a gap
-    to confirm intent with the team, not fixing unprompted since it's a
-    business-rule call, not a pure bug."""
+class TestSkuNormalization:
+    """SKUs are uppercased + trimmed at the schema boundary (see
+    app/routers/products.py _normalize_sku), so 'CAKE-001' and 'cake-001'
+    are always the same SKU — both for the duplicate check and for what
+    ends up stored. Was previously case-sensitive (a real gap, see
+    alembic/versions/0005_normalize_sku_case.py for the data backfill)."""
 
     def test_same_case_duplicate_is_rejected(self, client, admin_token):
         client.post("/products", json={**VALID_PAYLOAD, "sku": "SP-API-CASE-1"}, headers=_auth(admin_token))
         res = client.post("/products", json={**VALID_PAYLOAD, "sku": "SP-API-CASE-1"}, headers=_auth(admin_token))
         assert res.status_code == 400
 
-    def test_different_case_duplicate_is_currently_allowed(self, client, admin_token):
+    def test_different_case_duplicate_is_now_rejected(self, client, admin_token):
         client.post("/products", json={**VALID_PAYLOAD, "sku": "SP-API-CASE-2"}, headers=_auth(admin_token))
         res = client.post("/products", json={**VALID_PAYLOAD, "sku": "sp-api-case-2"}, headers=_auth(admin_token))
-        assert res.status_code == 201, (
-            "Currently allowed — same SKU, different case, is treated as a distinct product. "
-            f"Got {res.status_code}: {res.text}"
+        assert res.status_code == 400, (
+            f"'sp-api-case-2' should collide with existing 'SP-API-CASE-2'. Got {res.status_code}: {res.text}"
         )
+
+    def test_lowercase_input_is_stored_uppercase(self, client, admin_token):
+        res = client.post("/products", json={**VALID_PAYLOAD, "sku": "sp-api-lower-1"}, headers=_auth(admin_token))
+        assert res.status_code == 201
+        assert res.json()["sku"] == "SP-API-LOWER-1"
+
+    def test_whitespace_padded_sku_is_trimmed_and_rejects_case_variant(self, client, admin_token):
+        client.post("/products", json={**VALID_PAYLOAD, "sku": "  sp-api-case-3  "}, headers=_auth(admin_token))
+        res = client.post("/products", json={**VALID_PAYLOAD, "sku": "SP-API-CASE-3"}, headers=_auth(admin_token))
+        assert res.status_code == 400
+
+    def test_whitespace_only_sku_is_rejected(self, client, admin_token):
+        res = client.post("/products", json={**VALID_PAYLOAD, "sku": "   "}, headers=_auth(admin_token))
+        assert res.status_code == 422
 
 
 class TestUpdateAndDeleteBoundaries:

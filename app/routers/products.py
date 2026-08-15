@@ -17,7 +17,7 @@ from ..db import get_db
 from ..core.dependencies import get_current_active_user, require_role, get_optional_user
 from ..models import BienTheSanPham, LoHangSanPham, NguoiDung, TonKhoSanPham
 from ..services.products import ProductService, DomainError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from ..schemas import Page
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -26,6 +26,19 @@ product_service = ProductService()
 
 def _raise_http(exc: DomainError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+
+
+def _normalize_sku(value: str) -> str:
+    """Uppercase + trim so 'cake-001' and 'CAKE-001' are always the same
+    SKU. Applied at the schema boundary so every write path (create and
+    update, product and variant) goes through one place; the uniqueness
+    checks in ProductService compare with plain `==`, which only actually
+    catches case-insensitive duplicates because callers are guaranteed to
+    already be normalized by the time they get there."""
+    normalized = value.strip().upper()
+    if not normalized:
+        raise ValueError("SKU không được để trống")
+    return normalized
 
 
 # =========================================================
@@ -46,6 +59,11 @@ class ProductCreate(BaseModel):
     )
     dang_hoat_dong: bool = Field(default=True)
 
+    @field_validator("sku")
+    @classmethod
+    def _normalize_sku_required(cls, value: str) -> str:
+        return _normalize_sku(value)
+
 
 class ProductUpdate(BaseModel):
     ten: Optional[str] = Field(None, min_length=1, max_length=200)
@@ -61,6 +79,11 @@ class ProductUpdate(BaseModel):
         description="Danh sách dịp phù hợp (đồng bộ với GiftBoxOccasion): birthday, thanks, love, holiday, self_care"
     )
     dang_hoat_dong: Optional[bool] = None
+
+    @field_validator("sku")
+    @classmethod
+    def _normalize_sku_optional(cls, value: Optional[str]) -> Optional[str]:
+        return _normalize_sku(value) if value is not None else value
 
 
 class ProductResponse(BaseModel):
@@ -101,6 +124,11 @@ class VariantCreate(BaseModel):
     muc_gioi_han_ton: int = Field(default=10, ge=0)
     dang_hoat_dong: bool = Field(default=True)
 
+    @field_validator("sku_bienthe")
+    @classmethod
+    def _normalize_sku_bienthe(cls, value: Optional[str]) -> Optional[str]:
+        return _normalize_sku(value) if value is not None else value
+
 
 class VariantUpdate(BaseModel):
     huong_vi: Optional[str] = Field(None, min_length=1, max_length=100)
@@ -109,6 +137,11 @@ class VariantUpdate(BaseModel):
     sku_bienthe: Optional[str] = Field(None, max_length=50)
     muc_gioi_han_ton: Optional[int] = Field(None, ge=0)
     dang_hoat_dong: Optional[bool] = None
+
+    @field_validator("sku_bienthe")
+    @classmethod
+    def _normalize_sku_bienthe(cls, value: Optional[str]) -> Optional[str]:
+        return _normalize_sku(value) if value is not None else value
 
 
 class VariantResponse(BaseModel):
