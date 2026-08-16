@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Literal, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import require_role
@@ -32,8 +32,7 @@ class ComponentResponse(BaseModel):
     gia_don_vi: float
     dang_hoat_dong: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ComponentSortField(str, Enum):

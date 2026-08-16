@@ -7,6 +7,7 @@ token issuance, and account-status checks are moved verbatim, not
 redesigned. `app.core.security` (hashing/JWT) is untouched — this service
 only orchestrates calls into it plus the DB lookups around it.
 """
+
 from datetime import date, datetime
 import re
 import secrets
@@ -22,6 +23,7 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
+from app.core.time import utc_now
 from app.models import NguoiDung, VaiTro
 from app.services.errors import DomainError
 
@@ -55,8 +57,7 @@ def parse_date_vietnam(date_str: str) -> Optional[date]:
             continue
 
     raise ValueError(
-        f"Format ngày không hợp lệ: '{date_str}'. "
-        f"Hỗ trợ: DD/MM/YYYY (ví dụ: 16/10/2004), DD-MM-YYYY, hoặc YYYY-MM-DD"
+        f"Format ngày không hợp lệ: '{date_str}'. Hỗ trợ: DD/MM/YYYY (ví dụ: 16/10/2004), DD-MM-YYYY, hoặc YYYY-MM-DD"
     )
 
 
@@ -76,9 +77,11 @@ class AuthService:
         }
 
     def register(self, db: Session, payload: Any) -> dict:
-        existing_user = db.query(NguoiDung).filter(
-            (NguoiDung.ten_dang_nhap == payload.ten_dang_nhap) | (NguoiDung.email == payload.email)
-        ).first()
+        existing_user = (
+            db.query(NguoiDung)
+            .filter((NguoiDung.ten_dang_nhap == payload.ten_dang_nhap) | (NguoiDung.email == payload.email))
+            .first()
+        )
         if existing_user:
             raise DomainError(status_code=400, detail="Tên đăng nhập hoặc email đã tồn tại")
 
@@ -117,9 +120,7 @@ class AuthService:
         return self._token_payload(new_user, vaitro.ten_vai_tro)
 
     def login(self, db: Session, username: str, password: str) -> dict:
-        user = db.query(NguoiDung).filter(
-            (NguoiDung.ten_dang_nhap == username) | (NguoiDung.email == username)
-        ).first()
+        user = db.query(NguoiDung).filter((NguoiDung.ten_dang_nhap == username) | (NguoiDung.email == username)).first()
 
         if not user or not verify_password(password, user.mat_khau_ma_hoa):
             # Same message/status for "no such user" and "wrong password" —
@@ -129,7 +130,7 @@ class AuthService:
         if not user.dang_hoat_dong:
             raise DomainError(status_code=403, detail="Tài khoản đã bị vô hiệu hóa")
 
-        user.lan_dang_nhap_cuoi = datetime.utcnow()
+        user.lan_dang_nhap_cuoi = utc_now()
         db.commit()
 
         vaitro_ten = user.vaitro.ten_vai_tro if user.vaitro else "N/A"
@@ -170,21 +171,28 @@ class AuthService:
             user = db.query(NguoiDung).filter(func.lower(NguoiDung.email) == email).first()
             if user is not None:
                 if not has_verified_email:
-                    raise DomainError(status_code=401, detail="Cognito identity must have a verified email to link an existing account")
+                    raise DomainError(
+                        status_code=401,
+                        detail="Cognito identity must have a verified email to link an existing account",
+                    )
                 if user.cognito_sub and user.cognito_sub != subject:
                     raise DomainError(status_code=409, detail="Email is already linked to another Cognito identity")
                 user.cognito_sub = subject
             else:
                 role = db.query(VaiTro).filter(VaiTro.ten_vai_tro == _SELF_REGISTER_ROLE_NAME).first()
                 if role is None:
-                    raise DomainError(status_code=500, detail="Vai trÃ² máº·c Ä‘á»‹nh 'customer' chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh trÃªn há»‡ thá»‘ng")
+                    raise DomainError(
+                        status_code=500,
+                        detail="Vai trÃ² máº·c Ä‘á»‹nh 'customer' chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh trÃªn há»‡ thá»‘ng",
+                    )
 
                 profile_matches_identity = (
                     profile is not None and str(getattr(profile, "email", "")).strip().lower() == email
                 )
                 base_name = str(
-                    getattr(profile, "ten_dang_nhap", "") if profile_matches_identity else claims.get("preferred_username")
-                    or email.split("@", 1)[0]
+                    getattr(profile, "ten_dang_nhap", "")
+                    if profile_matches_identity
+                    else claims.get("preferred_username") or email.split("@", 1)[0]
                 )
                 base_name = re.sub(r"[^a-zA-Z0-9_.-]", "", base_name)[:40] or "customer"
                 username = f"{base_name}-{subject.replace('-', '')[:8]}"
@@ -201,8 +209,9 @@ class AuthService:
                     mat_khau_ma_hoa=get_password_hash(secrets.token_urlsafe(32)),
                     vaitro_id=role.vaitro_id,
                     ho_ten=str(
-                        getattr(profile, "ho_ten", "") if profile_matches_identity else claims.get("name")
-                        or email.split("@", 1)[0]
+                        getattr(profile, "ho_ten", "")
+                        if profile_matches_identity
+                        else claims.get("name") or email.split("@", 1)[0]
                     )[:100],
                     so_dien_thoai=getattr(profile, "so_dien_thoai", None) if profile_matches_identity else None,
                     dia_chi=getattr(profile, "dia_chi", None) if profile_matches_identity else None,
@@ -215,7 +224,7 @@ class AuthService:
         if not user.dang_hoat_dong:
             raise DomainError(status_code=403, detail="TÃ i khoáº£n Ä‘Ã£ bá»‹ vÃ´ hiá»‡u hÃ³a")
 
-        user.lan_dang_nhap_cuoi = datetime.utcnow()
+        user.lan_dang_nhap_cuoi = utc_now()
         db.commit()
         db.refresh(user)
         return self.current_user_info(user)
@@ -237,5 +246,7 @@ class AuthService:
                 "vaitro_id": current_user.vaitro.vaitro_id,
                 "ten_vai_tro": current_user.vaitro.ten_vai_tro,
                 "mo_ta": current_user.vaitro.mo_ta,
-            } if current_user.vaitro else None,
+            }
+            if current_user.vaitro
+            else None,
         }

@@ -17,7 +17,7 @@ from ..db import get_db
 from ..core.dependencies import get_current_active_user, require_role, get_optional_user
 from ..models import BienTheSanPham, LoHangSanPham, NguoiDung, TonKhoSanPham
 from ..services.products import ProductService, DomainError
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from ..schemas import Page
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -101,8 +101,7 @@ class ProductResponse(BaseModel):
     ngay_tao: datetime
     ngay_cap_nhat: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductSortField(str, Enum):
@@ -155,8 +154,7 @@ class VariantResponse(BaseModel):
     dang_hoat_dong: bool
     ngay_tao: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductAvailabilityResponse(BaseModel):

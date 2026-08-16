@@ -17,7 +17,7 @@ from ..db import get_db
 from ..core.dependencies import get_current_active_user, require_role
 from ..models import NguoiDung
 from ..services.batches import BatchService, DomainError
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ..schemas import Page
 
 router = APIRouter(prefix="/batches", tags=["batches"])
@@ -96,8 +96,7 @@ class ProductBatchResponse(BaseModel):
     so_luong_hien_tai: Optional[int] = None
     so_luong_da_ban: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================================================
@@ -141,8 +140,7 @@ class ComponentBatchResponse(BaseModel):
     so_luong_hien_tai: Optional[int] = None
     so_luong_da_su_dung: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================================================
@@ -186,8 +184,7 @@ class GiftBoxBatchResponse(BaseModel):
     so_luong_hien_tai: Optional[int] = None
     so_luong_da_ban: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================================================

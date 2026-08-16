@@ -40,30 +40,18 @@ export interface Voucher {
   status: 'active' | 'inactive'
 }
 
-// Pre-order types
-export interface PreOrderItem {
-  productName: string
-  size: string
-  quantity: number
-  price: number
-}
+// Order types — unified "Đơn hàng" (trực tuyến / đặt trước / thủ công).
+//
+// Trước đây có 2 model tách rời (Order cho "Bán tại quầy" + PreOrder cho
+// "Đơn đặt trước") map cùng một endpoint /orders bằng 2 bộ enum tự chế
+// khác nhau (và khác cả bảng enum thật trong Postgres), nên lọc theo loại
+// đơn hoặc theo một số trạng thái luôn âm thầm trả rỗng. Model dưới đây
+// dùng thẳng string enum thật của backend (xem app/models.py) làm khoá —
+// không còn lớp map hai chiều nào có thể lệch khỏi DB nữa. Nhãn tiếng Việt
+// hiển thị nằm ở frontend/src/config/orderLabels.ts.
+export type OrderType = 'pos' | 'online' | 'dat_truoc'
+export type OrderStatus = 'cho' | 'cho_coc' | 'dang_xu_ly' | 'dang_giao' | 'hoan_thanh' | 'da_huy'
 
-export interface PreOrder {
-  id: string
-  customerName: string
-  phone: string
-  pickupDate: string
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'done' | 'completed' | 'canceled' | 'cancelled'
-  notes?: string
-  items: PreOrderItem[]
-  totalAmount: number
-  createdAt: string
-  orderCode?: string
-  orderType?: string
-  address?: string
-}
-
-// Sales/Order types
 export interface OrderItem {
   productName: string
   size: string
@@ -73,13 +61,27 @@ export interface OrderItem {
 
 export interface Order {
   id: string
-  orderType: 'online' | 'pos' | 'preorder'
+  orderCode: string
+  orderType: OrderType
+  status: OrderStatus
   customerName: string
+  phone: string
+  address?: string
+  /** ngay_tao */
   date: string
+  /** ngay_giao_du_kien — ngày giao (giao hàng) hoặc ngày hẹn lấy (tại quầy). */
+  expectedDate?: string
+  /** Chỉ có ở chi tiết đơn (GET /orders/{id}), rỗng ở danh sách. */
   items: OrderItem[]
+  /** tien_thanh_toan — số tiền phải trả sau khi trừ giảm giá. */
   totalAmount: number
-  paymentMethod: string
-  status: 'pending' | 'processing' | 'delivering' | 'completed' | 'canceled'
+  /** tong_tien — tổng tiền hàng trước giảm giá. */
+  subtotal: number
+  /** tien_giam_gia */
+  discount: number
+  /** tien_dat_coc — chỉ có ý nghĩa với đơn đặt trước. Chỉ có ở chi tiết đơn. */
+  deposit: number
+  notes?: string
 }
 
 // Dashboard/Report types

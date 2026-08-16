@@ -10,11 +10,13 @@ docs/specs/02-orders.md:
   3. update_order_status rejects transitions out of a terminal status
      (Finding #3).
 """
-from datetime import datetime, timedelta
+
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 
+from app.core.time import utc_now
 from app.models import (
     BienTheSanPham,
     ChiTietDonHang,
@@ -89,7 +91,7 @@ def _make_variant_with_stock(db_session, suffix: str, so_luong: int = 100, gia: 
     batch = LoHangSanPham(
         bienthe_sanpham_id=variant.bienthe_id,
         ma_lo=f"LOT-ORD-{suffix}",
-        ngay_het_han=datetime.utcnow() + timedelta(days=30),
+        ngay_het_han=utc_now() + timedelta(days=30),
         so_luong=so_luong,
         gia_don_vi=gia,
         trang_thai="hoatdong",
@@ -109,8 +111,8 @@ def _make_voucher(db_session, code: str, gia_tri_giam: Decimal) -> PhieuGiamGia:
         loai_giam="sotien",
         gia_tri_giam=gia_tri_giam,
         tong_tien_toi_thieu=Decimal("0"),
-        ngay_bat_dau=datetime.utcnow() - timedelta(days=1),
-        ngay_het_han=datetime.utcnow() + timedelta(days=30),
+        ngay_bat_dau=utc_now() - timedelta(days=1),
+        ngay_het_han=utc_now() + timedelta(days=30),
         gioi_han_su_dung=10,
         dang_hoat_dong=True,
     )

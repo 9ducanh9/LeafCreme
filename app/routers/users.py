@@ -13,7 +13,7 @@ from app.db import get_db
 from app.models import NguoiDung
 from app.core.dependencies import get_current_active_user, require_role, get_current_user
 from app.services.users import UserService, DomainError
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 router = APIRouter(prefix="/users", tags=["users"])
 user_service = UserService()
@@ -65,8 +65,7 @@ class UserResponse(BaseModel):
     ngay_tao: str
     vaitro: dict
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================================================

@@ -13,8 +13,8 @@ single helpers: role/ownership access check, "total paid so far" query,
 payment->API response serialization, and "mark order hoan_thanh once fully
 paid" logic.
 """
+
 import uuid
-from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -23,6 +23,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.time import utc_now
 from app.models import DonHang, NguoiDung, ThanhToan
 from app.schemas import validate_thong_tin_giao_dich
 from app.services.momo import create_payment_request, parse_momo_datetime, verify_signature
@@ -67,9 +68,7 @@ class PaymentService:
         return db.query(ThanhToan).filter(
             ThanhToan.donhang_id == donhang_id,
             ThanhToan.trang_thai == "thanh_cong",
-        ).with_entities(
-            func.sum(ThanhToan.so_tien)
-        ).scalar() or Decimal("0")
+        ).with_entities(func.sum(ThanhToan.so_tien)).scalar() or Decimal("0")
 
     @staticmethod
     def _to_response(payment: ThanhToan, order: DonHang) -> dict:
@@ -113,11 +112,13 @@ class PaymentService:
         result = []
         for payment in payments:
             order = db.query(DonHang).filter(DonHang.donhang_id == payment.donhang_id).first()
-            result.append({
-                **{c.name: getattr(payment, c.name) for c in payment.__table__.columns},
-                "ma_don_hang": order.ma_don_hang if order else None,
-                "tong_tien_don_hang": order.tong_tien if order else None,
-            })
+            result.append(
+                {
+                    **{c.name: getattr(payment, c.name) for c in payment.__table__.columns},
+                    "ma_don_hang": order.ma_don_hang if order else None,
+                    "tong_tien_don_hang": order.tong_tien if order else None,
+                }
+            )
         return result
 
     def get_payment(self, db: Session, payment_id: int, current_user: NguoiDung) -> dict:
@@ -130,9 +131,7 @@ class PaymentService:
         order = self._get_order_or_404(db, order_id)
         self._ensure_order_access(order, current_user, "Bạn không có quyền xem đơn hàng này")
 
-        payments = db.query(ThanhToan).filter(
-            ThanhToan.donhang_id == order_id
-        ).order_by(desc(ThanhToan.ngay_tao)).all()
+        payments = db.query(ThanhToan).filter(ThanhToan.donhang_id == order_id).order_by(desc(ThanhToan.ngay_tao)).all()
 
         return [self._to_response(payment, order) for payment in payments]
 
@@ -175,7 +174,7 @@ class PaymentService:
             trang_thai="thanh_cong" if phuong_thuc == "tien_mat" else "dang_xu_ly",
             ma_giao_dich=payload.ma_giao_dich,
             thong_tin_giao_dich=thong_tin_gd_dict,
-            ngay_thanh_toan=datetime.utcnow() if phuong_thuc == "tien_mat" else None,
+            ngay_thanh_toan=utc_now() if phuong_thuc == "tien_mat" else None,
         )
         db.add(payment)
 
@@ -204,7 +203,7 @@ class PaymentService:
             payment.trang_thai = next_status
 
             if next_status == "thanh_cong" and old_status != "thanh_cong":
-                payment.ngay_thanh_toan = payload.ngay_thanh_toan or datetime.utcnow()
+                payment.ngay_thanh_toan = payload.ngay_thanh_toan or utc_now()
                 total_paid = self._total_paid(db, order.donhang_id)
                 self._maybe_complete_order(order, total_paid)
 
@@ -215,14 +214,20 @@ class PaymentService:
 
             elif next_status in ("that_bai", "da_hoan_tien") and old_status != "thanh_cong":
                 self.order_service.fail_unpaid_order(
-                    db, order.donhang_id, f"Payment status changed to {next_status}",
+                    db,
+                    order.donhang_id,
+                    f"Payment status changed to {next_status}",
                 )
 
         if payload.ma_giao_dich is not None:
-            existing = db.query(ThanhToan).filter(
-                ThanhToan.ma_giao_dich == payload.ma_giao_dich,
-                ThanhToan.thanhtoan_id != payment_id,
-            ).first()
+            existing = (
+                db.query(ThanhToan)
+                .filter(
+                    ThanhToan.ma_giao_dich == payload.ma_giao_dich,
+                    ThanhToan.thanhtoan_id != payment_id,
+                )
+                .first()
+            )
             if existing:
                 raise DomainError(status_code=400, detail=f"Mã giao dịch '{payload.ma_giao_dich}' đã tồn tại")
             payment.ma_giao_dich = payload.ma_giao_dich
@@ -247,7 +252,7 @@ class PaymentService:
         trang_thai_lower = payload.trang_thai.lower()
         if payload.trang_thai == "00" or "success" in trang_thai_lower:
             payment.trang_thai = "thanh_cong"
-            payment.ngay_thanh_toan = datetime.utcnow()
+            payment.ngay_thanh_toan = utc_now()
         elif "fail" in trang_thai_lower or "error" in trang_thai_lower:
             payment.trang_thai = "that_bai"
         else:
@@ -295,11 +300,13 @@ class PaymentService:
             phuong_thuc="vi_dien_tu",
             so_tien=remaining,
             trang_thai="dang_xu_ly",
-            thong_tin_giao_dich=validate_thong_tin_giao_dich({
-                "ma_giao_dich_ben_thu_3": None,
-                "thoi_gian_giao_dich": None,
-                "chi_tiet_raw": {"provider": "momo"},
-            }),
+            thong_tin_giao_dich=validate_thong_tin_giao_dich(
+                {
+                    "ma_giao_dich_ben_thu_3": None,
+                    "thoi_gian_giao_dich": None,
+                    "chi_tiet_raw": {"provider": "momo"},
+                }
+            ),
         )
         db.add(payment)
         db.flush()
@@ -332,7 +339,9 @@ class PaymentService:
             momo_response = response.json()
 
             if momo_response.get("resultCode") != 0:
-                raise DomainError(status_code=400, detail=f"MoMo error: {momo_response.get('message', 'Unknown error')}")
+                raise DomainError(
+                    status_code=400, detail=f"MoMo error: {momo_response.get('message', 'Unknown error')}"
+                )
 
             payment_url = momo_response.get("payUrl")
             if not payment_url:
@@ -392,7 +401,7 @@ class PaymentService:
         result_code = body.get("resultCode")
         if result_code == 0:
             payment.trang_thai = "thanh_cong"
-            payment.ngay_thanh_toan = parse_momo_datetime(str(body.get("responseTime"))) or datetime.utcnow()
+            payment.ngay_thanh_toan = parse_momo_datetime(str(body.get("responseTime"))) or utc_now()
         else:
             payment.trang_thai = "that_bai"
 
@@ -464,11 +473,13 @@ class PaymentService:
             phuong_thuc="vi_dien_tu",
             so_tien=remaining,
             trang_thai="dang_xu_ly",
-            thong_tin_giao_dich=validate_thong_tin_giao_dich({
-                "ma_giao_dich_ben_thu_3": None,
-                "thoi_gian_giao_dich": None,
-                "chi_tiet_raw": {"provider": "momo_qr", "method": "manual"},
-            }),
+            thong_tin_giao_dich=validate_thong_tin_giao_dich(
+                {
+                    "ma_giao_dich_ben_thu_3": None,
+                    "thoi_gian_giao_dich": None,
+                    "chi_tiet_raw": {"provider": "momo_qr", "method": "manual"},
+                }
+            ),
         )
         db.add(payment)
         db.flush()
@@ -494,11 +505,11 @@ class PaymentService:
 
         if payload.confirmed:
             payment.trang_thai = "thanh_cong"
-            payment.ngay_thanh_toan = datetime.utcnow()
+            payment.ngay_thanh_toan = utc_now()
 
             if payment.thong_tin_giao_dich:
                 payment.thong_tin_giao_dich["confirmed_by"] = current_user.nguoidung_id
-                payment.thong_tin_giao_dich["confirmed_at"] = datetime.utcnow().isoformat()
+                payment.thong_tin_giao_dich["confirmed_at"] = utc_now().isoformat()
                 if payload.transaction_note:
                     payment.thong_tin_giao_dich["admin_note"] = payload.transaction_note
 
@@ -508,7 +519,7 @@ class PaymentService:
             payment.trang_thai = "that_bai"
             if payment.thong_tin_giao_dich:
                 payment.thong_tin_giao_dich["rejected_by"] = current_user.nguoidung_id
-                payment.thong_tin_giao_dich["rejected_at"] = datetime.utcnow().isoformat()
+                payment.thong_tin_giao_dich["rejected_at"] = utc_now().isoformat()
                 if payload.transaction_note:
                     payment.thong_tin_giao_dich["reject_reason"] = payload.transaction_note
             self.order_service.fail_unpaid_order(db, order.donhang_id, "MoMo QR payment rejected")

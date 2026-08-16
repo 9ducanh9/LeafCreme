@@ -97,41 +97,14 @@ export default function AdminVoucherPage() {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F' }}>
-          Quản lý mã giảm giá
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreate}
-          disabled={!DEMO_VOUCHER_MODE_ENABLED}
-          sx={{ 
-            bgcolor: '#C59B72',
-            color: 'white',
-            borderRadius: '12px',
-            px: 3,
-            py: 1.25,
-            textTransform: 'none',
-            fontWeight: 600,
-            fontSize: '0.9375rem',
-            boxShadow: '0 4px 12px rgba(197, 155, 114, 0.25)',
-            transition: 'all 0.2s ease',
-            '&:hover': { 
-              bgcolor: '#B0895F',
-              boxShadow: '0 6px 20px rgba(197, 155, 114, 0.35)',
-              transform: 'translateY(-2px)',
-            },
-            '&:active': {
-              transform: 'translateY(0)',
-            },
-          }}
-        >
+        <Typography variant="h4">Quản lý mã giảm giá</Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate} disabled={!DEMO_VOUCHER_MODE_ENABLED}>
           Tạo mã giảm giá
         </Button>
       </Box>
 
       {!DEMO_VOUCHER_MODE_ENABLED && (
-        <Alert severity="info" sx={{ mb: 3, borderRadius: '12px' }}>
+        <Alert severity="info" sx={{ mb: 3 }}>
           Quản lý mã giảm giá hiện là chức năng demo/dev-only. Backend chưa có API CRUD voucher thật.
           Nếu cần xem demo local, bật <code>VITE_ENABLE_DEMO_VOUCHERS=true</code> trong frontend env rồi reload.
         </Alert>

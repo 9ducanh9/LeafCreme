@@ -80,14 +80,12 @@ export default function CategoryManager({ open, onClose, onCategoriesChange }: C
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F' }}>
-        Quản lý danh mục
-      </DialogTitle>
+      <DialogTitle>Quản lý danh mục</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
           {/* Add Category */}
           <Box>
-            <Typography variant="body2" sx={{ mb: 1, color: '#7A6F63', fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 500 }}>
               Thêm danh mục mới
             </Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -108,11 +106,7 @@ export default function CategoryManager({ open, onClose, onCategoriesChange }: C
                   }
                 }}
               />
-              <Button
-                variant="contained"
-                onClick={handleAddCategory}
-                sx={{ bgcolor: '#C59B72', '&:hover': { bgcolor: '#B0895F' } }}
-              >
+              <Button variant="contained" onClick={handleAddCategory}>
                 <AddIcon />
               </Button>
             </Box>
@@ -120,21 +114,12 @@ export default function CategoryManager({ open, onClose, onCategoriesChange }: C
 
           {/* Categories List */}
           <Box>
-            <Typography variant="body2" sx={{ mb: 2, color: '#7A6F63', fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 500 }}>
               Danh sách danh mục ({categories.length})
             </Typography>
-            <Paper
-              variant="outlined"
-              sx={{
-                p: 2,
-                bgcolor: '#FAFAF7',
-                border: '1px solid #EFEDE6',
-                maxHeight: 300,
-                overflow: 'auto',
-              }}
-            >
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', maxHeight: 300, overflow: 'auto' }}>
               {categories.length === 0 ? (
-                <Typography variant="body2" sx={{ color: '#7A6F63', textAlign: 'center', py: 2 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
                   Chưa có danh mục nào
                 </Typography>
               ) : (
@@ -147,14 +132,8 @@ export default function CategoryManager({ open, onClose, onCategoriesChange }: C
                         label={cat}
                         onDelete={inUse ? undefined : () => handleDeleteCategory(cat)}
                         deleteIcon={<DeleteIcon />}
-                        sx={{
-                          bgcolor: inUse ? '#E8E5DD' : '#F5C96A',
-                          color: '#473C2F',
-                          fontWeight: 500,
-                          '& .MuiChip-deleteIcon': {
-                            color: inUse ? '#7A6F63' : '#d32f2f',
-                          },
-                        }}
+                        color={inUse ? 'default' : 'warning'}
+                        variant={inUse ? 'filled' : 'outlined'}
                       />
                     )
                   })}

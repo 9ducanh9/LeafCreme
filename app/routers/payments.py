@@ -5,13 +5,14 @@ Thin by design — validates input/transport concerns and translates
 DomainError -> HTTPException; all business logic lives in
 app.services.payments.PaymentService (see PHASE 1 note in that module).
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.db import get_db
 from app.core.dependencies import get_current_user, require_role
@@ -33,18 +34,17 @@ def _raise_http(exc: DomainError) -> None:
 # =========================================================
 class PaymentCreate(BaseModel):
     """Tạo thanh toán mới"""
+
     donhang_id: int = Field(..., description="ID đơn hàng")
     phuong_thuc: str = Field(..., description="Phương thức: tien_mat, chuyen_khoan, the_tin_dung, vi_dien_tu")
     so_tien: Decimal = Field(..., gt=0, description="Số tiền thanh toán")
     ma_giao_dich: Optional[str] = Field(None, max_length=100, description="Mã giao dịch từ cổng thanh toán")
-    thong_tin_giao_dich: Optional[ThongTinGiaoDich] = Field(
-        None,
-        description="Thông tin giao dịch từ cổng thanh toán"
-    )
+    thong_tin_giao_dich: Optional[ThongTinGiaoDich] = Field(None, description="Thông tin giao dịch từ cổng thanh toán")
 
 
 class PaymentUpdate(BaseModel):
     """Cập nhật thanh toán"""
+
     trang_thai: Optional[str] = Field(None, description="Trạng thái: dang_xu_ly, thanh_cong, that_bai, da_hoan_tien")
     ma_giao_dich: Optional[str] = Field(None, max_length=100)
     thong_tin_giao_dich: Optional[ThongTinGiaoDich] = None
@@ -53,6 +53,7 @@ class PaymentUpdate(BaseModel):
 
 class PaymentVerifyRequest(BaseModel):
     """Verify payment từ callback gateway"""
+
     ma_giao_dich: str = Field(..., description="Mã giao dịch từ gateway")
     trang_thai: str = Field(..., description="Trạng thái từ gateway")
     thong_tin_giao_dich: Optional[dict] = Field(None, description="Toàn bộ response từ gateway")
@@ -60,6 +61,7 @@ class PaymentVerifyRequest(BaseModel):
 
 class PaymentResponse(BaseModel):
     """Thông tin thanh toán"""
+
     thanhtoan_id: int
     donhang_id: int
     phuong_thuc: str
@@ -73,8 +75,7 @@ class PaymentResponse(BaseModel):
     ma_don_hang: Optional[str] = None
     tong_tien_don_hang: Optional[Decimal] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MomoCreateRequest(BaseModel):
@@ -118,21 +119,21 @@ def list_payments(
     donhang_id: Optional[int] = Query(None, description="Filter theo đơn hàng"),
     trang_thai: Optional[str] = Query(None, description="Filter theo trạng thái"),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_user)
+    current_user: NguoiDung = Depends(get_current_user),
 ):
     """Danh sách thanh toán"""
     return payment_service.list_payments(
-        db=db, current_user=current_user, skip=skip, limit=limit,
-        donhang_id=donhang_id, trang_thai=trang_thai,
+        db=db,
+        current_user=current_user,
+        skip=skip,
+        limit=limit,
+        donhang_id=donhang_id,
+        trang_thai=trang_thai,
     )
 
 
 @router.get("/{payment_id}", response_model=PaymentResponse)
-def get_payment(
-    payment_id: int,
-    db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_user)
-):
+def get_payment(payment_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)):
     """Lấy thông tin chi tiết thanh toán"""
     try:
         return payment_service.get_payment(db, payment_id, current_user)
@@ -148,7 +149,7 @@ def create_momo_payment(
     payload: MomoCreateRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_user)
+    current_user: NguoiDung = Depends(get_current_user),
 ):
     """Tạo thanh toán MoMo"""
     try:
@@ -158,7 +159,8 @@ def create_momo_payment(
         _raise_http(exc)
 
 
-@router.api_route("/momo/ipn", methods=["GET", "POST"])
+@router.get("/momo/ipn", operation_id="momo_ipn_get")
+@router.post("/momo/ipn", operation_id="momo_ipn_post")
 async def momo_ipn(request: Request, db: Session = Depends(get_db)):
     """MoMo IPN (Instant Payment Notification) callback"""
     try:
@@ -167,16 +169,10 @@ async def momo_ipn(request: Request, db: Session = Depends(get_db)):
         else:
             body = dict(request.query_params)
     except Exception:
-        return JSONResponse(
-            status_code=400,
-            content={"resultCode": 1, "message": "Invalid request"}
-        )
+        return JSONResponse(status_code=400, content={"resultCode": 1, "message": "Invalid request"})
 
     if not settings.MOMO_SECRET_KEY:
-        return JSONResponse(
-            status_code=500,
-            content={"resultCode": 1, "message": "Missing MoMo config"}
-        )
+        return JSONResponse(status_code=500, content={"resultCode": 1, "message": "Missing MoMo config"})
 
     result = payment_service.handle_momo_ipn(db, body)
     return JSONResponse(status_code=200, content=result)
@@ -195,9 +191,7 @@ def momo_return(request: Request, db: Session = Depends(get_db)):
 # =========================================================
 @router.post("/momo-qr/create", response_model=MomoQRPaymentInfo, status_code=status.HTTP_201_CREATED)
 def create_momo_qr_payment(
-    payload: MomoQRCreateRequest,
-    db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_user)
+    payload: MomoQRCreateRequest, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)
 ):
     """
     Tạo thanh toán MoMo QR đơn giản (không cần API)
@@ -215,7 +209,7 @@ def confirm_momo_qr_payment(
     payment_id: int,
     payload: MomoQRConfirmRequest,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff"))
+    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
 ):
     """
     Admin xác nhận đã nhận tiền MoMo (manual confirmation)
@@ -228,9 +222,7 @@ def confirm_momo_qr_payment(
 
 @router.get("/orders/{order_id}", response_model=List[PaymentResponse])
 def get_order_payments(
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_user)
+    order_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)
 ):
     """Lấy danh sách thanh toán của đơn hàng"""
     try:
@@ -241,9 +233,7 @@ def get_order_payments(
 
 @router.post("", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
 def create_payment(
-    payload: PaymentCreate,
-    db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_user)
+    payload: PaymentCreate, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)
 ):
     """Tạo thanh toán mới"""
     try:
@@ -257,7 +247,7 @@ def update_payment_status(
     payment_id: int,
     payload: PaymentUpdate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_role("admin", "manager")),
 ):
     """Cập nhật trạng thái thanh toán (chỉ admin/manager)"""
     try:
@@ -271,7 +261,7 @@ def verify_payment(
     payment_id: int,
     payload: PaymentVerifyRequest,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_role("admin", "manager")),
 ):
     """
     Verify thanh toán từ callback của payment gateway

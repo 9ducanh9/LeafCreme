@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from enum import Enum
 from typing import Literal, Optional, List, Union
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..db import get_db
 from ..models import NguoiDung
@@ -45,8 +45,7 @@ class AlertResponse(BaseModel):
     ngay_het_han: Optional[datetime] = None
     so_luong_hien_tai: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AlertSortField(str, Enum):

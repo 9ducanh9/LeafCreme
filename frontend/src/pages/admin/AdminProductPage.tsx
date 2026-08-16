@@ -103,63 +103,12 @@ export default function AdminProductPage() {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F' }}>
-          Quản lý sản phẩm
-        </Typography>
+        <Typography variant="h4">Quản lý sản phẩm</Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<CategoryIcon />}
-            onClick={() => setCategoryManagerOpen(true)}
-            sx={{ 
-              borderColor: 'rgba(197, 155, 114, 0.3)',
-              color: '#C59B72',
-              borderRadius: '12px',
-              px: 2.5,
-              py: 1.25,
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              borderWidth: '1.5px',
-              transition: 'all 0.2s ease',
-              '&:hover': { 
-                borderColor: '#C59B72',
-                bgcolor: 'rgba(197, 155, 114, 0.08)',
-                borderWidth: '1.5px',
-                transform: 'translateY(-1px)',
-              },
-              '&:active': {
-                transform: 'translateY(0)',
-              },
-            }}
-          >
+          <Button variant="outlined" startIcon={<CategoryIcon />} onClick={() => setCategoryManagerOpen(true)}>
             Quản lý danh mục
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreate}
-            sx={{ 
-              bgcolor: '#C59B72',
-              color: 'white',
-              borderRadius: '12px',
-              px: 3,
-              py: 1.25,
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              boxShadow: '0 4px 12px rgba(197, 155, 114, 0.25)',
-              transition: 'all 0.2s ease',
-              '&:hover': { 
-                bgcolor: '#B0895F',
-                boxShadow: '0 6px 20px rgba(197, 155, 114, 0.35)',
-                transform: 'translateY(-2px)',
-              },
-              '&:active': {
-                transform: 'translateY(0)',
-              },
-            }}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
             Thêm sản phẩm
           </Button>
         </Box>

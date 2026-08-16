@@ -2,11 +2,13 @@
 Tests for app.services.suppliers.SupplierService — Phase 1 service-layer
 migration (see app/services/suppliers/supplier_service.py).
 """
-from datetime import datetime, timedelta
+
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 
+from app.core.time import utc_now
 from app.models import BienTheSanPham, LoHangSanPham, NhaCungCap, SanPham
 from app.services.suppliers import DomainError, SupplierService
 
@@ -32,8 +34,15 @@ class _SupplierPayload:
 class _SupplierUpdatePayload:
     def __init__(self, **fields):
         defaults = dict(
-            ten_ncc=None, ma_ncc=None, nguoi_lien_he=None, so_dien_thoai=None,
-            email=None, dia_chi=None, thong_tin_thanh_toan=None, ghi_chu=None, dang_hoat_dong=None,
+            ten_ncc=None,
+            ma_ncc=None,
+            nguoi_lien_he=None,
+            so_dien_thoai=None,
+            email=None,
+            dia_chi=None,
+            thong_tin_thanh_toan=None,
+            ghi_chu=None,
+            dang_hoat_dong=None,
         )
         defaults.update(fields)
         for k, v in defaults.items():
@@ -86,7 +95,7 @@ class TestDeleteSupplier:
             bienthe_sanpham_id=variant.bienthe_id,
             ncc_id=supplier.ncc_id,
             ma_lo="LOT-SUPPLIER-BLOCK-1",
-            ngay_het_han=datetime.utcnow() + timedelta(days=30),
+            ngay_het_han=utc_now() + timedelta(days=30),
             so_luong=10,
             gia_don_vi=Decimal("5000"),
         )
