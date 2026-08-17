@@ -1,13 +1,16 @@
 /**
- * Shape của response `/orders` từ backend.
+ * Shape của response `/orders` từ backend (xem app/routers/orders.py).
  *
- * Vì sao có file này: `preOrderService` và `salesService` map CÙNG một endpoint
- * nhưng trước đây cả hai đều dùng `any`, nên không có chỗ nào ghi lại contract
- * và hai bên có thể hiểu khác nhau mà TypeScript không phát hiện.
+ * Vì sao có file này: trước đây `preOrderService` và `salesService` map
+ * CÙNG một endpoint bằng `any` ở 2 chỗ khác nhau, không có gì ghi lại
+ * contract nên hai bên hiểu khác nhau mà TypeScript không phát hiện được
+ * (một bên còn đọc field `chi_tiet` mà backend không bao giờ trả — chỉ có
+ * `items`). Giờ chỉ còn một service (`admin/adminOrderService.ts`) dùng
+ * file này.
  *
- * Chỉ khai những field thực sự được đọc — không đoán phần còn lại. Field nào
- * backend có thể trả `Decimal` (FastAPI serialize thành string) hoặc `float`
- * (number) thì để `string | number` và đọc qua `toAmount()`.
+ * Chỉ khai những field thực sự được đọc — không đoán phần còn lại. Field
+ * nào backend có thể trả `Decimal` (FastAPI serialize thành string) hoặc
+ * `float` (number) thì để `ApiAmount` và đọc qua `toAmount()`.
  */
 
 /** Số tiền: backend trả string (Decimal) hoặc number (float) tuỳ field. */
@@ -20,19 +23,26 @@ export function toAmount(value: ApiAmount): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+/** Khớp với `OrderItemResponse` trong app/routers/orders.py. */
 export interface BackendOrderItem {
-  ten_san_pham?: string | null
+  chitiet_id?: number
   so_luong: number
-  gia_ban?: ApiAmount
   gia_don_vi?: ApiAmount
+  tong_tien_phu?: ApiAmount
   hop_qua_id?: number | null
   lohang_sanpham_id?: number | null
-  bienthe?: {
-    kich_co?: string | null
-    san_pham?: { ten_san_pham?: string | null } | null
-  } | null
+  lohang_hopqua_id?: number | null
+  ghi_chu?: string | null
+  trang_thai?: string | null
+  /** Tên sản phẩm/hộp quà resolve sẵn ở server — xem OrderService._resolve_item_names. */
+  product_name?: string | null
 }
 
+/**
+ * Khớp với `OrderResponse` (chi tiết, có `items`) VÀ `OrderListResponse`
+ * (danh sách, KHÔNG có `items`/`tien_dat_coc`) — tất cả field optional để
+ * dùng chung cho cả hai; UI không được giả định `items` luôn có mặt.
+ */
 export interface BackendOrder {
   donhang_id: number
   ma_don_hang?: string | null
@@ -46,8 +56,9 @@ export interface BackendOrder {
   ngay_giao_du_kien?: string | null
   tien_thanh_toan?: ApiAmount
   tong_tien?: ApiAmount
-  /** Có ở endpoint chi tiết (`/orders/{id}`) */
-  chi_tiet?: BackendOrderItem[] | null
-  /** Tên gọi khác của cùng danh sách ở một số response */
+  tien_giam_gia?: ApiAmount
+  /** Chỉ có ở endpoint chi tiết (`GET /orders/{id}`), không có ở danh sách. */
+  tien_dat_coc?: ApiAmount
+  /** Chỉ có ở endpoint chi tiết (`GET /orders/{id}`), không có ở danh sách. */
   items?: BackendOrderItem[] | null
 }

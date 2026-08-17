@@ -9,6 +9,7 @@ accounts must be blocked even with the right password, and refresh tokens
 must be validated by type (a stolen access token shouldn't work as a
 refresh token).
 """
+
 from datetime import date
 
 import pytest
@@ -235,7 +236,10 @@ class TestCognitoProvisioning:
         _make_user(db_session, admin_role)
 
         with pytest.raises(DomainError) as exc_info:
-            service.provision_cognito_user(db_session, self._claims(email_verified=False))
+            service.provision_cognito_user(
+                db_session,
+                self._claims(email="AuthTest@Example.com", email_verified=False),
+            )
         assert exc_info.value.status_code == 401
 
 

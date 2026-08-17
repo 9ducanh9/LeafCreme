@@ -33,8 +33,7 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     label: 'Bán hàng',
     items: [
-      { key: 'preorders', label: 'Đơn đặt trước', path: '/admin/preorders', icon: 'sales' },
-      { key: 'sales', label: 'Bán tại quầy', path: '/admin/sales', icon: 'sales' },
+      { key: 'orders', label: 'Đơn hàng', path: '/admin/orders', icon: 'sales' },
     ],
   },
 ]

@@ -190,43 +190,10 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
     }
   }
 
-  const inputStyles = {
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '12px',
-      transition: 'all 0.2s ease',
-      '& fieldset': {
-        borderColor: 'rgba(122, 111, 99, 0.2)',
-        transition: 'border-color 0.2s ease',
-      },
-      '&:hover fieldset': {
-        borderColor: 'rgba(122, 111, 99, 0.4)',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: '#C59B72',
-        borderWidth: '2px',
-      },
-      '&:hover': {
-        backgroundColor: 'rgba(250, 250, 249, 0.5)',
-      },
-    },
-    '& .MuiInputLabel-root': {
-      fontSize: '0.9375rem',
-      fontWeight: 500,
-      '&.Mui-focused': {
-        color: '#C59B72',
-      },
-    },
-    '& .MuiFormHelperText-root': {
-      fontSize: '0.75rem',
-      marginTop: '6px',
-      color: '#9B948B',
-    },
-  }
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F', pb: 1 }}>
+        <DialogTitle sx={{ pb: 1 }}>
           {voucher ? 'Chỉnh sửa mã giảm giá' : 'Tạo mã giảm giá mới'}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
@@ -240,12 +207,11 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
               error={!!errors.code}
               helperText={errors.code || 'Mã sẽ tự động viết hoa'}
               inputProps={{ style: { textTransform: 'uppercase' } }}
-              sx={inputStyles}
             />
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               <Box sx={{ flex: 1, minWidth: '180px' }}>
-                <FormControl fullWidth required sx={inputStyles}>
+                <FormControl fullWidth required>
                   <InputLabel>Loại</InputLabel>
                   <Select
                     value={formData.type}
@@ -273,14 +239,13 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
                   error={!!errors.discountValue}
                   helperText={errors.discountValue || (formData.type === 'percent' ? 'Tối đa 100%' : 'Số tiền giảm cố định')}
                   inputProps={{ min: 0, max: formData.type === 'percent' ? 100 : undefined, step: formData.type === 'percent' ? 1 : 1000 }}
-                  sx={inputStyles}
                 />
               </Box>
             </Box>
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               <Box sx={{ flex: 1, minWidth: '200px' }}>
-                <FormControl fullWidth required sx={inputStyles}>
+                <FormControl fullWidth required>
                   <InputLabel>Áp dụng cho</InputLabel>
                   <Select
                     value={formData.appliesTo}
@@ -307,7 +272,7 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
 
               {formData.appliesTo === 'category' && (
                 <Box sx={{ flex: 1, minWidth: '200px' }}>
-                  <FormControl fullWidth required sx={inputStyles}>
+                  <FormControl fullWidth required>
                     <InputLabel>Danh mục</InputLabel>
                     <Select
                       value={formData.targetId}
@@ -322,7 +287,7 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
                       ))}
                     </Select>
                     {errors.targetId && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75, fontSize: '0.75rem' }}>
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
                         {errors.targetId}
                       </Typography>
                     )}
@@ -340,9 +305,9 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
                     value={selectedProduct}
                     onChange={(_, newValue) => {
                       setSelectedProduct(newValue)
-                      setFormData({ 
-                        ...formData, 
-                        targetId: newValue ? newValue.sanpham_id.toString() : '' 
+                      setFormData({
+                        ...formData,
+                        targetId: newValue ? newValue.sanpham_id.toString() : ''
                       })
                     }}
                     renderInput={(params) => (
@@ -351,14 +316,8 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
                         label="Chọn sản phẩm"
                         error={!!errors.targetId}
                         helperText={errors.targetId || 'Tìm kiếm và chọn một sản phẩm'}
-                        sx={inputStyles}
                       />
                     )}
-                    sx={{
-                      '& .MuiAutocomplete-inputRoot': {
-                        borderRadius: '12px',
-                      },
-                    }}
                   />
                 </Box>
               )}
@@ -377,7 +336,6 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
                   error={!!errors.minOrderValue}
                   helperText={errors.minOrderValue || 'Để 0 nếu không có yêu cầu'}
                   inputProps={{ min: 0, step: 1000 }}
-                  sx={inputStyles}
                 />
               </Box>
 
@@ -393,7 +351,6 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
                   error={!!errors.usageLimit}
                   helperText={errors.usageLimit || 'Để 0 nếu không giới hạn'}
                   inputProps={{ min: 0 }}
-                  sx={inputStyles}
                 />
               </Box>
             </Box>
@@ -417,12 +374,6 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
                         fullWidth: true,
                         error: !!errors.expiresAt,
                         helperText: errors.expiresAt || 'Ngày và giờ hết hạn sử dụng mã',
-                        sx: inputStyles,
-                      },
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '12px',
                       },
                     }}
                   />
@@ -430,7 +381,7 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
               </Box>
 
               <Box sx={{ flex: 1, minWidth: '200px' }}>
-                <FormControl fullWidth required sx={inputStyles}>
+                <FormControl fullWidth required>
                   <InputLabel>Trạng thái</InputLabel>
                   <Select
                     value={formData.status}
@@ -447,66 +398,17 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
             </Box>
 
             {formData.type === 'percent' && formData.discountValue > 50 && (
-              <Alert 
-                severity="warning"
-                sx={{
-                  borderRadius: '12px',
-                  border: '1px solid rgba(245, 201, 106, 0.3)',
-                  '& .MuiAlert-message': {
-                    fontSize: '0.875rem',
-                  },
-                }}
-              >
+              <Alert severity="warning">
                 Giảm giá phần trăm cao ({formData.discountValue}%). Vui lòng xem xét cẩn thận.
               </Alert>
             )}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, gap: 1.5, borderTop: '1px solid rgba(122, 111, 99, 0.08)' }}>
-          <Button 
-            onClick={onClose} 
-            disabled={loading}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 500,
-              color: '#7A6F63',
-              borderRadius: '10px',
-              px: 3,
-              py: 1,
-              '&:hover': {
-                bgcolor: 'rgba(122, 111, 99, 0.08)',
-              },
-            }}
-          >
+        <DialogActions sx={{ p: 3, gap: 1.5, borderTop: 1, borderColor: 'divider' }}>
+          <Button onClick={onClose} disabled={loading} sx={{ px: 3 }}>
             Hủy
           </Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            disabled={loading}
-            sx={{ 
-              bgcolor: '#C59B72',
-              textTransform: 'none',
-              fontWeight: 600,
-              borderRadius: '10px',
-              px: 4,
-              py: 1,
-              boxShadow: '0 2px 8px rgba(197, 155, 114, 0.25)',
-              transition: 'all 0.2s ease',
-              '&:hover': { 
-                bgcolor: '#B0895F',
-                boxShadow: '0 4px 12px rgba(197, 155, 114, 0.35)',
-                transform: 'translateY(-1px)',
-              },
-              '&:active': {
-                transform: 'translateY(0)',
-              },
-              '&:disabled': {
-                bgcolor: '#E8E5DD',
-                color: '#9B948B',
-              },
-            }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ px: 4 }}>
             {loading ? 'Đang lưu...' : voucher ? 'Cập nhật' : 'Tạo mới'}
           </Button>
         </DialogActions>

@@ -14,7 +14,7 @@ from ..db import get_db
 from ..core.dependencies import require_role, get_optional_user
 from ..models import NguoiDung
 from ..services.gift_boxes import GiftBoxService, DomainError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from ..schemas import Page
 
 router = APIRouter(prefix="/admin/gift-boxes", tags=["gift-boxes"])
@@ -66,8 +66,7 @@ class GiftBoxResponse(BaseModel):
     dang_hoat_dong: bool
     ngay_tao: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GiftBoxSortField(str, Enum):
@@ -101,8 +100,7 @@ class BomItemResponse(BaseModel):
     product_category: Optional[str] = None
     variant_active: Optional[bool] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================================================

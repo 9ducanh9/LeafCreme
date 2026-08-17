@@ -2,6 +2,10 @@
 BakeryOnl API - Main application entry point
 """
 
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+
 from fastapi import FastAPI, Request, status, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,19 +14,39 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime, timezone
-from pathlib import Path
 
 from app.db import get_db
 from app.core.config import settings
 from app.routers import (
-    products, batches, orders, auth, users,
-    suppliers, payments, reports, analytics, gift_boxes, lookup, components, leafie, alerts,
+    products,
+    batches,
+    orders,
+    auth,
+    users,
+    suppliers,
+    payments,
+    reports,
+    analytics,
+    gift_boxes,
+    lookup,
+    components,
+    leafie,
+    alerts,
     inventory_trace,
 )
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.security_middleware import SecurityMiddleware
 from app.scheduler import shutdown_scheduler, start_scheduler
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    start_scheduler()
+    try:
+        yield
+    finally:
+        shutdown_scheduler()
+
 
 app = FastAPI(
     title="BakeryOnl API",
@@ -30,7 +54,8 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 app.add_middleware(LoggingMiddleware)
@@ -58,12 +83,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     # own request handling normally uses to make response bodies JSON-safe;
     # this handler needs it too since it builds the JSONResponse manually.
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({
-            "error": "Validation Error",
-            "detail": exc.errors(),
-            "body": exc.body
-        })
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content=jsonable_encoder({"error": "Validation Error", "detail": exc.errors(), "body": exc.body}),
     )
 
 
@@ -74,8 +95,8 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "error": "Internal Server Error",
             "detail": "Đã xảy ra lỗi không mong đợi. Vui lòng thử lại sau.",
-            "path": str(request.url.path)
-        }
+            "path": str(request.url.path),
+        },
     )
 
 
@@ -101,16 +122,6 @@ app.include_router(alerts.router)
 app.include_router(inventory_trace.router)
 
 
-@app.on_event("startup")
-def _on_startup() -> None:
-    start_scheduler()
-
-
-@app.on_event("shutdown")
-def _on_shutdown() -> None:
-    shutdown_scheduler()
-
-
 @app.get("/", tags=["root"])
 def root():
     return {
@@ -118,17 +129,13 @@ def root():
         "version": "1.0.0",
         "description": "Hệ thống quản lý bánh kẹo",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
     }
 
 
 @app.get("/health", tags=["health"])
 def health_check():
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "service": "BakeryOnl API"
-    }
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(), "service": "BakeryOnl API"}
 
 
 @app.get("/health/db", tags=["health"])
@@ -144,9 +151,6 @@ def health_check_db(db: Session = Depends(get_db)):
     return {
         "status": "healthy" if db_status == "connected" else "unhealthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "database": {
-            "status": db_status,
-            "error": db_error
-        },
-        "service": "BakeryOnl API"
+        "database": {"status": db_status, "error": db_error},
+        "service": "BakeryOnl API",
     }

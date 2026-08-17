@@ -3,7 +3,7 @@
 Pydantic schemas cho các cấu trúc JSONB trong database
 Dùng để validate và serialize/deserialize các trường JSONB
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Generic, List, Optional, TypeVar
 from datetime import datetime
 
@@ -30,15 +30,14 @@ class ThongTinThanhToan(BaseModel):
     so_tai_khoan: str = Field(..., description="Số tài khoản ngân hàng")
     ten_thu_huong: str = Field(..., description="Tên chủ tài khoản")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "ten_ngan_hang": "Vietcombank",
                 "chi_nhanh": "Chi nhánh Hà Nội",
                 "so_tai_khoan": "1234567890",
                 "ten_thu_huong": "CÔNG TY ABC"
             }
-        }
+        })
 
 
 # =========================================================
@@ -52,8 +51,7 @@ class SanPhamApDung(BaseModel):
         description="Nếu loai_ap_dung != 'all', đây là mảng chứa các sanpham_id hoặc danhmuc_id được áp dụng"
     )
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "examples": [
                 {
                     "loai_ap_dung": "all",
@@ -68,7 +66,7 @@ class SanPhamApDung(BaseModel):
                     "danh_sach_id": [10, 11, 12]
                 }
             ]
-        }
+        })
 
 
 # =========================================================
@@ -89,8 +87,7 @@ class ThongTinGiaoDich(BaseModel):
         description="Lưu toàn bộ đối tượng JSON gốc do cổng thanh toán trả về để đối soát"
     )
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "ma_giao_dich_ben_thu_3": "vnp_TransactionNo_123456789",
                 "thoi_gian_giao_dich": "20250116123456",
@@ -104,7 +101,7 @@ class ThongTinGiaoDich(BaseModel):
                     "vnp_TransactionNo": "vnp_TransactionNo_123456789"
                 }
             }
-        }
+        })
 
 
 # =========================================================

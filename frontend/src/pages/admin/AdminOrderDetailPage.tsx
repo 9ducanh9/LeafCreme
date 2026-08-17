@@ -1,15 +1,15 @@
-// Admin Sales Detail Page
+// Admin Order Detail Page
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Button, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import SalesDetailCard from '../../components/admin/sales/SalesDetailCard'
-import { getOrderById, updateOrderStatus } from '../../services/admin/salesService'
-import { Order } from '../../types/admin'
+import OrderDetailCard from '../../components/admin/orders/OrderDetailCard'
+import { getOrderById, updateOrderStatus, cancelOrder } from '../../services/admin/adminOrderService'
+import type { Order, OrderStatus } from '../../types/admin'
 import { useToast } from '../../contexts/ToastContext'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 
-export default function AdminSalesDetailPage() {
+export default function AdminOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { showSuccess, showError } = useToast()
@@ -30,19 +30,28 @@ export default function AdminSalesDetailPage() {
   }, [id, showError])
 
   useEffect(() => {
-    if (id) {
-      loadOrder()
-    }
+    if (id) loadOrder()
   }, [id, loadOrder])
 
-  const handleStatusChange = async (status: Order['status']) => {
-    if (!id || !order) return
+  const handleStatusChange = async (status: OrderStatus) => {
+    if (!id) return
     try {
-      await updateOrderStatus(id, status)
-      setOrder({ ...order, status })
+      const updated = await updateOrderStatus(id, status)
+      setOrder(updated)
       showSuccess('Cập nhật trạng thái thành công')
     } catch (error) {
       showError('Không thể cập nhật trạng thái')
+    }
+  }
+
+  const handleCancel = async (reason: string) => {
+    if (!id) return
+    try {
+      const updated = await cancelOrder(id, reason)
+      setOrder(updated)
+      showSuccess('Đã hủy đơn hàng')
+    } catch (error) {
+      showError('Không thể hủy đơn hàng')
     }
   }
 
@@ -57,25 +66,18 @@ export default function AdminSalesDetailPage() {
   if (!order) {
     return (
       <Box>
-        <Typography variant="h6" sx={{ color: '#7A6F63' }}>
-          Không tìm thấy đơn hàng
-        </Typography>
+        <Typography variant="h6" color="text.secondary">Không tìm thấy đơn hàng</Typography>
       </Box>
     )
   }
 
   return (
     <Box>
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/admin/sales')}
-        sx={{ mb: 3, color: '#7A6F63' }}
-      >
-        Quay lại danh sách bán hàng
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/orders')} sx={{ mb: 3 }}>
+        Quay lại danh sách đơn hàng
       </Button>
 
-      <SalesDetailCard order={order} onStatusChange={handleStatusChange} />
+      <OrderDetailCard order={order} onStatusChange={handleStatusChange} onCancel={handleCancel} />
     </Box>
   )
 }
-

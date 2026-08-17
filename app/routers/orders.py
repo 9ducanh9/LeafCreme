@@ -1,13 +1,14 @@
 """
 Orders router: Quản lý đơn hàng (POS, Online, Đặt trước)
 """
+
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Literal, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, require_role
@@ -58,8 +59,7 @@ class OrderItemResponse(BaseModel):
     # confirmation/detail. See OrderService._resolve_item_names.
     product_name: str = "Sản phẩm không xác định"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VoucherAppliedResponse(BaseModel):
@@ -92,11 +92,10 @@ class OrderResponse(BaseModel):
     nhan_vien_tao: Optional[int] = None
     ngay_tao: datetime
     ngay_cap_nhat: datetime
-    items: List[OrderItemResponse] = []
-    vouchers: List[VoucherAppliedResponse] = []
+    items: List[OrderItemResponse] = Field(default_factory=list)
+    vouchers: List[VoucherAppliedResponse] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderUpdateStatus(BaseModel):
@@ -123,8 +122,7 @@ class OrderListResponse(BaseModel):
     ghi_chu: Optional[str] = None
     ngay_tao: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderSortField(str, Enum):
@@ -204,7 +202,16 @@ def create_order(
         _raise_http(exc)
 
 
-@router.api_route("/{order_id}/status", methods=["PUT", "PATCH"], response_model=OrderResponse)
+@router.put(
+    "/{order_id}/status",
+    response_model=OrderResponse,
+    operation_id="update_order_status_put",
+)
+@router.patch(
+    "/{order_id}/status",
+    response_model=OrderResponse,
+    operation_id="update_order_status_patch",
+)
 def update_order_status(
     order_id: int,
     payload: Optional[OrderUpdateStatus] = None,

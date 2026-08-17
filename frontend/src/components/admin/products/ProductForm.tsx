@@ -222,43 +222,10 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
     }
   }
 
-  const inputStyles = {
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '12px',
-      transition: 'all 0.2s ease',
-      '& fieldset': {
-        borderColor: 'rgba(122, 111, 99, 0.2)',
-        transition: 'border-color 0.2s ease',
-      },
-      '&:hover fieldset': {
-        borderColor: 'rgba(122, 111, 99, 0.4)',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: '#C59B72',
-        borderWidth: '2px',
-      },
-      '&:hover': {
-        backgroundColor: 'rgba(250, 250, 249, 0.5)',
-      },
-    },
-    '& .MuiInputLabel-root': {
-      fontSize: '0.9375rem',
-      fontWeight: 500,
-      '&.Mui-focused': {
-        color: '#C59B72',
-      },
-    },
-    '& .MuiFormHelperText-root': {
-      fontSize: '0.75rem',
-      marginTop: '6px',
-      color: '#9B948B',
-    },
-  }
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F', pb: 1 }}>
+        <DialogTitle sx={{ pb: 1 }}>
           {variant ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
@@ -272,7 +239,6 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               error={Boolean(fieldErrors.name)}
               helperText={fieldErrors.name}
-              sx={inputStyles}
             />
 
             <TextField
@@ -284,11 +250,10 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               error={Boolean(fieldErrors.description)}
-              sx={inputStyles}
               helperText="Mô tả chi tiết về sản phẩm"
             />
 
-            <FormControl fullWidth required sx={inputStyles}>
+            <FormControl fullWidth required>
               <InputLabel>Danh mục</InputLabel>
               <Select
                 value={formData.category}
@@ -305,7 +270,7 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               <Box sx={{ flex: 1, minWidth: '200px' }}>
-                <FormControl fullWidth required sx={inputStyles}>
+                <FormControl fullWidth required>
                   <InputLabel>Kích thước</InputLabel>
                   <Select
                     value={formData.size}
@@ -332,13 +297,12 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
                   inputProps={{ min: 0, step: 1000 }}
-                  sx={inputStyles}
                   helperText="Giá bán cho khách"
                 />
               </Box>
 
               <Box sx={{ flex: 1, minWidth: '200px' }}>
-                <FormControl fullWidth required sx={inputStyles}>
+                <FormControl fullWidth required>
                   <InputLabel>Trạng thái</InputLabel>
                   <Select
                     value={formData.status}
@@ -356,7 +320,7 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
 
             {/* Image Input Section */}
             <Box>
-              <Typography variant="body2" sx={{ mb: 2, color: '#7A6F63', fontWeight: 600, fontSize: '0.9375rem' }}>
+              <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 600 }}>
                 Hình ảnh sản phẩm
               </Typography>
               <Tabs
@@ -371,21 +335,7 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                     setImagePreview('')
                   }
                 }}
-                sx={{ 
-                  mb: 2.5,
-                  '& .MuiTab-root': {
-                    textTransform: 'none',
-                    fontWeight: 500,
-                    fontSize: '0.875rem',
-                    minHeight: '40px',
-                    '&.Mui-selected': {
-                      color: '#C59B72',
-                    },
-                  },
-                  '& .MuiTabs-indicator': {
-                    backgroundColor: '#C59B72',
-                  },
-                }}
+                sx={{ mb: 2.5 }}
               >
                 <Tab label="Nhập URL" value="url" />
                 <Tab label="Chọn file" value="file" />
@@ -404,7 +354,6 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                     setImagePreview(previewUrl)
                   }}
                   placeholder="https://example.com/image.jpg"
-                  sx={inputStyles}
                   helperText="Nhập đường dẫn URL hoặc đường dẫn tương đối (product/xxx.jpg)"
                 />
               ) : (
@@ -416,28 +365,10 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                     onChange={handleFileChange}
                     style={{ display: 'none' }}
                   />
-                  <Button
-                    variant="outlined"
-                    onClick={() => fileInputRef.current?.click()}
-                    fullWidth
-                    sx={{
-                      borderRadius: '12px',
-                      borderColor: 'rgba(122, 111, 99, 0.2)',
-                      color: '#7A6F63',
-                      textTransform: 'none',
-                      fontWeight: 500,
-                      py: 1.5,
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        borderColor: '#C59B72',
-                        bgcolor: 'rgba(197, 155, 114, 0.05)',
-                        borderWidth: '2px',
-                      },
-                    }}
-                  >
+                  <Button variant="outlined" onClick={() => fileInputRef.current?.click()} fullWidth sx={{ py: 1.5 }}>
                     Chọn ảnh từ máy
                   </Button>
-                  <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#9B948B', fontSize: '0.75rem' }}>
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.disabled' }}>
                     Kích thước tối đa 5MB, định dạng JPG/PNG/WEBP
                   </Typography>
                 </Box>
@@ -445,8 +376,8 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
 
               {/* Image Preview */}
               {imagePreview && (
-                <Box sx={{ mt: 3, p: 2, bgcolor: '#FAFAF9', borderRadius: '12px', border: '1px solid rgba(122, 111, 99, 0.1)' }}>
-                  <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: '#7A6F63', fontWeight: 600 }}>
+                <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                  <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary', fontWeight: 600 }}>
                     Xem trước
                   </Typography>
                   <img
@@ -465,51 +396,11 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, gap: 1.5, borderTop: '1px solid rgba(122, 111, 99, 0.08)' }}>
-          <Button 
-            onClick={onClose} 
-            disabled={loading}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 500,
-              color: '#7A6F63',
-              borderRadius: '10px',
-              px: 3,
-              py: 1,
-              '&:hover': {
-                bgcolor: 'rgba(122, 111, 99, 0.08)',
-              },
-            }}
-          >
+        <DialogActions sx={{ p: 3, gap: 1.5, borderTop: 1, borderColor: 'divider' }}>
+          <Button onClick={onClose} disabled={loading} sx={{ px: 3 }}>
             Hủy
           </Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            disabled={loading}
-            sx={{ 
-              bgcolor: '#C59B72',
-              textTransform: 'none',
-              fontWeight: 600,
-              borderRadius: '10px',
-              px: 4,
-              py: 1,
-              boxShadow: '0 2px 8px rgba(197, 155, 114, 0.25)',
-              transition: 'all 0.2s ease',
-              '&:hover': { 
-                bgcolor: '#B0895F',
-                boxShadow: '0 4px 12px rgba(197, 155, 114, 0.35)',
-                transform: 'translateY(-1px)',
-              },
-              '&:active': {
-                transform: 'translateY(0)',
-              },
-              '&:disabled': {
-                bgcolor: '#E8E5DD',
-                color: '#9B948B',
-              },
-            }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ px: 4 }}>
             {loading ? 'Đang lưu...' : variant ? 'Cập nhật' : 'Tạo mới'}
           </Button>
         </DialogActions>

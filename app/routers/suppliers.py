@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.db import get_db
 from app.core.dependencies import get_current_user, require_role
@@ -69,8 +69,7 @@ class SupplierResponse(BaseModel):
     dang_hoat_dong: bool
     ngay_tao: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================================================

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import {
-  AppBar, Avatar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Toolbar, Typography, useMediaQuery, useTheme,
+  AppBar, Avatar, Box, CssBaseline, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+  ThemeProvider, Toolbar, Typography, useMediaQuery, useTheme,
 } from '@mui/material'
+import { adminTheme } from '../../theme/adminTheme'
 import MenuIcon from '@mui/icons-material/Menu'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import InventoryIcon from '@mui/icons-material/Inventory'
@@ -71,7 +72,9 @@ export default function AdminLayout() {
   )
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <ThemeProvider theme={adminTheme}>
+      <CssBaseline />
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar position="fixed" sx={{ width: { xs: '100%', md: `calc(100% - ${currentDrawerWidth}px)` }, ml: { md: `${currentDrawerWidth}px` } }}>
         <Toolbar>
           <IconButton color="inherit" aria-label="Mở menu" edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { md: 'none' }, mr: 2 }}><MenuIcon /></IconButton>
@@ -85,6 +88,7 @@ export default function AdminLayout() {
         <Drawer variant="permanent" open sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: currentDrawerWidth, overflowX: 'hidden', transition: 'width .15s' } }}>{drawer}</Drawer>
       </Box>
       <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, mt: 8, width: { xs: '100%', md: `calc(100% - ${currentDrawerWidth}px)` } }}><Outlet /></Box>
-    </Box>
+      </Box>
+    </ThemeProvider>
   )
 }

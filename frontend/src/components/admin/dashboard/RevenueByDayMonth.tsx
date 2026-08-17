@@ -1,6 +1,6 @@
 // Revenue by Day/Month chart component
 import { useState } from 'react'
-import { Box, Paper, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material'
+import { Box, Paper, Typography, ToggleButton, ToggleButtonGroup, useTheme } from '@mui/material'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { RevenueData } from '../../../types/admin'
 
@@ -10,6 +10,7 @@ interface RevenueByDayMonthProps {
 }
 
 export default function RevenueByDayMonth({ dailyData, monthlyData }: RevenueByDayMonthProps) {
+  const theme = useTheme()
   const [view, setView] = useState<'daily' | 'monthly'>('daily')
 
   const formatCurrency = (value: number) => {
@@ -31,9 +32,9 @@ export default function RevenueByDayMonth({ dailyData, monthlyData }: RevenueByD
   const data = view === 'daily' ? dailyData : monthlyData
 
   return (
-    <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #EFEDE6' }}>
+    <Paper variant="outlined" sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h6" sx={{ fontFamily: 'Playfair Display, serif', color: '#473C2F', fontWeight: 600 }}>
+        <Typography variant="h6">
           Revenue by {view === 'daily' ? 'Day' : 'Month'}
         </Typography>
         <ToggleButtonGroup
@@ -50,60 +51,60 @@ export default function RevenueByDayMonth({ dailyData, monthlyData }: RevenueByD
       <ResponsiveContainer width="100%" height={300}>
         {view === 'daily' ? (
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E8E5DD" />
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
             <XAxis
               dataKey="date"
               tickFormatter={formatDate}
-              stroke="#7A6F63"
+              stroke={theme.palette.text.secondary}
               style={{ fontSize: '0.75rem' }}
             />
             <YAxis
               tickFormatter={formatCurrency}
-              stroke="#7A6F63"
+              stroke={theme.palette.text.secondary}
               style={{ fontSize: '0.75rem' }}
             />
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
               labelFormatter={(label) => `Date: ${formatDate(label)}`}
               contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #EFEDE6',
-                borderRadius: '8px',
+                backgroundColor: theme.palette.background.paper,
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: theme.shape.borderRadius,
               }}
             />
             <Legend />
             <Line
               type="monotone"
               dataKey="revenue"
-              stroke="#C59B72"
+              stroke={theme.palette.primary.main}
               strokeWidth={2}
               name="Revenue"
-              dot={{ fill: '#C59B72', r: 4 }}
+              dot={{ fill: theme.palette.primary.main, r: 4 }}
             />
           </LineChart>
         ) : (
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E8E5DD" />
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
             <XAxis
               dataKey="date"
-              stroke="#7A6F63"
+              stroke={theme.palette.text.secondary}
               style={{ fontSize: '0.75rem' }}
             />
             <YAxis
               tickFormatter={formatCurrency}
-              stroke="#7A6F63"
+              stroke={theme.palette.text.secondary}
               style={{ fontSize: '0.75rem' }}
             />
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
               contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #EFEDE6',
-                borderRadius: '8px',
+                backgroundColor: theme.palette.background.paper,
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: theme.shape.borderRadius,
               }}
             />
             <Legend />
-            <Bar dataKey="revenue" fill="#C59B72" name="Revenue" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="revenue" fill={theme.palette.primary.main} name="Revenue" radius={[8, 8, 0, 0]} />
           </BarChart>
         )}
       </ResponsiveContainer>

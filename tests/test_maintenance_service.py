@@ -8,11 +8,13 @@ Only sweep_stale_pending_payments gets dedicated tests here —
 run_daily_alert_scan is a thin passthrough to AlertService.generate_alerts,
 which already has its own coverage in test_alert_service.py.
 """
-from datetime import datetime, timedelta
+
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 
+from app.core.time import utc_now
 from app.models import DonHang, NguoiDung, ThanhToan, VaiTro
 from app.services.maintenance import MaintenanceService
 
@@ -63,7 +65,7 @@ def _make_payment(db_session, order, trang_thai: str, age_minutes: int) -> Thanh
         phuong_thuc="vi_dien_tu",
         so_tien=Decimal("50000"),
         trang_thai=trang_thai,
-        ngay_tao=datetime.utcnow() - timedelta(minutes=age_minutes),
+        ngay_tao=utc_now() - timedelta(minutes=age_minutes),
     )
     db_session.add(payment)
     db_session.commit()

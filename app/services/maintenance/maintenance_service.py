@@ -28,12 +28,14 @@ API instance don't justify a distributed task queue. APScheduler
 needs to run across multiple API instances (would then need a lock/leader
 election to avoid duplicate runs).
 """
-from datetime import datetime, timedelta
+
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.models import ThanhToan
+from app.core.time import utc_now
 from app.services.alerts import AlertService
 from app.services.orders import OrderService
 
@@ -56,11 +58,9 @@ class MaintenanceService:
         can't block the rest of the sweep — this runs unattended on a
         timer, there's no human watching it fail.
         """
-        cutoff = datetime.utcnow() - timedelta(minutes=stale_after_minutes)
+        cutoff = utc_now() - timedelta(minutes=stale_after_minutes)
         stale_payments = (
-            db.query(ThanhToan)
-            .filter(ThanhToan.trang_thai == _STALE_PAYMENT_STATUS, ThanhToan.ngay_tao < cutoff)
-            .all()
+            db.query(ThanhToan).filter(ThanhToan.trang_thai == _STALE_PAYMENT_STATUS, ThanhToan.ngay_tao < cutoff).all()
         )
 
         failed_order_ids: list[int] = []

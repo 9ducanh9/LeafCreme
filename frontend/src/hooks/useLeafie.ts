@@ -1,8 +1,6 @@
 // frontend/src/hooks/useLeafie.ts
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { askLeafie } from '../services/leafieService'
-import { buildLeafieContext } from '../utils/buildLeafieContext'
 import { useAuth } from '../contexts/AuthContext'
 import type { LeafieContext, LeafieMessage } from '../types/leafie'
 
@@ -72,6 +70,7 @@ export function useLeafie(): UseLeafieReturn {
   const previousUserIdRef = useRef<number | null>(null)
 
   const loadContext = useCallback(async () => {
+    setLoading(true)
     try {
       const currentUserId = user?.nguoidung_id || null
       const sessionId = getSessionId(currentUserId)
@@ -86,6 +85,7 @@ export function useLeafie(): UseLeafieReturn {
         }
       }
 
+      const { buildLeafieContext } = await import('../utils/buildLeafieContext')
       const freshContext = await buildLeafieContext()
       // Add sessionId to context
       const contextWithSession: LeafieContext = {
@@ -103,16 +103,25 @@ export function useLeafie(): UseLeafieReturn {
       )
     } catch (err) {
       console.error('❌ Failed to load Leafie context', err)
+      setError('Không thể tải dữ liệu cho Leafie. Vui lòng thử lại sau.')
+    } finally {
+      setLoading(false)
     }
     // Dep chỉ là user id — giống dep của effect gọi nó, nên không gây refetch vòng lặp.
   }, [user?.nguoidung_id])
 
-  // ✅ Load context on mount AND when user changes (for sessionId)
-  // loadContext phải khai TRƯỚC effect này: nó là const (không hoist như function
-  // declaration), nên để trong dep array mà khai sau sẽ ném TDZ lúc render.
+  // Context có session theo user, nên bỏ cache trong memory khi đổi tài khoản.
   useEffect(() => {
-    loadContext()
-  }, [loadContext])
+    setContext(null)
+  }, [user?.nguoidung_id])
+
+  // Dữ liệu menu/gift-box chỉ cần khi người dùng thực sự mở chat. Trước đây
+  // mọi page load đều gọi các API này dù Leafie chưa bao giờ được sử dụng.
+  useEffect(() => {
+    if (isOpen && !context) {
+      void loadContext()
+    }
+  }, [context, isOpen, loadContext])
 
   // ✅ Load messages when user changes
   useEffect(() => {
@@ -202,6 +211,7 @@ export function useLeafie(): UseLeafieReturn {
     })
 
     try {
+      const { askLeafie } = await import('../services/leafieService')
       const conversationHistory = currentMessages
         .slice(-10)
         .map((m) => ({

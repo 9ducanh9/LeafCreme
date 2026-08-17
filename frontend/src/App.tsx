@@ -1,4 +1,5 @@
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom'
 import { CartProvider } from './contexts/CartContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -6,44 +7,43 @@ import { LeafieProvider } from './contexts/LeafieContext'
 import ProtectedRoute from './components/routing/ProtectedRoute'
 import AdminProtectedRoute from './components/admin/routing/AdminProtectedRoute'
 import MainLayout from './components/layout/main-layout'
-import AdminLayout from './layout/admin/AdminLayout'
 import ToastContainer from './components/ui/ToastContainer'
 import ErrorBoundary from './components/ui/ErrorBoundary'
-import BakeryHomePage from './pages/BakeryHomePage'
-import ProductDetailPage from './pages/ProductDetailPage'
-import CartPage from './pages/CartPage'
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-import AuthCallbackPage from './pages/AuthCallbackPage'
-import VerifyEmailPage from './pages/VerifyEmailPage'
-import UserProfilePage from './pages/UserProfilePage'
-import MyOrdersPage from './pages/MyOrdersPage'
-import OrderDetailPage from './pages/OrderDetailPage'
-import CheckoutPage from './pages/CheckoutPage'
-import OrderSuccessPage from './pages/OrderSuccessPage'
-import PaymentQRPage from './pages/PaymentQRPage'
-import CategoryListingPage from './pages/CategoryListingPage'
-import SearchPage from './pages/SearchPage'
-import GiftBoxListPage from './pages/GiftBoxListPage'
-import GiftBoxDetailPage from './pages/GiftBoxDetailPage'
-import ContactPage from './pages/ContactPage'
-import PolicyPage from './pages/PolicyPage'
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
-import DataDeletionPage from './pages/DataDeletionPage'
-import AdminDashboardPage from './pages/admin/AdminDashboardPage'
-import AdminProductPage from './pages/admin/AdminProductPage'
-import AdminGiftBoxPage from './pages/admin/AdminGiftBoxPage'
-import AdminGiftBoxBomPage from './pages/admin/AdminGiftBoxBomPage'
-import AdminVoucherPage from './pages/admin/AdminVoucherPage'
-import AdminPreOrderPage from './pages/admin/AdminPreOrderPage'
-import AdminPreOrderDetailPage from './pages/admin/AdminPreOrderDetailPage'
-import AdminSalesPage from './pages/admin/AdminSalesPage'
-import AdminSalesDetailPage from './pages/admin/AdminSalesDetailPage'
-import AdminInventoryPage from './pages/admin/AdminInventoryPage'
-import AdminBatchCreatePage from './pages/admin/AdminBatchCreatePage'
-import AdminAlertsPage from './pages/admin/AdminAlertsPage'
-import AdminStockLedgerPage from './pages/admin/AdminStockLedgerPage'
-import AdminBatchTracePage from './pages/admin/AdminBatchTracePage'
+
+const AdminLayout = lazy(() => import('./layout/admin/AdminLayout'))
+const BakeryHomePage = lazy(() => import('./pages/BakeryHomePage'))
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
+const CartPage = lazy(() => import('./pages/CartPage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'))
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
+const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
+const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage'))
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
+const OrderSuccessPage = lazy(() => import('./pages/OrderSuccessPage'))
+const PaymentQRPage = lazy(() => import('./pages/PaymentQRPage'))
+const CategoryListingPage = lazy(() => import('./pages/CategoryListingPage'))
+const SearchPage = lazy(() => import('./pages/SearchPage'))
+const GiftBoxListPage = lazy(() => import('./pages/GiftBoxListPage'))
+const GiftBoxDetailPage = lazy(() => import('./pages/GiftBoxDetailPage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const PolicyPage = lazy(() => import('./pages/PolicyPage'))
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
+const DataDeletionPage = lazy(() => import('./pages/DataDeletionPage'))
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
+const AdminProductPage = lazy(() => import('./pages/admin/AdminProductPage'))
+const AdminGiftBoxPage = lazy(() => import('./pages/admin/AdminGiftBoxPage'))
+const AdminGiftBoxBomPage = lazy(() => import('./pages/admin/AdminGiftBoxBomPage'))
+const AdminVoucherPage = lazy(() => import('./pages/admin/AdminVoucherPage'))
+const AdminOrdersPage = lazy(() => import('./pages/admin/AdminOrdersPage'))
+const AdminOrderDetailPage = lazy(() => import('./pages/admin/AdminOrderDetailPage'))
+const AdminInventoryPage = lazy(() => import('./pages/admin/AdminInventoryPage'))
+const AdminBatchCreatePage = lazy(() => import('./pages/admin/AdminBatchCreatePage'))
+const AdminAlertsPage = lazy(() => import('./pages/admin/AdminAlertsPage'))
+const AdminStockLedgerPage = lazy(() => import('./pages/admin/AdminStockLedgerPage'))
+const AdminBatchTracePage = lazy(() => import('./pages/admin/AdminBatchTracePage'))
 
 // useBlocker (see hooks/admin/useUnsavedChanges) only works within a data
 // router, so routes are declared via createBrowserRouter/RouterProvider
@@ -52,10 +52,21 @@ function RootLayout() {
   return (
     <>
       <MainLayout>
-        <Outlet />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </MainLayout>
       <ToastContainer />
     </>
+  )
+}
+
+function RouteFallback() {
+  return (
+    <div className="mx-auto flex min-h-[18rem] max-w-container items-center justify-center px-4" role="status" aria-live="polite">
+      <span className="size-8 animate-spin rounded-full border-2 border-border-subtle border-t-brand" aria-hidden="true" />
+      <span className="sr-only">Đang tải trang</span>
+    </div>
   )
 }
 
@@ -143,10 +154,14 @@ const router = createBrowserRouter(
             { path: 'gift-boxes', element: <AdminGiftBoxPage /> },
             { path: 'gift-boxes/:id/bom', element: <AdminGiftBoxBomPage /> },
             { path: 'vouchers', element: <AdminVoucherPage /> },
-            { path: 'preorders', element: <AdminPreOrderPage /> },
-            { path: 'preorders/:id', element: <AdminPreOrderDetailPage /> },
-            { path: 'sales', element: <AdminSalesPage /> },
-            { path: 'sales/:id', element: <AdminSalesDetailPage /> },
+            { path: 'orders', element: <AdminOrdersPage /> },
+            { path: 'orders/:id', element: <AdminOrderDetailPage /> },
+            // Trang "Đơn đặt trước" + "Bán tại quầy" đã gộp thành "Đơn hàng"
+            // (/admin/orders) — giữ redirect để link/bookmark cũ không vỡ.
+            { path: 'preorders', element: <Navigate to="/admin/orders" replace /> },
+            { path: 'preorders/:id', element: <Navigate to="/admin/orders" replace /> },
+            { path: 'sales', element: <Navigate to="/admin/orders" replace /> },
+            { path: 'sales/:id', element: <Navigate to="/admin/orders" replace /> },
             { path: 'inventory', element: <AdminInventoryPage /> },
             { path: 'stock-ledger', element: <AdminStockLedgerPage /> },
             { path: 'batch-trace', element: <AdminBatchTracePage /> },

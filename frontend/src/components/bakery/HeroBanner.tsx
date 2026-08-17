@@ -42,7 +42,6 @@ export default function HeroBanner() {
                 width="3840"
                 height="2160"
                 loading={index === 0 ? 'eager' : 'lazy'}
-                fetchPriority={index === 0 ? 'high' : 'auto'}
                 className="size-full object-cover lg:object-contain"
               />
             </picture>

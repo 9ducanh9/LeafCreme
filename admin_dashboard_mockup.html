@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Leaf Creme Admin — Mockup</title>
+<style>
+  :root {
+    --sand-50:#FFFBF5; --sand-100:#FBF4EA; --sand-200:#F2E8DA; --sand-300:#E3D5C2;
+    --sand-400:#C4B29B; --sand-500:#9D8770; --sand-600:#7A6A56; --sand-700:#5A4C3C;
+    --sand-800:#3A2E24; --sand-900:#241B14;
+    --terra-50:#FDF3EC; --terra-100:#FAE3D4; --terra-200:#F5CDB2; --terra-500:#D97742;
+    --terra-600:#C2410C; --terra-700:#9A3412;
+    --mint-50:#EFFAF7; --mint-100:#D6F2EC; --mint-500:#14897C; --mint-600:#0F766E;
+    --green-50:#F0FDF4; --green-600:#15803D;
+    --amber-50:#FFFBEB; --amber-600:#B45309; --amber-200:#FDE4B0;
+    --red-50:#FEF2F2; --red-600:#B91C1C;
+    --bg-canvas:var(--sand-50); --bg-surface:#FFFFFF;
+    --fg-default:var(--sand-800); --fg-strong:var(--sand-900); --fg-muted:var(--sand-700); --fg-subtle:var(--sand-600);
+    --border-subtle:var(--sand-200); --border-default:var(--sand-300);
+    --radius-sm:6px; --radius-md:10px; --radius-lg:14px; --radius-full:9999px;
+    --shadow-xs:0 1px 2px 0 rgb(58 46 36 / 0.05);
+    --shadow-sm:0 1px 3px 0 rgb(58 46 36 / 0.08), 0 1px 2px -1px rgb(58 46 36 / 0.06);
+    --font-body:'Be Vietnam Pro', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-heading:'Be Vietnam Pro', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:var(--font-body); color:var(--fg-default); background:var(--bg-canvas); font-size:14px; }
+  .shell { display:flex; min-height:640px; border:1px solid var(--border-subtle); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-sm); }
+
+  .sidebar { width:248px; flex-shrink:0; background:var(--sand-900); color:var(--sand-200); display:flex; flex-direction:column; }
+  .brand { display:flex; align-items:center; gap:10px; padding:20px 18px; border-bottom:1px solid rgb(255 255 255 / 0.08); }
+  .brand-mark { width:32px; height:32px; border-radius:var(--radius-sm); background:var(--terra-500); display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size:15px; }
+  .brand-name { font-family:var(--font-heading); font-weight:700; font-size:14.5px; color:#fff; line-height:1.2; }
+  .brand-sub { font-size:11.5px; color:var(--sand-400); }
+  .nav { flex:1; padding:14px 10px; overflow-y:auto; }
+  .nav-group + .nav-group { margin-top:18px; }
+  .nav-label { font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--sand-500); padding:0 10px 6px; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--radius-sm); font-size:13.5px; color:var(--sand-300); text-decoration:none; margin-bottom:2px; cursor:pointer; }
+  .nav-item .dot { width:6px; height:6px; border-radius:50%; background:currentColor; opacity:0.5; flex-shrink:0; }
+  .nav-item.active { background:rgb(217 119 66 / 0.16); color:#fff; font-weight:600; }
+  .nav-item.active .dot { background:var(--terra-500); opacity:1; }
+  .nav-item:not(.active):hover { background:rgb(255 255 255 / 0.05); color:#fff; }
+
+  .main { flex:1; display:flex; flex-direction:column; background:var(--bg-canvas); min-width:0; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; background:var(--bg-surface); border-bottom:1px solid var(--border-subtle); }
+  .crumb { font-size:12.5px; color:var(--fg-subtle); }
+  .crumb b { color:var(--fg-default); font-weight:600; }
+  .avatar { width:30px; height:30px; border-radius:50%; background:var(--terra-100); color:var(--terra-700); display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; }
+
+  .content { padding:24px 28px; overflow-y:auto; }
+  .page { display:none; }
+  .page.show { display:block; }
+  .page-head { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; gap:16px; flex-wrap:wrap; }
+  .page-title { font-family:var(--font-heading); font-size:22px; font-weight:700; color:var(--fg-strong); margin:0 0 4px; }
+  .page-sub { font-size:13px; color:var(--fg-subtle); margin:0; }
+  .head-actions { display:flex; gap:10px; }
+  .range-pill { display:flex; align-items:center; gap:6px; padding:7px 12px; border:1px solid var(--border-default); border-radius:var(--radius-full); background:var(--bg-surface); font-size:12.5px; font-weight:600; color:var(--fg-muted); }
+
+  .btn { border-radius:var(--radius-sm); padding:8px 14px; font-size:12.5px; font-weight:700; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .btn-primary { background:var(--terra-500); color:#fff; }
+  .btn-secondary { background:var(--bg-surface); color:var(--fg-muted); border-color:var(--border-default); }
+  .btn-danger-outline { background:var(--bg-surface); color:var(--red-600); border-color:#F3D2D2; }
+
+  .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+  .kpi-card { background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px 18px; box-shadow:var(--shadow-xs); }
+  .kpi-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .kpi-label { font-size:12px; color:var(--fg-subtle); font-weight:600; }
+  .kpi-icon { width:26px; height:26px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .kpi-icon.terra { background:var(--terra-50); color:var(--terra-600); }
+  .kpi-icon.mint { background:var(--mint-50); color:var(--mint-600); }
+  .kpi-value { font-size:22px; font-weight:700; color:var(--fg-strong); font-family:var(--font-heading); }
+  .kpi-delta { font-size:11.5px; color:var(--fg-subtle); margin-top:4px; }
+
+  .row-2 { display:grid; grid-template-columns:1.6fr 1fr; gap:14px; margin-bottom:14px; }
+  .card { background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:var(--radius-md); box-shadow:var(--shadow-xs); }
+  .card-head { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border-subtle); }
+  .card-title { font-size:13.5px; font-weight:700; color:var(--fg-strong); }
+  .card-body { padding:18px; }
+
+  .bars { display:flex; align-items:flex-end; gap:8px; height:120px; }
+  .bar { flex:1; background:linear-gradient(to top, var(--terra-500), var(--terra-200)); border-radius:4px 4px 0 0; }
+
+  .alert-row { display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-subtle); font-size:12.5px; }
+  .alert-row:last-child { border-bottom:none; }
+  .sev { padding:2px 8px; border-radius:var(--radius-full); font-size:11px; font-weight:700; }
+  .sev.high { background:var(--red-50); color:var(--red-600); }
+  .sev.mid { background:var(--amber-50); color:var(--amber-600); }
+
+  .row-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
+  .empty-mini { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:22px 10px; color:var(--fg-subtle); font-size:12px; text-align:center; }
+  .empty-block { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:56px 10px; color:var(--fg-subtle); font-size:13px; text-align:center; }
+  .empty-dot { width:28px; height:28px; border-radius:50%; background:var(--sand-100); display:flex; align-items:center; justify-content:center; color:var(--sand-500); font-size:13px; }
+  .empty-dot.lg { width:40px; height:40px; font-size:17px; }
+
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th { text-align:left; font-size:11px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; color:var(--fg-subtle); padding:9px 12px; border-bottom:1px solid var(--border-subtle); background:var(--sand-50); }
+  td { padding:10px 12px; border-bottom:1px solid var(--border-subtle); color:var(--fg-default); vertical-align:middle; }
+  tbody tr:last-child td { border-bottom:none; }
+  .chip { padding:3px 10px; border-radius:var(--radius-full); font-size:11px; font-weight:700; background:var(--green-50); color:var(--green-600); white-space:nowrap; }
+  .chip-neutral { background:var(--sand-100); color:var(--fg-muted); }
+  .chip-tag { background:var(--terra-50); color:var(--terra-600); }
+  .sku { font-family:ui-monospace, monospace; color:var(--fg-subtle); font-size:11.5px; }
+  .thumb { width:34px; height:34px; border-radius:var(--radius-sm); background:var(--sand-100); display:flex; align-items:center; justify-content:center; color:var(--sand-500); font-size:13px; }
+  .icon-btn { width:26px; height:26px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); background:var(--bg-surface); color:var(--fg-subtle); display:inline-flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; margin-left:4px; }
+  .icon-btn.danger { color:var(--red-600); }
+
+  .toolbar { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .field { padding:8px 12px; border:1px solid var(--border-default); border-radius:var(--radius-sm); background:var(--bg-surface); font-size:12.5px; color:var(--fg-muted); min-width:160px; }
+  .field.grow { flex:1; min-width:220px; }
+
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--border-subtle); margin-bottom:16px; }
+  .tab { padding:9px 14px; font-size:12.5px; font-weight:600; color:var(--fg-subtle); border-bottom:2px solid transparent; cursor:pointer; }
+  .tab.active { color:var(--terra-600); border-bottom-color:var(--terra-500); }
+
+  .banner { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-radius:var(--radius-md); background:var(--amber-50); border:1px solid var(--amber-200); color:var(--amber-600); font-size:12.5px; font-weight:600; margin-bottom:16px; }
+
+  .type-pills { display:flex; gap:6px; }
+  .pill { padding:6px 12px; border-radius:var(--radius-full); border:1px solid var(--border-default); font-size:12px; font-weight:600; color:var(--fg-muted); background:var(--bg-surface); cursor:pointer; }
+  .pill.active { background:var(--sand-900); border-color:var(--sand-900); color:#fff; }
+  .type-online { background:var(--mint-50); color:var(--mint-600); }
+  .type-preorder { background:var(--terra-50); color:var(--terra-600); }
+  .type-manual { background:var(--sand-100); color:var(--fg-muted); }
+
+  .form-panel { display:none; margin-bottom:16px; }
+  .form-panel.show { display:block; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:18px; }
+  .form-field { display:flex; flex-direction:column; gap:5px; }
+  .form-field.full { grid-column:1 / -1; }
+  .form-field label { font-size:12px; font-weight:600; color:var(--fg-muted); }
+  .form-field input, .form-field select, .form-field textarea { padding:9px 12px; border:1px solid var(--border-default); border-radius:var(--radius-sm); background:var(--bg-surface); font-size:13px; color:var(--fg-default); font-family:inherit; }
+  .form-field textarea { resize:vertical; min-height:60px; }
+  .seg { display:flex; border:1px solid var(--border-default); border-radius:var(--radius-sm); overflow:hidden; width:fit-content; }
+  .seg-opt { padding:8px 16px; font-size:12.5px; font-weight:600; color:var(--fg-muted); cursor:pointer; }
+  .seg-opt.active { background:var(--terra-500); color:#fff; }
+  .line-items { border:1px solid var(--border-subtle); border-radius:var(--radius-sm); overflow:hidden; }
+  .line-item { display:grid; grid-template-columns:1fr 90px 100px 32px; gap:10px; align-items:center; padding:9px 12px; border-bottom:1px solid var(--border-subtle); font-size:12.5px; }
+  .line-item:last-child { border-bottom:none; }
+  .line-item.head { background:var(--sand-50); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:var(--fg-subtle); }
+  .add-line { padding:9px 12px; font-size:12px; color:var(--terra-600); font-weight:600; cursor:pointer; }
+  .form-actions { display:flex; justify-content:flex-end; gap:10px; padding:14px 18px; border-top:1px solid var(--border-subtle); background:var(--sand-50); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">L</div>
+      <div><div class="brand-name">Leaf Creme</div><div class="brand-sub">Cổng quản trị</div></div>
+    </div>
+    <div class="nav" id="nav">
+      <div class="nav-group">
+        <div class="nav-label">Tổng quan</div>
+        <a class="nav-item active" data-page="overview" data-title="Tổng quan kinh doanh"><span class="dot"></span>Tổng quan</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Danh mục</div>
+        <a class="nav-item" data-page="products" data-title="Quản lý sản phẩm"><span class="dot"></span>Sản phẩm</a>
+        <a class="nav-item" data-page="giftboxes" data-title="Hộp quà"><span class="dot"></span>Hộp quà</a>
+        <a class="nav-item" data-page="vouchers" data-title="Mã giảm giá"><span class="dot"></span>Mã giảm giá</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Kho &amp; lô hàng</div>
+        <a class="nav-item" data-page="inventory" data-title="Tồn kho"><span class="dot"></span>Tồn kho</a>
+        <a class="nav-item" data-page="ledger" data-title="Nhật ký kho"><span class="dot"></span>Nhật ký kho</a>
+        <a class="nav-item" data-page="soon" data-title="Truy vết lô"><span class="dot"></span>Truy vết lô</a>
+        <a class="nav-item" data-page="soon" data-title="Nhập lô"><span class="dot"></span>Nhập lô</a>
+        <a class="nav-item" data-page="alerts" data-title="Cảnh báo tồn kho"><span class="dot"></span>Cảnh báo</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Bán hàng</div>
+        <a class="nav-item" data-page="orders" data-title="Đơn hàng"><span class="dot"></span>Đơn hàng</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="crumb">Tổng quan / <b id="crumb-title">Tổng quan kinh doanh</b></div>
+      <div class="avatar">L</div>
+    </div>
+
+    <div class="content">
+
+      <div class="page show" id="page-overview">
+        <div class="page-head">
+          <div><p class="page-title">Tổng quan kinh doanh</p><p class="page-sub">Theo dõi doanh thu, đơn hàng và tồn kho theo từng ô dữ liệu.</p></div>
+          <div class="range-pill">14 ngày qua ▾</div>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Doanh thu</span><span class="kpi-icon terra">₫</span></div><div class="kpi-value">0 ₫</div><div class="kpi-delta">Chưa có dữ liệu kỳ này</div></div>
+          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Đơn hàng</span><span class="kpi-icon mint">▤</span></div><div class="kpi-value">0</div><div class="kpi-delta">Chưa có đơn kỳ này</div></div>
+          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Giá trị trung bình</span><span class="kpi-icon terra">★</span></div><div class="kpi-value">0 ₫</div><div class="kpi-delta">Trên mỗi đơn hàng</div></div>
+          <div class="kpi-card"><div class="kpi-top"><span class="kpi-label">Sản phẩm bán chạy</span><span class="kpi-icon mint">★</span></div><div class="kpi-value" style="font-size:16px;">Chưa có dữ liệu</div><div class="kpi-delta">&nbsp;</div></div>
+        </div>
+        <div class="row-2">
+          <div class="card"><div class="card-head"><span class="card-title">Doanh thu theo ngày</span></div>
+            <div class="card-body"><div class="bars">
+              <div class="bar" style="height:18%"></div><div class="bar" style="height:32%"></div><div class="bar" style="height:14%"></div><div class="bar" style="height:48%"></div>
+              <div class="bar" style="height:26%"></div><div class="bar" style="height:60%"></div><div class="bar" style="height:38%"></div><div class="bar" style="height:22%"></div>
+              <div class="bar" style="height:44%"></div><div class="bar" style="height:30%"></div><div class="bar" style="height:52%"></div><div class="bar" style="height:20%"></div>
+              <div class="bar" style="height:36%"></div><div class="bar" style="height:28%"></div>
+            </div></div>
+          </div>
+          <div class="card"><div class="card-head"><span class="card-title">Cảnh báo tồn kho</span></div>
+            <div class="card-body">
+              <div class="alert-row"><span>Gift Box — tồn 3</span><span class="sev high">Cao</span></div>
+              <div class="alert-row"><span>Ribbon — tồn 10</span><span class="sev mid">Bình thường</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="row-3">
+          <div class="card"><div class="card-head"><span class="card-title">Sản phẩm theo doanh thu</span></div><div class="empty-mini"><span class="empty-dot">◔</span>Chưa có doanh thu để xếp hạng</div></div>
+          <div class="card"><div class="card-head"><span class="card-title">Bán chạy</span></div><div class="empty-mini"><span class="empty-dot">◔</span>Chưa có đơn hàng nào</div></div>
+          <div class="card"><div class="card-head"><span class="card-title">Danh mục</span></div><div class="empty-mini"><span class="empty-dot">◔</span>Chưa có dữ liệu danh mục</div></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-products">
+        <div class="page-head">
+          <div><p class="page-title">Quản lý sản phẩm</p><p class="page-sub">27 sản phẩm · 6 danh mục</p></div>
+          <div class="head-actions"><button class="btn btn-secondary">Quản lý danh mục</button><button class="btn btn-primary">+ Thêm sản phẩm</button></div>
+        </div>
+        <div class="toolbar">
+          <input class="field grow" placeholder="Tìm kiếm sản phẩm" disabled>
+          <select class="field" disabled><option>Danh mục</option></select>
+          <select class="field" disabled><option>Kích thước</option></select>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th></th><th>Tên</th><th>Mô tả</th><th>Danh mục</th><th>Giá</th><th>Kích thước</th><th>Trạng thái</th><th>SKU</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><div class="thumb">🍰</div></td><td style="font-weight:600;color:var(--fg-strong)">Mousse chanh dây</td><td style="color:var(--fg-subtle)">Mousse vị chanh dây.</td><td><span class="chip chip-tag">Mousse</span></td><td style="font-weight:700">220.000 ₫</td><td>M</td><td><span class="chip">Hoạt động</span></td><td class="sku">LC-MOU-01-16CM</td><td><span class="icon-btn">✎</span><span class="icon-btn danger">🗑</span></td></tr>
+              <tr><td><div class="thumb">🍓</div></td><td style="font-weight:600;color:var(--fg-strong)">Mousse dâu tươi</td><td style="color:var(--fg-subtle)">Mousse vị dâu tươi.</td><td><span class="chip chip-tag">Mousse</span></td><td style="font-weight:700">220.000 ₫</td><td>M</td><td><span class="chip">Hoạt động</span></td><td class="sku">LC-MOU-02-16CM</td><td><span class="icon-btn">✎</span><span class="icon-btn danger">🗑</span></td></tr>
+              <tr><td><div class="thumb">🎁</div></td><td style="font-weight:600;color:var(--fg-strong)">TEST_QA_Bánh thử nghiệm</td><td style="color:var(--fg-subtle)">Sản phẩm test do QA tạo.</td><td><span class="chip chip-tag">Bánh kem</span></td><td style="font-weight:700">99.000 ₫</td><td>M</td><td><span class="chip chip-neutral">Ẩn</span></td><td class="sku">TES-M-468</td><td><span class="icon-btn">✎</span><span class="icon-btn danger">🗑</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page" id="page-giftboxes">
+        <div class="page-head">
+          <div><p class="page-title">Hộp quà</p><p class="page-sub">1 hộp quà đang được quản lý</p></div>
+          <div class="head-actions"><button class="btn btn-primary">+ Thêm hộp quà</button></div>
+        </div>
+        <div class="toolbar"><input class="field grow" placeholder="Tìm kiếm" disabled></div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Mã</th><th>Tên hộp quà</th><th>SKU</th><th>Giá bán</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td style="font-weight:600;color:var(--fg-strong)">LC_VERIFY_20260807_071338_518555 Gift Box</td><td class="sku">LC_VERIFY_..._GIFT</td><td style="font-weight:700">180.000 ₫</td><td><span class="chip">Đang bán</span></td><td><span class="icon-btn">✎</span><span class="icon-btn danger">🗑</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page" id="page-alerts">
+        <div class="page-head">
+          <div><p class="page-title">Cảnh báo tồn kho</p><p class="page-sub">Đang chờ xử lý: 1 · Đã xử lý: 1</p></div>
+          <div class="head-actions"><button class="btn btn-secondary">↻ Làm mới</button><button class="btn btn-danger-outline">🗑 Dọn đã xử lý</button></div>
+        </div>
+        <div class="banner"><span>⚠ Có 1 cảnh báo tồn kho đang chờ xử lý.</span></div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Thời gian</th><th>Loại</th><th>Mức độ</th><th>Đối tượng</th><th>Tồn hiện tại</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>23:00 9/8/2026</td><td>Tồn kho thấp</td><td><span class="sev high">Cao</span></td><td>Gift Box</td><td>3</td><td><span class="chip chip-neutral">Đã xử lý</span></td><td></td></tr>
+              <tr><td>23:00 9/8/2026</td><td>Tồn kho thấp</td><td><span class="sev mid">Bình thường</span></td><td>Ribbon</td><td>10</td><td><span class="chip">Chưa xử lý</span></td><td><span class="icon-btn" title="Đánh dấu đã xử lý">✓</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page" id="page-inventory">
+        <div class="page-head">
+          <div><p class="page-title">Tồn kho</p><p class="page-sub">Các lô hàng đang quản lý</p></div>
+        </div>
+        <div class="tabs"><div class="tab active">Sản phẩm</div><div class="tab">Linh kiện</div><div class="tab">Hộp quà</div></div>
+        <div class="toolbar"><input class="field grow" placeholder="Tìm theo mã lô" disabled></div>
+        <div class="card">
+          <table><thead><tr><th>Mã lô</th><th>Mã hệ thống</th><th>Ngày nhập</th><th>Hạn dùng</th><th>Nhập</th><th>Tồn hiện tại</th><th>Trạng thái</th></tr></thead><tbody></tbody></table>
+          <div class="empty-block"><span class="empty-dot lg">◔</span><b style="color:var(--fg-strong)">Chưa có lô hàng nào</b><span>Nhập lô đầu tiên để bắt đầu theo dõi tồn kho.</span></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-vouchers">
+        <div class="page-head"><div><p class="page-title">Quản lý mã giảm giá</p><p class="page-sub">Chức năng demo/dev-only — backend chưa có API CRUD thật.</p></div><button class="btn btn-primary" disabled>+ Tạo mã giảm giá</button></div>
+        <div class="card"><div class="empty-block"><span class="empty-dot lg">◔</span><b style="color:var(--fg-strong)">Không tìm thấy mã giảm giá</b></div></div>
+      </div>
+
+      <div class="page" id="page-ledger">
+        <div class="page-head"><div><p class="page-title">Nhật ký kho</p><p class="page-sub">Theo dõi biến động tồn kho</p></div><button class="btn btn-secondary">↻ Làm mới</button></div>
+        <div class="card"><div class="empty-block"><span class="empty-dot lg">◔</span><b style="color:var(--fg-strong)">Chưa có biến động nào</b></div></div>
+      </div>
+
+      <div class="page" id="page-orders">
+        <div class="page-head">
+          <div><p class="page-title">Đơn hàng</p><p class="page-sub">Gộp đơn trực tuyến, đặt trước và đơn tạo thủ công vào một chỗ.</p></div>
+          <div class="head-actions"><button class="btn btn-secondary">↻ Làm mới</button><button class="btn btn-primary" id="btn-toggle-order-form">+ Tạo đơn thủ công</button></div>
+        </div>
+
+        <div class="form-panel" id="order-form-panel">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Tạo đơn thủ công</span><span style="font-size:12px;color:var(--fg-subtle)">Khách nhắn tin đặt hoặc mua trực tiếp</span></div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Loại đơn</label>
+                <select id="order-type-select">
+                  <option value="pos">Thủ công (tại quầy / nhắn tin)</option>
+                  <option value="dattruoc">Đặt trước (có cọc)</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Tên khách hàng</label>
+                <input placeholder="VD: Chị Lan">
+              </div>
+              <div class="form-field">
+                <label>Số điện thoại</label>
+                <input placeholder="VD: 0901 234 567">
+              </div>
+              <div class="form-field">
+                <label>Hình thức nhận hàng</label>
+                <div class="seg" id="fulfillment-seg">
+                  <div class="seg-opt active" data-mode="pickup">Lấy tại quầy</div>
+                  <div class="seg-opt" data-mode="delivery">Giao hàng</div>
+                </div>
+              </div>
+              <div class="form-field full" id="delivery-address-field" style="display:none">
+                <label>Địa chỉ giao hàng</label>
+                <input placeholder="Số nhà, đường, phường/xã...">
+              </div>
+              <div class="form-field">
+                <label>Ngày giao / lấy dự kiến</label>
+                <input type="datetime-local">
+              </div>
+              <div class="form-field" id="deposit-field" style="display:none">
+                <label>Tiền đặt cọc</label>
+                <input type="number" placeholder="0" step="10000">
+              </div>
+
+              <div class="form-field full">
+                <label>Sản phẩm trong đơn</label>
+                <div class="line-items">
+                  <div class="line-item head"><span>Sản phẩm / hộp quà</span><span>SL</span><span>Đơn giá</span><span></span></div>
+                  <div class="line-item"><span>Mousse chanh dây — M</span><span>2</span><span>220.000 ₫</span><span class="icon-btn danger">✕</span></div>
+                  <div class="line-item"><span>Mousse dâu tươi — M</span><span>1</span><span>220.000 ₫</span><span class="icon-btn danger">✕</span></div>
+                  <div class="add-line">+ Thêm dòng sản phẩm</div>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label>Mã giảm giá (nếu có)</label>
+                <input placeholder="VD: LEAF10">
+              </div>
+              <div class="form-field full">
+                <label>Ghi chú</label>
+                <textarea placeholder="Ghi chú nội bộ hoặc yêu cầu của khách..."></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-secondary" id="btn-cancel-order-form">Hủy</button>
+              <button class="btn btn-primary">Tạo đơn hàng</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="type-pills" style="margin-bottom:12px;">
+          <div class="pill active">Tất cả</div>
+          <div class="pill">Trực tuyến</div>
+          <div class="pill">Đặt trước</div>
+          <div class="pill">Thủ công</div>
+        </div>
+        <div class="toolbar">
+          <input class="field grow" placeholder="Tìm theo mã đơn hoặc tên khách" disabled>
+          <select class="field" disabled><option>Trạng thái</option></select>
+          <input class="field" type="date" disabled>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Mã đơn</th><th>Loại</th><th>Khách hàng</th><th>Số điện thoại</th><th>Tổng tiền</th><th>Trạng thái</th><th>Ngày giao/lấy</th><th>Ngày tạo</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="sku">LC-DH-0231</td><td><span class="chip type-online">Trực tuyến</span></td><td>Nguyễn Thị Hòa</td><td>0912 345 678</td><td style="font-weight:700">440.000 ₫</td><td><span class="chip chip-neutral">Đang giao</span></td><td>16/8/2026</td><td>15/8/2026</td><td><span class="icon-btn">👁</span></td></tr>
+              <tr><td class="sku">LC-DH-0230</td><td><span class="chip type-preorder">Đặt trước</span></td><td>Chị Lan</td><td>0901 234 567</td><td style="font-weight:700">660.000 ₫</td><td><span class="chip">Đã cọc</span></td><td>20/8/2026</td><td>14/8/2026</td><td><span class="icon-btn">👁</span></td></tr>
+              <tr><td class="sku">LC-DH-0229</td><td><span class="chip type-manual">Thủ công</span></td><td>Anh Minh</td><td>0987 654 321</td><td style="font-weight:700">220.000 ₫</td><td><span class="chip">Hoàn thành</span></td><td>13/8/2026</td><td>13/8/2026</td><td><span class="icon-btn">👁</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page" id="page-soon">
+        <div class="page-head"><div><p class="page-title" id="soon-title">Trang này</p><p class="page-sub">Cùng bộ theme, chưa dựng mockup riêng ở bước này.</p></div></div>
+        <div class="card"><div class="empty-block"><span class="empty-dot lg">◔</span>Dùng chung style với các trang trên — báo t nếu muốn xem riêng trang này.</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script>
+  document.getElementById('nav').addEventListener('click', function (e) {
+    var item = e.target.closest('.nav-item');
+    if (!item) return;
+    document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active') });
+    item.classList.add('active');
+    document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('show') });
+    var key = item.getAttribute('data-page');
+    var target = document.getElementById('page-' + key);
+    if (target) target.classList.add('show');
+    document.getElementById('crumb-title').textContent = item.getAttribute('data-title');
+    if (key === 'soon') document.getElementById('soon-title').textContent = item.getAttribute('data-title');
+  });
+
+  var orderForm = document.getElementById('order-form-panel');
+  var toggleBtn = document.getElementById('btn-toggle-order-form');
+  var cancelBtn = document.getElementById('btn-cancel-order-form');
+  if (toggleBtn) toggleBtn.addEventListener('click', function () { orderForm.classList.toggle('show'); });
+  if (cancelBtn) cancelBtn.addEventListener('click', function () { orderForm.classList.remove('show'); });
+
+  var fulfillSeg = document.getElementById('fulfillment-seg');
+  if (fulfillSeg) fulfillSeg.addEventListener('click', function (e) {
+    var opt = e.target.closest('.seg-opt');
+    if (!opt) return;
+    fulfillSeg.querySelectorAll('.seg-opt').forEach(function (o) { o.classList.remove('active') });
+    opt.classList.add('active');
+    document.getElementById('delivery-address-field').style.display = opt.getAttribute('data-mode') === 'delivery' ? '' : 'none';
+  });
+
+  var orderTypeSelect = document.getElementById('order-type-select');
+  if (orderTypeSelect) orderTypeSelect.addEventListener('change', function () {
+    document.getElementById('deposit-field').style.display = orderTypeSelect.value === 'dattruoc' ? '' : 'none';
+  });
+
+  document.querySelectorAll('.type-pills').forEach(function (group) {
+    group.addEventListener('click', function (e) {
+      var pill = e.target.closest('.pill');
+      if (!pill) return;
+      group.querySelectorAll('.pill').forEach(function (p) { p.classList.remove('active') });
+      pill.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
