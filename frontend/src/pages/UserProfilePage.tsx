@@ -111,8 +111,20 @@ export default function UserProfilePage() {
     setLoading(true)
 
     try {
+      // avatar_url is intentionally left out of this payload: it's persisted
+      // by its own dedicated endpoint (see handleAvatarChange -> uploadAvatar),
+      // which commits to the DB immediately on file select, independent of
+      // this form's Save button. Including it here raced the two requests —
+      // if Save was clicked right after picking a photo (before the avatar
+      // upload's local state update had landed), this PUT could carry the
+      // *old* avatar_url and, depending on which request's DB write lands
+      // last, silently overwrite the just-uploaded avatar back to the
+      // previous value. Dropping it here makes this form only ever touch the
+      // fields it actually owns.
+      const { avatar_url: _avatarUrl, ...profileFields } = profileData
+      void _avatarUrl
       const updateData: UserUpdateData = {
-        ...profileData,
+        ...profileFields,
         ngay_sinh: profileData.ngay_sinh || undefined,
       }
 
@@ -413,10 +425,11 @@ export default function UserProfilePage() {
                     </button>
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || uploadingAvatar}
+                      title={uploadingAvatar ? 'Đang tải ảnh lên, vui lòng đợi...' : undefined}
                       className="rounded-button bg-brand px-8 py-3.5 font-semibold text-fg-on-brand transition-all duration-200 hover:bg-brand-hover hover:shadow-md focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
+                      {loading ? 'Đang lưu...' : uploadingAvatar ? 'Đang tải ảnh...' : 'Lưu thay đổi'}
                     </button>
                   </div>
                 </form>
