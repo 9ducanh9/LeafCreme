@@ -16,8 +16,8 @@ export default function Card({ className, interactive = false, ...props }: CardP
   )
 }
 
-export function CardMedia({ className, ratio = 'product', ...props }: HTMLAttributes<HTMLDivElement> & { ratio?: 'product' | 'hero' | 'square' }) {
-  return <div className={cn('relative w-full overflow-hidden bg-bg-inset', ratio === 'product' && 'aspect-product', ratio === 'hero' && 'aspect-hero', ratio === 'square' && 'aspect-square', className)} {...props} />
+export function CardMedia({ className, ratio = 'product', ...props }: HTMLAttributes<HTMLDivElement> & { ratio?: 'product' | 'hero' | 'landscape' | 'square' }) {
+  return <div className={cn('relative w-full overflow-hidden bg-bg-inset', ratio === 'product' && 'aspect-product', ratio === 'hero' && 'aspect-hero', ratio === 'landscape' && 'aspect-[4/3]', ratio === 'square' && 'aspect-square', className)} {...props} />
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

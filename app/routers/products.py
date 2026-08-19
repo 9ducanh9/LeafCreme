@@ -4,7 +4,9 @@ Products Router: CRUD operations cho sản phẩm và biến thể
 Thin by design — see app.services.products.ProductService for the business
 logic (moved out as part of the Phase 1 service-layer migration).
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy import Date, cast, func, select
 from sqlalchemy.orm import Session
@@ -17,6 +19,7 @@ from ..db import get_db
 from ..core.dependencies import get_current_active_user, require_role, get_optional_user
 from ..models import BienTheSanPham, LoHangSanPham, NguoiDung, TonKhoSanPham
 from ..services.products import ProductService, DomainError
+from ..services.products.product_service import CropRect
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from ..schemas import Page
 
@@ -164,6 +167,21 @@ class ProductAvailabilityResponse(BaseModel):
     dang_ban_duoc: bool
 
 
+class CropRectPayload(BaseModel):
+    x: int = Field(..., ge=0)
+    y: int = Field(..., ge=0)
+    width: int = Field(..., gt=0)
+    height: int = Field(..., gt=0)
+
+
+def _parse_crop_rect(raw_crop: str) -> CropRect:
+    try:
+        parsed = CropRectPayload.model_validate(json.loads(raw_crop))
+    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail="Khung cắt ảnh không hợp lệ") from exc
+    return CropRect(**parsed.model_dump())
+
+
 # =========================================================
 # Product Endpoints
 # =========================================================
@@ -204,15 +222,36 @@ def create_product(
 @router.post("/upload-image", status_code=status.HTTP_200_OK)
 async def upload_product_image(
     file: UploadFile = File(...),
+    crop: Optional[str] = Form(default=None),
     current_user: NguoiDung = Depends(require_role("admin", "manager")),
 ):
     """Upload ảnh sản phẩm - PHẢI ĐẶT TRƯỚC /{product_id} để tránh conflict"""
     file_content = await file.read()
     try:
-        image_path = product_service.store_product_image(file.content_type, file.filename, file_content)
+        crop_rect = _parse_crop_rect(crop) if crop else None
+        result = product_service.store_product_image(
+            file.content_type,
+            file.filename,
+            file_content,
+            crop_rect=crop_rect,
+        )
     except DomainError as exc:
         _raise_http(exc)
-    return JSONResponse({"image_path": image_path, "message": "Upload ảnh thành công"})
+    return JSONResponse({**result, "message": "Upload ảnh thành công"})
+
+
+@router.post("/recrop-image", status_code=status.HTTP_200_OK)
+def recrop_product_image(
+    original_path: str = Form(...),
+    crop: str = Form(...),
+    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+):
+    """Cắt lại thumbnail từ ảnh gốc đã lưu, không cần upload lại."""
+    try:
+        result = product_service.recrop_product_image(original_path, _parse_crop_rect(crop))
+    except DomainError as exc:
+        _raise_http(exc)
+    return JSONResponse({**result, "message": "Cắt lại ảnh thành công"})
 
 
 @router.get("/{product_id}/availability", response_model=List[ProductAvailabilityResponse])

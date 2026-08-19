@@ -53,7 +53,7 @@ export default function BestSellers() {
           <ProductGrid columns="four">
             {Array.from({ length: 4 }, (_, index) => (
               <div key={index} className="space-y-3">
-                <Skeleton className="aspect-product" />
+                <Skeleton className="aspect-[4/3]" />
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-5 w-1/3" />

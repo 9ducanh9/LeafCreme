@@ -1,5 +1,5 @@
 // Product Form component - create/edit product variant
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -22,6 +22,7 @@ import { getCategories } from '../../../services/admin/categoryService'
 import { getImageUrl } from '../../../utils/getImageUrl'
 import { useAdminForm, type FieldErrors } from '../../../hooks/admin/useAdminForm'
 import { useUnsavedChanges } from '../../../hooks/admin/useUnsavedChanges'
+import ProductImageCropper from './ProductImageCropper'
 
 interface ProductFormProps {
   open: boolean
@@ -62,7 +63,6 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
   const [loading, setLoading] = useState(false)
   const [imageInputType, setImageInputType] = useState<'url' | 'file'>('url')
   const [imagePreview, setImagePreview] = useState<string>('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [categories, setCategories] = useState<string[]>([])
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -103,7 +103,13 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
       // Use getImageUrl to convert relative path to full URL for preview
       const previewUrl = variant.image ? (variant.image.startsWith('http') || variant.image.startsWith('data:') || variant.image.startsWith('blob:') ? variant.image : getImageUrl(variant.image)) : ''
       setImagePreview(previewUrl)
-      setImageInputType(variant.image?.startsWith('data:') || variant.image?.startsWith('blob:') ? 'file' : 'url')
+      setImageInputType(
+        variant.image?.startsWith('data:') ||
+        variant.image?.startsWith('blob:') ||
+        variant.image?.startsWith('product/thumbnails/')
+          ? 'file'
+          : 'url',
+      )
     } else {
       setFormData({
         productId: '',
@@ -120,68 +126,6 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
       setImageInputType('url')
     }
   }, [variant, open, categories])
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setFormError('Vui lòng chọn file ảnh')
-      return
-    }
-    
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setFormError('File ảnh không được vượt quá 5MB')
-      return
-    }
-
-    // Show preview immediately
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const base64String = reader.result as string
-      setImagePreview(base64String)
-    }
-    reader.readAsDataURL(file)
-
-    // Upload file to server
-    try {
-      setLoading(true)
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const token = localStorage.getItem('access_token')
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-      
-      const response = await fetch(`${API_BASE_URL}/products/upload-image`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token?.trim()}`,
-        },
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || 'Upload ảnh thất bại')
-      }
-
-      const result = await response.json()
-      // Update form data with relative path from server
-      setFormData((prev) => ({ ...prev, image: result.image_path }))
-      
-      // Update preview with full URL
-      const { getImageUrl } = await import('../../../utils/getImageUrl')
-      setImagePreview(getImageUrl(result.image_path))
-    } catch (error) {
-      console.error('Error uploading image:', error)
-      setFormError(error instanceof Error ? error.message : 'Upload ảnh thất bại')
-      setImagePreview('')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -325,16 +269,7 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
               </Typography>
               <Tabs
                 value={imageInputType}
-                onChange={(_, newValue) => {
-                  setImageInputType(newValue)
-                  if (newValue === 'url') {
-                    setFormData({ ...formData, image: '' })
-                    setImagePreview('')
-                  } else {
-                    setFormData({ ...formData, image: '' })
-                    setImagePreview('')
-                  }
-                }}
+                onChange={(_, newValue) => setImageInputType(newValue)}
                 sx={{ mb: 2.5 }}
               >
                 <Tab label="Nhập URL" value="url" />
@@ -357,21 +292,16 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
                   helperText="Nhập đường dẫn URL hoặc đường dẫn tương đối (product/xxx.jpg)"
                 />
               ) : (
-                <Box>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    style={{ display: 'none' }}
-                  />
-                  <Button variant="outlined" onClick={() => fileInputRef.current?.click()} fullWidth sx={{ py: 1.5 }}>
-                    Chọn ảnh từ máy
-                  </Button>
-                  <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.disabled' }}>
-                    Kích thước tối đa 5MB, định dạng JPG/PNG/WEBP
-                  </Typography>
-                </Box>
+                <ProductImageCropper
+                  currentImagePath={formData.image}
+                  disabled={loading}
+                  onBusyChange={setLoading}
+                  onUploaded={(result) => {
+                    setFormData((previous) => ({ ...previous, image: result.image_path }))
+                    setImagePreview(`${getImageUrl(result.image_path)}?v=${Date.now()}`)
+                    setFormError(null)
+                  }}
+                />
               )}
 
               {/* Image Preview */}

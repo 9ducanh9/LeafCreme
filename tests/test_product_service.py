@@ -3,11 +3,20 @@ Tests for app.services.products.ProductService — Phase 1 service-layer
 migration (see app/routers/products.py / app/services/products/
 product_service.py).
 """
+import io
 from decimal import Decimal
 
 import pytest
+from PIL import Image
 
 from app.services.products import DomainError, ProductService
+from app.services.products.product_service import CropRect, crop_to_ratio
+
+
+def _fake_image_bytes(size: tuple[int, int], color=(200, 60, 60), fmt: str = "JPEG") -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", size, color).save(buf, fmt)
+    return buf.getvalue()
 
 
 @pytest.fixture()
@@ -140,3 +149,86 @@ class TestImageUpload:
         with pytest.raises(DomainError) as exc_info:
             service.store_product_image("image/jpeg", "big.jpg", oversized)
         assert exc_info.value.status_code == 400
+
+    def test_rejects_corrupt_image_bytes(self, service, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        with pytest.raises(DomainError) as exc_info:
+            service.store_product_image("image/jpeg", "broken.jpg", b"not-actually-an-image")
+        assert exc_info.value.status_code == 400
+
+    def test_stores_the_original_and_a_cropped_800x600_thumbnail(self, service, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        result = service.store_product_image(
+            "image/jpeg", "wide-photo.jpg", _fake_image_bytes((2000, 1000))
+        )
+
+        assert result["image_path"].startswith("product/")
+        assert result["thumbnail_path"].startswith("product/thumbnails/")
+        assert result["original_path"].startswith("product/originals/")
+
+        original_path = tmp_path / "uploads" / result["original_path"]
+        thumbnail_path = tmp_path / "uploads" / result["thumbnail_path"]
+        assert original_path.exists()
+        assert thumbnail_path.exists()
+
+        with Image.open(thumbnail_path) as thumb:
+            assert thumb.size == (800, 600)
+
+    def test_flattens_transparent_pngs_onto_white_instead_of_black(self, service, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        buf = io.BytesIO()
+        Image.new("RGBA", (1000, 1000), (0, 0, 0, 0)).save(buf, "PNG")
+        result = service.store_product_image("image/png", "transparent.png", buf.getvalue())
+
+        thumbnail_path = tmp_path / "uploads" / result["thumbnail_path"]
+        with Image.open(thumbnail_path) as thumb:
+            # >=250 rather than an exact match: JPEG re-encoding can nudge a
+            # pure-white pixel by a value or two.
+            assert all(channel >= 250 for channel in thumb.getpixel((0, 0)))
+
+    def test_uses_admin_crop_rectangle_and_keeps_original(self, service, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        image = Image.new("RGB", (1200, 900), (255, 0, 0))
+        image.paste((0, 0, 255), (600, 0, 1200, 900))
+        buf = io.BytesIO()
+        image.save(buf, "JPEG", quality=100)
+
+        result = service.store_product_image(
+            "image/jpeg",
+            "split.jpg",
+            buf.getvalue(),
+            crop_rect=CropRect(x=600, y=0, width=600, height=450),
+        )
+
+        with Image.open(tmp_path / "uploads" / result["thumbnail_path"]) as thumb:
+            red, _green, blue = thumb.getpixel((400, 300))
+            assert blue > red
+        with Image.open(tmp_path / "uploads" / result["original_path"]) as original:
+            assert original.size == (1200, 900)
+
+    def test_recrops_existing_original_without_reupload(self, service, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        result = service.store_product_image(
+            "image/jpeg", "photo.jpg", _fake_image_bytes((1200, 900))
+        )
+
+        recropped = service.recrop_product_image(
+            result["original_path"], CropRect(x=100, y=100, width=800, height=600)
+        )
+
+        assert recropped["image_path"] == result["image_path"]
+        with Image.open(tmp_path / "uploads" / recropped["thumbnail_path"]) as thumb:
+            assert thumb.size == (800, 600)
+
+
+class TestCropToRatio:
+    def test_crops_a_too_wide_image_from_the_sides(self):
+        cropped = crop_to_ratio(Image.new("RGB", (2000, 1000)), target_ratio=4 / 3)
+        assert cropped.size == (1333, 1000)
+
+    def test_crops_a_too_tall_image_from_the_top_third(self):
+        cropped = crop_to_ratio(Image.new("RGB", (1000, 2000)), target_ratio=4 / 3)
+        assert cropped.size == (1000, 750)
