@@ -598,6 +598,36 @@ class ThongKeSanPham(Base):
 
 
 # =========================================================
+# 30B. AGENT ACTIONS (Operations Agent proposal/execution log)
+# =========================================================
+class AgentAction(Base):
+    __tablename__ = "agent_actions"
+
+    action_id: Mapped[int] = mapped_column(primary_key=True)
+    loai_hanh_dong: Mapped[str] = mapped_column(String(50), nullable=False)
+    tham_so: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    ly_do: Mapped[str | None] = mapped_column(Text, nullable=True)
+    nguon: Mapped[str] = mapped_column(String(20), server_default="agent")
+    muc_do_rui_ro: Mapped[str] = mapped_column(String(20), nullable=False)
+    trang_thai: Mapped[str] = mapped_column(String(20), server_default="de_xuat")
+    ket_qua: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    loi: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Who proposed it (set at propose time) vs who approved/rejected it (set
+    # at approve/reject time) — kept as two separate columns since they're
+    # frequently different people and both matter for the audit trail.
+    nguoidung_de_xuat_id: Mapped[int | None] = mapped_column(ForeignKey("nguoidung.nguoidung_id", ondelete="SET NULL"), nullable=True)
+    nguoidung_duyet_id: Mapped[int | None] = mapped_column(ForeignKey("nguoidung.nguoidung_id", ondelete="SET NULL"), nullable=True)
+    ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    ngay_xu_ly: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("nguon IN ('agent', 'nhan_vien')", name="ck_agent_actions_nguon"),
+        CheckConstraint("muc_do_rui_ro IN ('doc', 'thay_doi')", name="ck_agent_actions_muc_do_rui_ro"),
+        CheckConstraint("trang_thai IN ('de_xuat', 'dang_xu_ly', 'hoan_thanh', 'tu_choi', 'that_bai')", name="ck_agent_actions_trang_thai"),
+    )
+
+
+# =========================================================
 # 30. SYSTEM LOG
 # =========================================================
 class SystemLog(Base):

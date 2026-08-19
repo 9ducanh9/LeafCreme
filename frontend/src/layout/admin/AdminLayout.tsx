@@ -13,6 +13,7 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner'
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale'
 import SettingsIcon from '@mui/icons-material/Settings'
 import HomeIcon from '@mui/icons-material/Home'
+import SmartToyIcon from '@mui/icons-material/SmartToy'
 import { useAuth } from '../../contexts/AuthContext'
 import { getImageUrl } from '../../utils/getImageUrl'
 import { adminNavGroups, type AdminNavItem } from '../../config/admin-nav'
@@ -22,6 +23,7 @@ const DRAWER_WIDTH_COLLAPSED = 72
 
 const iconFor = (kind: AdminNavItem['icon']) => {
   if (kind === 'overview') return <DashboardIcon />
+  if (kind === 'agent') return <SmartToyIcon />
   if (kind === 'warehouse') return <WarehouseIcon />
   if (kind === 'operations') return <QrCodeScannerIcon />
   if (kind === 'sales') return <PointOfSaleIcon />

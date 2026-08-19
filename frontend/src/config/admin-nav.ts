@@ -2,7 +2,7 @@ export interface AdminNavItem {
   key: string
   label: string
   path: string
-  icon: 'overview' | 'catalog' | 'warehouse' | 'operations' | 'sales' | 'settings'
+  icon: 'overview' | 'catalog' | 'warehouse' | 'operations' | 'sales' | 'settings' | 'agent'
 }
 
 export interface AdminNavGroup {
@@ -11,7 +11,13 @@ export interface AdminNavGroup {
 }
 
 export const adminNavGroups: AdminNavGroup[] = [
-  { label: 'Tổng quan', items: [{ key: 'overview', label: 'Tổng quan', path: '/admin/dashboard', icon: 'overview' }] },
+  {
+    label: 'Tổng quan',
+    items: [
+      { key: 'overview', label: 'Tổng quan', path: '/admin/dashboard', icon: 'overview' },
+      { key: 'agent', label: 'Operations Agent', path: '/admin/agent', icon: 'agent' },
+    ],
+  },
   {
     label: 'Danh mục',
     items: [

@@ -1,6 +1,6 @@
 // Message list component - Discord style
 import { useState, useEffect } from 'react'
-import { User, Leaf } from 'lucide-react'
+import { User } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import type { LeafieMessage } from '../../types/leafie'
 
@@ -67,7 +67,11 @@ export default function LeafieMessageList({
                 ) : (
                   <>
                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent animate-pulse" />
-                    <Leaf className="relative z-10 h-5 w-5 text-brand-fg" strokeWidth={2.5} />
+                    <img
+                      src="/branding/liceria.png"
+                      alt="Leafie"
+                      className="relative z-10 w-full h-full object-cover"
+                    />
                   </>
                 )}
               </div>
@@ -115,7 +119,11 @@ export default function LeafieMessageList({
         <div className="group flex gap-3 px-2 md:px-4 py-1">
           <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-brand-border-subtle bg-brand-subtle relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent animate-pulse" />
-            <Leaf className="relative z-10 h-5 w-5 text-brand-fg" strokeWidth={2.5} />
+            <img
+              src="/branding/liceria.png"
+              alt="Leafie"
+              className="relative z-10 w-full h-full object-cover"
+            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">

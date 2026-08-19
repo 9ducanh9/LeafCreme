@@ -1,7 +1,7 @@
 // Leafie chat panel - Discord style
 import { useState, useRef, useEffect, useId } from 'react'
 import { useOverlayA11y } from '../../hooks/useOverlayA11y'
-import { X, Send, Leaf, Trash2, MoreVertical } from 'lucide-react'
+import { X, Send, Trash2, MoreVertical } from 'lucide-react'
 import LeafieMessageList from './LeafieMessageList'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import type { LeafieMessage } from '../../types/leafie'
@@ -180,7 +180,11 @@ export default function LeafieChatPanel({
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-subtle flex items-center justify-center shadow-sm border-2 border-brand-border-subtle relative overflow-hidden">
               {/* Subtle shimmer effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent animate-pulse" />
-              <Leaf className="w-5 h-5 md:w-6 md:h-6 text-brand-fg" strokeWidth={2.5} />
+              <img
+                src="/branding/liceria.png"
+                alt="Leafie"
+                className="relative z-10 w-full h-full object-cover"
+              />
             </div>
             <div>
               <h3 id={titleId} className="font-semibold text-fg-strong text-base md:text-lg">Leafie</h3>
