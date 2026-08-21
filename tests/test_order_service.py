@@ -54,6 +54,14 @@ def role_admin(db_session):
     return role
 
 
+@pytest.fixture()
+def role_staff(db_session):
+    role = VaiTro(ten_vai_tro="staff")
+    db_session.add(role)
+    db_session.flush()
+    return role
+
+
 def _make_user(db_session, role, suffix: str) -> NguoiDung:
     user = NguoiDung(
         ten_dang_nhap=f"user_{suffix}",
@@ -162,6 +170,115 @@ class TestVoucherStackingClamp:
         # This is the fix: previously this could go negative.
         assert result["tien_thanh_toan"] == Decimal("0")
         assert result["tien_thanh_toan"] >= 0
+
+
+class TestCreateOrderAuthorization:
+    def test_customer_cannot_create_pos_or_change_inventory(self, db_session, service, role_customer):
+        customer = _make_user(db_session, role_customer, "pos-customer")
+        variant, batch = _make_variant_with_stock(db_session, "pos-customer", so_luong=10)
+        payload = _CreateOrderPayload([_OrderItem(bienthe_id=variant.bienthe_id)])
+        before_orders = db_session.query(DonHang).count()
+        before_ledger = db_session.query(LichSuKhoSanPham).count()
+        before_stock = db_session.query(TonKhoSanPham).filter(TonKhoSanPham.lohang_sanpham_id == batch.lohang_id).one().so_luong_hien_tai
+
+        with pytest.raises(DomainError) as exc_info:
+            service.create_order(db_session, payload, "pos", customer)
+
+        assert exc_info.value.status_code == 403
+        assert db_session.query(DonHang).count() == before_orders
+        assert db_session.query(LichSuKhoSanPham).count() == before_ledger
+        stock = db_session.query(TonKhoSanPham).filter(TonKhoSanPham.lohang_sanpham_id == batch.lohang_id).one()
+        assert stock.so_luong_hien_tai == before_stock
+
+
+class TestOrderReadScopingAndAmountFilters:
+    def test_staff_sees_only_own_pos_and_own_online_orders(self, db_session, service, role_staff):
+        staff_a = _make_user(db_session, role_staff, "scope-staff-a")
+        staff_b = _make_user(db_session, role_staff, "scope-staff-b")
+        pos_a = DonHang(
+            ma_don_hang="ORD-SCOPE-POS-A",
+            loai_don="pos",
+            nhan_vien_tao=staff_a.nguoidung_id,
+            tong_tien=Decimal("100000"),
+            tien_thanh_toan=Decimal("100000"),
+            trang_thai="cho",
+        )
+        online_a = DonHang(
+            ma_don_hang="ORD-SCOPE-ONLINE-A",
+            loai_don="online",
+            nguoidung_id=staff_a.nguoidung_id,
+            tong_tien=Decimal("200000"),
+            tien_thanh_toan=Decimal("200000"),
+            trang_thai="cho",
+        )
+        pos_b = DonHang(
+            ma_don_hang="ORD-SCOPE-POS-B",
+            loai_don="pos",
+            nhan_vien_tao=staff_b.nguoidung_id,
+            tong_tien=Decimal("300000"),
+            tien_thanh_toan=Decimal("300000"),
+            trang_thai="cho",
+        )
+        db_session.add_all([pos_a, online_a, pos_b])
+        db_session.flush()
+
+        page = service.list_orders(db_session, staff_a, paginated=True, limit=50)
+
+        assert page["total"] == 2
+        assert {order.donhang_id for order in page["items"]} == {pos_a.donhang_id, online_a.donhang_id}
+        with pytest.raises(DomainError) as exc_info:
+            service.get_order(db_session, pos_a.donhang_id, staff_b)
+        assert exc_info.value.status_code == 403
+
+    def test_management_amount_filters_are_applied_before_count(self, db_session, service, role_admin):
+        admin = _make_user(db_session, role_admin, "amount-admin")
+        for index, amount in enumerate((Decimal("100000"), Decimal("500000"), Decimal("900000")), start=1):
+            db_session.add(
+                DonHang(
+                    ma_don_hang=f"ORD-AMOUNT-{index}",
+                    loai_don="online",
+                    tong_tien=amount,
+                    tien_thanh_toan=amount,
+                    trang_thai="cho",
+                )
+            )
+        db_session.flush()
+
+        page = service.list_orders(
+            db_session,
+            admin,
+            paginated=True,
+            tien_tu=Decimal("500000"),
+            tien_den=Decimal("900000"),
+        )
+
+        assert page["total"] == 2
+        assert {order.tien_thanh_toan for order in page["items"]} == {Decimal("500000"), Decimal("900000")}
+
+    def test_rejects_reversed_amount_range(self, db_session, service, role_admin):
+        admin = _make_user(db_session, role_admin, "amount-reversed")
+        with pytest.raises(DomainError) as exc_info:
+            service.list_orders(db_session, admin, paginated=True, tien_tu=Decimal("900000"), tien_den=Decimal("500000"))
+        assert exc_info.value.status_code == 400
+
+    def test_staff_can_create_pos_and_inventory_is_allocated(self, db_session, service, role_staff):
+        staff = _make_user(db_session, role_staff, "pos-staff")
+        variant, batch = _make_variant_with_stock(db_session, "pos-staff", so_luong=10)
+        result = service.create_order(db_session, _CreateOrderPayload([_OrderItem(bienthe_id=variant.bienthe_id)]), "pos", staff)
+
+        assert result["trang_thai"] == "dang_xu_ly"
+        assert result["nhan_vien_tao"] == staff.nguoidung_id
+        stock = db_session.query(TonKhoSanPham).filter(TonKhoSanPham.lohang_sanpham_id == batch.lohang_id).one()
+        assert stock.so_luong_hien_tai == 9
+
+    def test_online_order_belongs_to_customer_and_has_no_staff_creator(self, db_session, service, role_customer):
+        customer = _make_user(db_session, role_customer, "online-customer")
+        variant, _ = _make_variant_with_stock(db_session, "online-customer", so_luong=10)
+        result = service.create_order(db_session, _CreateOrderPayload([_OrderItem(bienthe_id=variant.bienthe_id)]), "online", customer)
+
+        assert result["nguoidung_id"] == customer.nguoidung_id
+        assert result["nhan_vien_tao"] is None
+        assert result["trang_thai"] == "dang_xu_ly"
 
 
 class TestStatusTransitionGuard:

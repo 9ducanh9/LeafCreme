@@ -8,6 +8,7 @@ import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
+import { useAuth } from '../../contexts/AuthContext'
 import {
   clearResolvedAlerts, getAlerts, getAlertsSummary, getAlertTypeLabel, getSeverityLabel, getStatusLabel, updateAlert,
   type Alert as AlertRow, type AlertSummary,
@@ -23,8 +24,10 @@ const columns: Column<AlertRow>[] = [
 ]
 
 export default function AdminAlertsPage() {
+  const { can } = useAuth()
   const table = useDataTableState({ key: 'alerts', defaultSortBy: 'ngay_canh_bao', defaultSortDir: 'desc', defaultPageSize: 50, filterKeys: ['muc_do', 'trang_thai'] })
   const [rows, setRows] = useState<AlertRow[]>([])
+  const [total, setTotal] = useState(0)
   const [summary, setSummary] = useState<AlertSummary | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -34,12 +37,12 @@ export default function AdminAlertsPage() {
     setStatus('loading'); setError(null)
     try {
       const [alerts, nextSummary] = await Promise.all([
-        getAlerts({ muc_do: table.filters.muc_do, trang_thai: table.filters.trang_thai, skip: table.skip, limit: table.pageSize }),
+        getAlerts({ muc_do: table.filters.muc_do, trang_thai: table.filters.trang_thai, skip: table.skip, limit: table.pageSize, sort_by: table.sortBy, sort_dir: table.sortDir }),
         getAlertsSummary(),
       ])
-      setRows(alerts); setSummary(nextSummary); setStatus('idle')
+      setRows(alerts.items); setTotal(alerts.total); setSummary(nextSummary); setStatus('idle')
     } catch { setError('Không thể tải dữ liệu cảnh báo'); setStatus('error') }
-  }, [table.filters, table.pageSize, table.skip])
+  }, [table.filters, table.pageSize, table.skip, table.sortBy, table.sortDir])
   useEffect(() => { void load() }, [load])
 
   const setFilter = (name: string, value: string) => table.patch({ filters: { ...table.filters, [name]: value } })
@@ -50,11 +53,11 @@ export default function AdminAlertsPage() {
     <AdminPage title="Cảnh báo tồn kho" breadcrumb={[{ label: 'Cảnh báo' }]}>
       {summary && <MuiAlert severity={summary.pending ? 'warning' : 'success'} sx={{ mb: 2 }}>Đang chờ xử lý: {summary.pending} · Đã xử lý: {summary.resolved}</MuiAlert>}
       {error && <MuiAlert severity="error" sx={{ mb: 2 }}>{error}</MuiAlert>}
-      <DataTableToolbar title="Theo dõi cảnh báo" actions={<><Button startIcon={<RefreshIcon />} onClick={() => void load()}>Làm mới</Button><Button startIcon={<DeleteSweepIcon />} color="warning" onClick={() => setClearConfirm(true)}>Dọn đã xử lý</Button></>}>
+      <DataTableToolbar title="Theo dõi cảnh báo" actions={<><Button startIcon={<RefreshIcon />} onClick={() => void load()}>Làm mới</Button>{can('alerts.delete') && <Button startIcon={<DeleteSweepIcon />} color="warning" onClick={() => setClearConfirm(true)}>Dọn đã xử lý</Button>}</>}>
         <TextField select size="small" label="Mức độ" value={table.filters.muc_do || ''} onChange={(event) => setFilter('muc_do', event.target.value)}><MenuItem value="">Tất cả</MenuItem><MenuItem value="cao">Cao</MenuItem><MenuItem value="binh_thuong">Bình thường</MenuItem><MenuItem value="thap">Thấp</MenuItem></TextField>
         <TextField select size="small" label="Trạng thái" value={table.filters.trang_thai || ''} onChange={(event) => setFilter('trang_thai', event.target.value)}><MenuItem value="">Tất cả</MenuItem><MenuItem value="chua_xu_ly">Chưa xử lý</MenuItem><MenuItem value="dang_xu_ly">Đang xử lý</MenuItem><MenuItem value="da_xu_ly">Đã xử lý</MenuItem></TextField>
       </DataTableToolbar>
-      <DataTable caption="Danh sách cảnh báo tồn kho" columns={columns} rows={rows} getRowId={(row) => row.canhbao_id} getRowLabel={(row) => row.ten_san_pham || `Cảnh báo #${row.canhbao_id}`} total={rows.length} page={table.page} pageSize={table.pageSize} onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })} sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })} status={status} error={error} onRetry={() => void load()} hasActiveFilters={Object.keys(table.filters).length > 0} onClearFilters={() => table.patch({ filters: {} })} rowActions={(row) => row.trang_thai !== 'da_xu_ly' ? <IconButton aria-label="Đánh dấu đã xử lý" onClick={() => void resolve(row)}><CheckCircleIcon fontSize="small" /></IconButton> : null} />
+      <DataTable caption="Danh sách cảnh báo tồn kho" columns={columns} rows={rows} getRowId={(row) => row.canhbao_id} getRowLabel={(row) => row.ten_san_pham || `Cảnh báo #${row.canhbao_id}`} total={total} page={table.page} pageSize={table.pageSize} onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })} sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })} status={status} error={error} onRetry={() => void load()} hasActiveFilters={Object.keys(table.filters).length > 0} onClearFilters={() => table.patch({ filters: {} })} rowActions={(row) => can('alerts.update') && row.trang_thai !== 'da_xu_ly' ? <IconButton aria-label="Đánh dấu đã xử lý" onClick={() => void resolve(row)}><CheckCircleIcon fontSize="small" /></IconButton> : null} />
       <ConfirmDialog isOpen={clearConfirm} message="Dọn toàn bộ cảnh báo đã xử lý?" confirmLabel="Dọn" cancelLabel="Huỷ" onConfirm={() => void clearResolved()} onCancel={() => setClearConfirm(false)} variant="danger" />
     </AdminPage>
   )

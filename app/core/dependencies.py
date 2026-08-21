@@ -9,6 +9,17 @@ from app.db import get_db
 from app.models import NguoiDung
 from app.core.config import settings
 from app.core.security import decode_cognito_token, decode_token
+from app.core.capabilities import capabilities_for
+
+
+BACK_OFFICE_ROLES: tuple[str, ...] = ("admin", "manager", "staff")
+MANAGEMENT_ROLES: tuple[str, ...] = ("admin", "manager")
+
+
+def role_name(user: NguoiDung) -> str | None:
+    """Read the role name consistently from the loaded relationship."""
+
+    return user.vaitro.ten_vai_tro if user.vaitro else None
 
 security = HTTPBearer()
 
@@ -126,8 +137,7 @@ def require_role(*allowed_roles: str):
     Usage: Depends(require_role("admin", "manager"))
     """
     def role_checker(current_user: NguoiDung = Depends(get_current_active_user)) -> NguoiDung:
-        # Lấy tên vai trò từ relationship
-        vaitro_ten = current_user.vaitro.ten_vai_tro if current_user.vaitro else None
+        vaitro_ten = role_name(current_user)
         
         if vaitro_ten not in allowed_roles:
             raise HTTPException(

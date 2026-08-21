@@ -5,7 +5,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { LeafieProvider } from './contexts/LeafieContext'
 import ProtectedRoute from './components/routing/ProtectedRoute'
-import AdminProtectedRoute from './components/admin/routing/AdminProtectedRoute'
+import AdminProtectedRoute, { AdminCapabilityRoute } from './components/admin/routing/AdminProtectedRoute'
 import MainLayout from './components/layout/main-layout'
 import ToastContainer from './components/ui/ToastContainer'
 import ErrorBoundary from './components/ui/ErrorBoundary'
@@ -149,27 +149,27 @@ const router = createBrowserRouter(
             </AdminProtectedRoute>
           ),
           children: [
-            { index: true, element: <AdminDashboardPage /> },
-            { path: 'dashboard', element: <AdminDashboardPage /> },
-            { path: 'products', element: <AdminProductPage /> },
-            { path: 'gift-boxes', element: <AdminGiftBoxPage /> },
-            { path: 'gift-boxes/:id/bom', element: <AdminGiftBoxBomPage /> },
-            { path: 'vouchers', element: <AdminVoucherPage /> },
-            { path: 'orders', element: <AdminOrdersPage /> },
-            { path: 'orders/:id', element: <AdminOrderDetailPage /> },
+            { index: true, element: <AdminCapabilityRoute capability="dashboard.read"><AdminDashboardPage /></AdminCapabilityRoute> },
+            { path: 'dashboard', element: <AdminCapabilityRoute capability="dashboard.read"><AdminDashboardPage /></AdminCapabilityRoute> },
+            { path: 'products', element: <AdminCapabilityRoute capability="products.read"><AdminProductPage /></AdminCapabilityRoute> },
+            { path: 'gift-boxes', element: <AdminCapabilityRoute capability="giftbox.read"><AdminGiftBoxPage /></AdminCapabilityRoute> },
+            { path: 'gift-boxes/:id/bom', element: <AdminCapabilityRoute capability="bom.write"><AdminGiftBoxBomPage /></AdminCapabilityRoute> },
+            { path: 'vouchers', element: <AdminCapabilityRoute capability="vouchers.read"><AdminVoucherPage /></AdminCapabilityRoute> },
+            { path: 'orders', element: <AdminCapabilityRoute capability="orders.read.own_created"><AdminOrdersPage /></AdminCapabilityRoute> },
+            { path: 'orders/:id', element: <AdminCapabilityRoute capability="orders.read.own_created"><AdminOrderDetailPage /></AdminCapabilityRoute> },
             // Trang "Đơn đặt trước" + "Bán tại quầy" đã gộp thành "Đơn hàng"
             // (/admin/orders) — giữ redirect để link/bookmark cũ không vỡ.
             { path: 'preorders', element: <Navigate to="/admin/orders" replace /> },
             { path: 'preorders/:id', element: <Navigate to="/admin/orders" replace /> },
             { path: 'sales', element: <Navigate to="/admin/orders" replace /> },
             { path: 'sales/:id', element: <Navigate to="/admin/orders" replace /> },
-            { path: 'inventory', element: <AdminInventoryPage /> },
-            { path: 'stock-ledger', element: <AdminStockLedgerPage /> },
-            { path: 'batch-trace', element: <AdminBatchTracePage /> },
-            { path: 'batch-trace/:batchType/:batchId', element: <AdminBatchTracePage /> },
-            { path: 'batches', element: <AdminBatchCreatePage /> },
-            { path: 'alerts', element: <AdminAlertsPage /> },
-            { path: 'agent', element: <AdminAgentPage /> },
+            { path: 'inventory', element: <AdminCapabilityRoute capability="inventory.read"><AdminInventoryPage /></AdminCapabilityRoute> },
+            { path: 'stock-ledger', element: <AdminCapabilityRoute capability="inventory.read"><AdminStockLedgerPage /></AdminCapabilityRoute> },
+            { path: 'batch-trace', element: <AdminCapabilityRoute capability="inventory.read"><AdminBatchTracePage /></AdminCapabilityRoute> },
+            { path: 'batch-trace/:batchType/:batchId', element: <AdminCapabilityRoute capability="inventory.read"><AdminBatchTracePage /></AdminCapabilityRoute> },
+            { path: 'batches', element: <AdminCapabilityRoute capability="batches.write"><AdminBatchCreatePage /></AdminCapabilityRoute> },
+            { path: 'alerts', element: <AdminCapabilityRoute capability="alerts.read"><AdminAlertsPage /></AdminCapabilityRoute> },
+            { path: 'agent', element: <AdminCapabilityRoute capability="agent.chat"><AdminAgentPage /></AdminCapabilityRoute> },
           ],
         },
       ],
@@ -199,4 +199,3 @@ function App() {
 }
 
 export default App
-

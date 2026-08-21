@@ -9,6 +9,8 @@ most bad input before it reaches the API, so this checks the API holds the
 line on its own for a client that doesn't go through that form (a script,
 a future mobile client, curl, an attacker).
 """
+from decimal import Decimal
+
 import pytest
 
 from app.core.security import create_access_token
@@ -172,3 +174,78 @@ class TestUpdateAndDeleteBoundaries:
         res = client.get(f"/products/{product_id}")
         assert res.status_code == 200
         assert res.json()["dang_hoat_dong"] is False
+
+
+class TestAdminVariantCatalog:
+    def test_flat_endpoint_is_paginated_and_keeps_don_products(self, client, db_session, admin_token):
+        from app.models import BienTheSanPham, SanPham
+
+        standalone = SanPham(
+            ten="Catalog standalone row",
+            sku="CATALOG-DON-ROW",
+            loai="don",
+            gia_co_ban=Decimal("45000"),
+            danh_muc="Catalog P2",
+        )
+        variant_product = SanPham(
+            ten="Catalog variant row",
+            sku="CATALOG-VARIANT-ROW",
+            loai="bien_the",
+            gia_co_ban=Decimal("50000"),
+            danh_muc="Catalog P2",
+        )
+        db_session.add_all([standalone, variant_product])
+        db_session.flush()
+        db_session.add_all(
+            [
+                BienTheSanPham(
+                    sanpham_id=variant_product.sanpham_id,
+                    huong_vi="P2 vanilla",
+                    kich_thuoc="S",
+                    gia_bienthe=Decimal("55000"),
+                    sku_bienthe="CATALOG-VARIANT-S",
+                ),
+                BienTheSanPham(
+                    sanpham_id=variant_product.sanpham_id,
+                    huong_vi="P2 chocolate",
+                    kich_thuoc="M",
+                    gia_bienthe=Decimal("65000"),
+                    sku_bienthe="CATALOG-VARIANT-M",
+                ),
+            ]
+        )
+        db_session.flush()
+
+        response = client.get(
+            "/products/variants",
+            params={"paginated": True, "skip": 0, "limit": 2},
+            headers=_auth(admin_token),
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["total"] == 3
+        assert len(body["items"]) == 2
+
+        standalone_response = client.get(
+            "/products/variants",
+            params={"search": "CATALOG-DON-ROW", "paginated": True},
+            headers=_auth(admin_token),
+        )
+        assert standalone_response.status_code == 200
+        assert standalone_response.json()["total"] == 1
+        assert standalone_response.json()["items"][0]["bienthe_id"] is None
+
+        size_response = client.get(
+            "/products/variants",
+            params={"kich_thuoc": "M", "danh_muc": "Catalog P2", "paginated": True},
+            headers=_auth(admin_token),
+        )
+        assert size_response.status_code == 200
+        assert size_response.json()["total"] == 1
+        assert size_response.json()["items"][0]["huong_vi"] == "P2 chocolate"
+
+    def test_categories_route_is_not_captured_by_product_id(self, client, admin_token):
+        response = client.get("/products/categories", headers=_auth(admin_token))
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)

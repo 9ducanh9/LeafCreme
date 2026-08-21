@@ -11,6 +11,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<RegisterResult>
   logout: () => void
   refreshUser: () => Promise<void>
+  can: (capability: string) => boolean
 }
 
 interface RegisterData {
@@ -134,6 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const can = (capability: string) => Boolean(user?.capabilities?.includes(capability))
+
   return (
     <AuthContext.Provider
       value={{
@@ -144,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         refreshUser,
+        can,
       }}
     >
       {children}

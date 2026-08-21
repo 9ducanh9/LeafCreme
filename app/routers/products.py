@@ -8,7 +8,7 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from fastapi.responses import JSONResponse
-from sqlalchemy import Date, cast, func, select
+from sqlalchemy import Date, and_, cast, func, or_, select
 from sqlalchemy.orm import Session
 from typing import Literal, Optional, List, Union
 from enum import Enum
@@ -16,8 +16,9 @@ from decimal import Decimal
 from datetime import date, datetime
 
 from ..db import get_db
-from ..core.dependencies import get_current_active_user, require_role, get_optional_user
-from ..models import BienTheSanPham, LoHangSanPham, NguoiDung, TonKhoSanPham
+from ..core.capabilities import require_capability
+from ..core.dependencies import get_optional_user
+from ..models import BienTheSanPham, LoHangSanPham, NguoiDung, SanPham, TonKhoSanPham
 from ..services.products import ProductService, DomainError
 from ..services.products.product_service import CropRect
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -114,6 +115,15 @@ class ProductSortField(str, Enum):
     ngay_tao = "ngay_tao"
 
 
+class VariantSortField(str, Enum):
+    ten = "ten"
+    huong_vi = "huong_vi"
+    kich_thuoc = "kich_thuoc"
+    gia = "gia"
+    danh_muc = "danh_muc"
+    ngay_tao = "ngay_tao"
+
+
 # =========================================================
 # Pydantic Schemas - Variants
 # =========================================================
@@ -156,6 +166,29 @@ class VariantResponse(BaseModel):
     muc_gioi_han_ton: int
     dang_hoat_dong: bool
     ngay_tao: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminVariantRow(BaseModel):
+    """One row in the admin catalog.
+
+    The table is variant-shaped, but products of type ``don`` have no
+    variant row.  ``bienthe_id=None`` keeps that case explicit instead of
+    manufacturing a fake variant id in the API.
+    """
+
+    bienthe_id: int | None
+    sanpham_id: int
+    ten: str
+    huong_vi: str | None
+    kich_thuoc: str | None
+    gia: Decimal
+    sku: str | None
+    danh_muc: str | None
+    mo_ta: str | None
+    hinh_anh_url: str | None
+    dang_hoat_dong: bool
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -210,7 +243,7 @@ def list_products(
 def create_product(
     product_data: ProductCreate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_capability("products.write"))
 ):
     """Tạo sản phẩm mới (yêu cầu admin/manager)"""
     try:
@@ -223,7 +256,7 @@ def create_product(
 async def upload_product_image(
     file: UploadFile = File(...),
     crop: Optional[str] = Form(default=None),
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("products.write")),
 ):
     """Upload ảnh sản phẩm - PHẢI ĐẶT TRƯỚC /{product_id} để tránh conflict"""
     file_content = await file.read()
@@ -244,7 +277,7 @@ async def upload_product_image(
 def recrop_product_image(
     original_path: str = Form(...),
     crop: str = Form(...),
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("products.write")),
 ):
     """Cắt lại thumbnail từ ảnh gốc đã lưu, không cần upload lại."""
     try:
@@ -252,6 +285,98 @@ def recrop_product_image(
     except DomainError as exc:
         _raise_http(exc)
     return JSONResponse({**result, "message": "Cắt lại ảnh thành công"})
+
+
+@router.get("/categories", response_model=List[str])
+def list_product_categories(
+    db: Session = Depends(get_db),
+    current_user: Optional[NguoiDung] = Depends(get_optional_user),
+):
+    """Danh mục sinh từ dữ liệu sản phẩm đang hoạt động."""
+    rows = db.execute(
+        select(SanPham.danh_muc)
+        .where(SanPham.dang_hoat_dong.is_(True), SanPham.danh_muc.is_not(None))
+        .distinct()
+        .order_by(SanPham.danh_muc.asc())
+    ).scalars().all()
+    return [category for category in rows if category]
+
+
+@router.get("/variants", response_model=Page[AdminVariantRow])
+def list_admin_variants(
+    search: Optional[str] = Query(None, description="Tên, SKU hoặc hương vị"),
+    danh_muc: Optional[str] = Query(None, description="Lọc theo danh mục"),
+    kich_thuoc: Optional[str] = Query(None, description="Lọc theo kích thước"),
+    dang_hoat_dong: Optional[bool] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    sort_by: VariantSortField = Query(VariantSortField.ten),
+    sort_dir: Literal["asc", "desc"] = Query("asc"),
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_capability("products.read")),
+):
+    """Catalog phẳng, mỗi dòng là một biến thể hoặc một sản phẩm ``don``."""
+    query = db.query(SanPham, BienTheSanPham).outerjoin(
+        BienTheSanPham,
+        BienTheSanPham.sanpham_id == SanPham.sanpham_id,
+    ).filter(
+        # A variant product with no variants is not a catalog row.  A ``don``
+        # product is intentionally retained with a NULL variant id.
+        or_(SanPham.loai == "don", BienTheSanPham.bienthe_id.is_not(None)),
+    )
+    if search:
+        needle = f"%{search.strip()}%"
+        query = query.filter(or_(
+            SanPham.ten.ilike(needle),
+            SanPham.sku.ilike(needle),
+            BienTheSanPham.huong_vi.ilike(needle),
+            BienTheSanPham.sku_bienthe.ilike(needle),
+        ))
+    if danh_muc:
+        query = query.filter(SanPham.danh_muc == danh_muc)
+    if kich_thuoc:
+        query = query.filter(BienTheSanPham.kich_thuoc == kich_thuoc)
+    if dang_hoat_dong is not None:
+        active_expression = or_(
+            and_(SanPham.loai == "don", SanPham.dang_hoat_dong == dang_hoat_dong),
+            and_(
+                SanPham.loai == "bien_the",
+                SanPham.dang_hoat_dong == dang_hoat_dong,
+                BienTheSanPham.dang_hoat_dong == dang_hoat_dong,
+            ),
+        )
+        query = query.filter(active_expression)
+
+    total = query.count()
+    sort_map = {
+        VariantSortField.ten: SanPham.ten,
+        VariantSortField.huong_vi: BienTheSanPham.huong_vi,
+        VariantSortField.kich_thuoc: BienTheSanPham.kich_thuoc,
+        VariantSortField.gia: func.coalesce(BienTheSanPham.gia_bienthe, SanPham.gia_co_ban),
+        VariantSortField.danh_muc: SanPham.danh_muc,
+        VariantSortField.ngay_tao: func.coalesce(BienTheSanPham.ngay_tao, SanPham.ngay_tao),
+    }
+    sort_column = sort_map[sort_by]
+    ordering = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
+    rows = query.order_by(ordering, SanPham.sanpham_id.asc(), BienTheSanPham.bienthe_id.asc()).offset(skip).limit(limit).all()
+
+    items = [
+        AdminVariantRow(
+            bienthe_id=variant.bienthe_id if variant else None,
+            sanpham_id=product.sanpham_id,
+            ten=product.ten,
+            huong_vi=variant.huong_vi if variant else None,
+            kich_thuoc=variant.kich_thuoc if variant else None,
+            gia=variant.gia_bienthe if variant else product.gia_co_ban,
+            sku=variant.sku_bienthe if variant and variant.sku_bienthe else product.sku,
+            danh_muc=product.danh_muc,
+            mo_ta=product.mo_ta,
+            hinh_anh_url=product.hinh_anh_url,
+            dang_hoat_dong=(variant.dang_hoat_dong if variant else product.dang_hoat_dong) and product.dang_hoat_dong,
+        )
+        for product, variant in rows
+    ]
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/{product_id}/availability", response_model=List[ProductAvailabilityResponse])
@@ -316,7 +441,7 @@ def update_product(
     product_id: int,
     product_data: ProductUpdate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_capability("products.write"))
 ):
     """Cập nhật sản phẩm (yêu cầu admin/manager)"""
     try:
@@ -329,7 +454,7 @@ def update_product(
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_capability("products.write"))
 ):
     """Xóa sản phẩm (soft delete - set dang_hoat_dong=False)"""
     try:
@@ -346,7 +471,7 @@ def delete_product(
 def create_variant(
     variant_data: VariantCreate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_capability("products.write"))
 ):
     """Tạo biến thể mới (yêu cầu admin/manager)"""
     try:
@@ -359,7 +484,7 @@ def create_variant(
 def get_variant(
     variant_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("products.read"))
 ):
     """Chi tiết biến thể"""
     try:
@@ -373,7 +498,7 @@ def update_variant(
     variant_id: int,
     variant_data: VariantUpdate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_capability("products.write"))
 ):
     """Cập nhật biến thể (yêu cầu admin/manager)"""
     try:
@@ -386,7 +511,7 @@ def update_variant(
 def delete_variant(
     variant_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_capability("products.write"))
 ):
     """Xóa biến thể (soft delete - set dang_hoat_dong=False)"""
     try:

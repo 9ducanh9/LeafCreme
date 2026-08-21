@@ -1,16 +1,20 @@
 """Tests for the Operations Agent's tool-use chat loop
 (app.services.agent.agent_service._run_agent_loop / chat).
 
-There's no live ANTHROPIC_API_KEY in CI/dev sandboxes, so these fake the
-Anthropic client's `.messages.create` to return canned tool-use responses,
-the same shape the real SDK returns, and assert the loop:
+There's no live DEEPSEEK_API_KEY in CI/dev sandboxes, so these fake the
+DeepSeek client's `.chat.completions.create` (DeepSeek's API is OpenAI-
+compatible, used via the `openai` SDK) to return canned tool-call
+responses, the same shape the real SDK returns, and assert the loop:
   - chains multiple read-tool calls across turns before answering,
   - never executes a mutating tool directly, only proposes it,
-  - surfaces tool errors as `is_error` tool_results instead of crashing,
+  - surfaces tool errors as an error-content tool message instead of
+    crashing,
+  - fails safely on malformed tool-call arguments (invalid JSON),
   - stops after MAX_TOOL_ITERATIONS instead of looping forever,
   - falls back to the deterministic reply when no API key is configured
     or the SDK call raises.
 """
+import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
@@ -73,23 +77,27 @@ def _make_low_stock_alert(db_session, so_luong: int = 3) -> CanhBaoTonKho:
 
 
 # ---------------------------------------------------------------------------
-# Fake Anthropic client: mirrors the shape of anthropic.messages.create()
-# responses (stop_reason + content blocks with .type/.name/.input/.id/.text)
-# closely enough for _run_agent_loop to treat it identically to the real SDK.
+# Fake DeepSeek (OpenAI-compatible) client: mirrors the shape of
+# openai.OpenAI().chat.completions.create() responses (choices[0].message
+# .content/.tool_calls, choices[0].finish_reason) closely enough for
+# _run_agent_loop to treat it identically to the real SDK.
 # ---------------------------------------------------------------------------
-def _text_block(text: str) -> SimpleNamespace:
-    return SimpleNamespace(type="text", text=text)
+def _tool_call(name: str, arguments: dict, call_id: str, raw_arguments: str = None) -> SimpleNamespace:
+    args_json = raw_arguments if raw_arguments is not None else json.dumps(arguments)
+    return SimpleNamespace(id=call_id, function=SimpleNamespace(name=name, arguments=args_json))
 
 
-def _tool_use_block(name: str, tool_input: dict, block_id: str) -> SimpleNamespace:
-    return SimpleNamespace(type="tool_use", name=name, input=tool_input, id=block_id)
+def _tool_calls_response(tool_calls: list) -> SimpleNamespace:
+    message = SimpleNamespace(content=None, tool_calls=tool_calls)
+    return SimpleNamespace(choices=[SimpleNamespace(finish_reason="tool_calls", message=message)], usage=None)
 
 
-def _response(stop_reason: str, content: list) -> SimpleNamespace:
-    return SimpleNamespace(stop_reason=stop_reason, content=content)
+def _text_response(text: str) -> SimpleNamespace:
+    message = SimpleNamespace(content=text, tool_calls=None)
+    return SimpleNamespace(choices=[SimpleNamespace(finish_reason="stop", message=message)], usage=None)
 
 
-class _FakeMessages:
+class _FakeCompletions:
     def __init__(self, responses):
         self._responses = list(responses)
         self.calls = []
@@ -97,23 +105,23 @@ class _FakeMessages:
     def create(self, **kwargs):
         self.calls.append(kwargs)
         if not self._responses:
-            raise AssertionError("Fake Anthropic client ran out of canned responses")
+            raise AssertionError("Fake DeepSeek client ran out of canned responses")
         return self._responses.pop(0)
 
 
-class _FakeAnthropicClient:
+class _FakeDeepSeekClient:
     def __init__(self, responses):
-        self.messages = _FakeMessages(responses)
+        self.chat = SimpleNamespace(completions=_FakeCompletions(responses))
 
 
 class TestRunAgentLoopChaining:
     def test_chains_two_read_tools_before_answering(self, db_session, admin_user):
         _make_low_stock_alert(db_session, so_luong=3)
 
-        client = _FakeAnthropicClient([
-            _response("tool_use", [_tool_use_block("get_alert_summary", {}, "t1")]),
-            _response("tool_use", [_tool_use_block("list_stale_orders", {"hours": 24}, "t2")]),
-            _response("end_turn", [_text_block("Alerts: 1 pending. Orders: none stuck. All good otherwise.")]),
+        client = _FakeDeepSeekClient([
+            _tool_calls_response([_tool_call("get_alert_summary", {}, "t1")]),
+            _tool_calls_response([_tool_call("list_stale_orders", {"hours": 24}, "t2")]),
+            _text_response("Alerts: 1 pending. Orders: none stuck. All good otherwise."),
         ])
 
         reply, proposed, trace = agent_service._run_agent_loop(client, db_session, admin_user, "status?", [])
@@ -122,12 +130,10 @@ class TestRunAgentLoopChaining:
         assert [t["tool"] for t in trace] == ["get_alert_summary", "list_stale_orders"]
         assert all(t["outcome"] == "executed" for t in trace)
         assert proposed == []
-        assert len(client.messages.calls) == 3
+        assert len(client.chat.completions.calls) == 3
 
     def test_single_turn_answer_without_tool_use(self, db_session, admin_user):
-        client = _FakeAnthropicClient([
-            _response("end_turn", [_text_block("Hi, how can I help?")]),
-        ])
+        client = _FakeDeepSeekClient([_text_response("Hi, how can I help?")])
 
         reply, proposed, trace = agent_service._run_agent_loop(client, db_session, admin_user, "hello", [])
 
@@ -140,9 +146,9 @@ class TestRunAgentLoopMutatingTools:
     def test_mutating_tool_call_is_proposed_not_executed(self, db_session, admin_user):
         alert = _make_low_stock_alert(db_session, so_luong=3)
 
-        client = _FakeAnthropicClient([
-            _response("tool_use", [_tool_use_block("resolve_alert", {"alert_id": alert.canhbao_id}, "t1")]),
-            _response("end_turn", [_text_block("I've queued that alert for resolution — a manager needs to approve it.")]),
+        client = _FakeDeepSeekClient([
+            _tool_calls_response([_tool_call("resolve_alert", {"alert_id": alert.canhbao_id}, "t1")]),
+            _text_response("I've queued that alert for resolution — a manager needs to approve it."),
         ])
 
         reply, proposed, trace = agent_service._run_agent_loop(client, db_session, admin_user, "resolve the low stock alert", [])
@@ -161,25 +167,24 @@ class TestRunAgentLoopMutatingTools:
 
     def test_second_tool_result_reports_proposal_not_execution(self, db_session, admin_user):
         alert = _make_low_stock_alert(db_session, so_luong=3)
-        client = _FakeAnthropicClient([
-            _response("tool_use", [_tool_use_block("resolve_alert", {"alert_id": alert.canhbao_id}, "t1")]),
-            _response("end_turn", [_text_block("done")]),
+        client = _FakeDeepSeekClient([
+            _tool_calls_response([_tool_call("resolve_alert", {"alert_id": alert.canhbao_id}, "t1")]),
+            _text_response("done"),
         ])
 
         agent_service._run_agent_loop(client, db_session, admin_user, "resolve it", [])
 
-        second_call_messages = client.messages.calls[1]["messages"]
+        second_call_messages = client.chat.completions.calls[1]["messages"]
         tool_result_turn = second_call_messages[-1]
-        assert tool_result_turn["role"] == "user"
-        result_content = tool_result_turn["content"][0]["content"]
-        assert "proposed_pending_approval" in result_content
+        assert tool_result_turn["role"] == "tool"
+        assert "proposed_pending_approval" in tool_result_turn["content"]
 
 
 class TestRunAgentLoopErrorsAndLimits:
-    def test_tool_error_becomes_is_error_result_not_a_crash(self, db_session, admin_user):
-        client = _FakeAnthropicClient([
-            _response("tool_use", [_tool_use_block("resolve_alert", {"alert_id": 999999}, "t1")]),
-            _response("end_turn", [_text_block("That alert doesn't seem to exist.")]),
+    def test_tool_error_becomes_error_result_not_a_crash(self, db_session, admin_user):
+        client = _FakeDeepSeekClient([
+            _tool_calls_response([_tool_call("resolve_alert", {"alert_id": 999999}, "t1")]),
+            _text_response("That alert doesn't seem to exist."),
         ])
 
         reply, proposed, trace = agent_service._run_agent_loop(client, db_session, admin_user, "resolve alert 999999", [])
@@ -192,36 +197,53 @@ class TestRunAgentLoopErrorsAndLimits:
         assert reply == "That alert doesn't seem to exist."
 
     def test_unknown_tool_name_surfaces_as_tool_error(self, db_session, admin_user):
-        client = _FakeAnthropicClient([
-            _response("tool_use", [_tool_use_block("delete_everything", {}, "t1")]),
-            _response("end_turn", [_text_block("I don't have a tool for that.")]),
+        client = _FakeDeepSeekClient([
+            _tool_calls_response([_tool_call("delete_everything", {}, "t1")]),
+            _text_response("I don't have a tool for that."),
         ])
 
         reply, proposed, trace = agent_service._run_agent_loop(client, db_session, admin_user, "delete everything", [])
 
-        second_call_messages = client.messages.calls[1]["messages"]
+        second_call_messages = client.chat.completions.calls[1]["messages"]
         tool_result_turn = second_call_messages[-1]
-        result_block = tool_result_turn["content"][0]
-        assert result_block.get("is_error") is True
-        assert "error" in result_block["content"]
+        assert tool_result_turn["role"] == "tool"
+        assert "error" in tool_result_turn["content"]
         assert proposed == []
+
+    def test_malformed_tool_arguments_fail_safely(self, db_session, admin_user):
+        client = _FakeDeepSeekClient([
+            _tool_calls_response([_tool_call("get_alert_summary", {}, "t1", raw_arguments="{not valid json")]),
+            _text_response("Sorry, that request didn't come through right."),
+        ])
+
+        reply, proposed, trace = agent_service._run_agent_loop(client, db_session, admin_user, "status?", [])
+
+        # Never reaches _execute_tool_call (invalid JSON is caught before
+        # that), so no trace entry is recorded — but the loop still
+        # completes cleanly instead of raising.
+        assert reply == "Sorry, that request didn't come through right."
+        assert trace == []
+        second_call_messages = client.chat.completions.calls[1]["messages"]
+        tool_result_turn = second_call_messages[-1]
+        assert tool_result_turn["role"] == "tool"
+        assert "error" in tool_result_turn["content"]
 
     def test_stops_after_max_iterations_instead_of_looping_forever(self, db_session, admin_user, monkeypatch):
         monkeypatch.setattr(agent_service, "MAX_TOOL_ITERATIONS", 3)
-        client = _FakeAnthropicClient([
-            _response("tool_use", [_tool_use_block("get_alert_summary", {}, f"t{i}")]) for i in range(5)
+        client = _FakeDeepSeekClient([
+            _tool_calls_response([_tool_call("get_alert_summary", {}, f"t{i}")]) for i in range(5)
         ])
 
         reply, proposed, trace = agent_service._run_agent_loop(client, db_session, admin_user, "keep going", [])
 
-        assert len(client.messages.calls) == 3
+        assert len(client.chat.completions.calls) == 3
         assert "tool-call limit" in reply
         assert len(trace) == 3
 
 
 class TestChatFallback:
     def test_no_api_key_uses_deterministic_fallback(self, db_session, admin_user, monkeypatch):
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
         _make_low_stock_alert(db_session, so_luong=3)
 
         result = agent_service.chat(db_session, "status?", admin_user)
@@ -231,14 +253,14 @@ class TestChatFallback:
         assert result["tool_calls"] == []
 
     def test_llm_failure_falls_back_gracefully(self, db_session, admin_user, monkeypatch):
-        monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key-for-test")
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "fake-key-for-test")
 
         class _BoomClient:
-            def __init__(self, api_key=None):
+            def __init__(self, api_key=None, base_url=None):
                 raise RuntimeError("network unreachable")
 
-        import anthropic
-        monkeypatch.setattr(anthropic, "Anthropic", _BoomClient)
+        import openai
+        monkeypatch.setattr(openai, "OpenAI", _BoomClient)
 
         result = agent_service.chat(db_session, "status?", admin_user)
 
@@ -246,20 +268,18 @@ class TestChatFallback:
         assert "reply" in result
 
     def test_successful_chat_uses_llm_and_returns_trace(self, db_session, admin_user, monkeypatch):
-        monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key-for-test")
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "fake-key-for-test")
 
-        canned = _FakeAnthropicClient([
-            _response("tool_use", [_tool_use_block("get_alert_summary", {}, "t1")]),
-            _response("end_turn", [_text_block("No pending alerts.")]),
+        canned = _FakeDeepSeekClient([
+            _tool_calls_response([_tool_call("get_alert_summary", {}, "t1")]),
+            _text_response("No pending alerts."),
         ])
 
-        class _FakeAnthropicModule:
-            @staticmethod
-            def Anthropic(api_key=None):
-                return canned
+        def _fake_openai_client(api_key=None, base_url=None):
+            return canned
 
-        import anthropic
-        monkeypatch.setattr(anthropic, "Anthropic", _FakeAnthropicModule.Anthropic)
+        import openai
+        monkeypatch.setattr(openai, "OpenAI", _fake_openai_client)
 
         result = agent_service.chat(db_session, "any pending alerts?", admin_user)
 

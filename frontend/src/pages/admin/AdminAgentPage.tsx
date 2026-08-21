@@ -12,9 +12,10 @@ import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import {
-  approveAction, getActionStatusLabel, getInsights, getSeverityColor, listActions, postChat, proposeAction,
-  rejectAction, type AgentAction, type ChatReply, type Insight, type ToolCallTrace,
+  approveAction, getActionStatusLabel, getClassificationColor, getClassificationLabel, getInsights, getSeverityColor,
+  listActions, postChat, proposeAction, rejectAction, resetAction, type AgentAction, type ChatReply, type Insight, type ToolCallTrace,
 } from '../../services/admin/agentService'
+import { useAuth } from '../../contexts/AuthContext'
 
 interface ChatEntry {
   role: 'user' | 'assistant'
@@ -34,14 +35,17 @@ const actionColumns: Column<AgentAction>[] = [
   { id: 'loai_hanh_dong', label: 'Hành động', render: (row) => row.loai_hanh_dong },
   { id: 'tham_so', label: 'Tham số', render: (row) => <Typography variant="body2" sx={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{JSON.stringify(row.tham_so)}</Typography> },
   { id: 'nguon', label: 'Nguồn', render: (row) => row.nguon === 'agent' ? 'Agent' : 'Nhân viên' },
+  { id: 'phan_loai', label: 'Loại', render: (row) => <Chip size="small" variant="outlined" label={getClassificationLabel(row.phan_loai)} color={getClassificationColor(row.phan_loai)} /> },
   { id: 'nguoidung_de_xuat_id', label: 'Đề xuất bởi', render: (row) => row.nguoidung_de_xuat_id ?? '-' },
   { id: 'nguoidung_duyet_id', label: 'Duyệt/từ chối bởi', render: (row) => row.nguoidung_duyet_id ?? '-' },
   { id: 'trang_thai', label: 'Trạng thái', render: (row) => <Chip size="small" label={getActionStatusLabel(row.trang_thai)} color={row.trang_thai === 'hoan_thanh' ? 'success' : row.trang_thai === 'that_bai' ? 'error' : row.trang_thai === 'tu_choi' ? 'default' : 'warning'} /> },
+  { id: 'is_stale', label: 'Stale', render: (row) => row.is_stale ? <Chip size="small" color="error" label="Kẹt quá ngưỡng" /> : '-' },
   { id: 'loi', label: 'Ghi chú', render: (row) => row.loi || '-' },
 ]
 
 export default function AdminAgentPage() {
   const table = useDataTableState({ key: 'agent_actions', defaultSortBy: 'ngay_tao', defaultSortDir: 'desc', defaultPageSize: 25, filterKeys: ['trang_thai'] })
+  const { can } = useAuth()
   const [insights, setInsights] = useState<Insight[]>([])
   const [actionRows, setActionRows] = useState<AgentAction[]>([])
   const [actionTotal, setActionTotal] = useState(0)
@@ -85,6 +89,11 @@ export default function AdminAgentPage() {
     try { await rejectAction(row.action_id); await load() } catch { setError('Không thể từ chối hành động') } finally { setBusyActionId(null) }
   }
 
+  const reset = async (row: AgentAction) => {
+    setBusyActionId(row.action_id)
+    try { await resetAction(row.action_id); await load() } catch { setError('Không thể reset hành động') } finally { setBusyActionId(null) }
+  }
+
   const sendChat = async () => {
     const message = chatMessage.trim()
     if (!message || chatBusy) return
@@ -95,7 +104,7 @@ export default function AdminAgentPage() {
     try {
       const reply: ChatReply = await postChat(message, history)
       setChatLog((log) => [...log, { role: 'assistant', content: reply.reply, toolCalls: reply.tool_calls, usedLlm: reply.used_llm }])
-      if (reply.proposed_actions.length > 0) await load()
+      if ((reply.proposed_actions ?? []).length > 0) await load()
     } catch {
       setChatLog((log) => [...log, { role: 'assistant', content: 'Xin lỗi, đã có lỗi khi hỏi Operations Agent.' }])
     } finally {
@@ -107,7 +116,7 @@ export default function AdminAgentPage() {
     <AdminPage title="Operations Agent" breadcrumb={[{ label: 'Operations Agent' }]}>
       {error && <MuiAlert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</MuiAlert>}
 
-      <DataTableToolbar title="Vấn đề cần xử lý" actions={<Button startIcon={<RefreshIcon />} onClick={() => void load()}>Làm mới</Button>}>
+      <DataTableToolbar title="Operations Brief" actions={<Button startIcon={<RefreshIcon />} onClick={() => void load()}>Làm mới</Button>}>
         <Box />
       </DataTableToolbar>
 
@@ -121,6 +130,13 @@ export default function AdminAgentPage() {
                   <Typography variant="subtitle1" fontWeight={600}>{insight.title}</Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">{insight.description}</Typography>
+                {(insight.evidence ?? []).length > 0 && (
+                  <Box component="ul" sx={{ mt: 0.5, mb: 0, pl: 2.5, color: 'text.secondary' }}>
+                    {(insight.evidence ?? []).map((point, index) => (
+                      <Typography key={index} component="li" variant="caption" sx={{ display: 'list-item' }}>{point}</Typography>
+                    ))}
+                  </Box>
+                )}
               </Box>
               {insight.recommended_action && (
                 <Button
@@ -139,7 +155,7 @@ export default function AdminAgentPage() {
       </Stack>
 
       <DataTable
-        caption="Hàng đợi hành động của Operations Agent"
+        caption="Pending Actions — hàng đợi chờ duyệt"
         columns={actionColumns}
         rows={actionRows}
         getRowId={(row) => row.action_id}
@@ -157,7 +173,7 @@ export default function AdminAgentPage() {
         onRetry={() => void load()}
         hasActiveFilters={Object.keys(table.filters).length > 0}
         onClearFilters={() => table.patch({ filters: {} })}
-        rowActions={(row) => row.trang_thai === 'de_xuat' ? (
+        rowActions={(row) => row.is_stale && can('agent.action.execute') ? <IconButton aria-label="Reset hành động kẹt" disabled={busyActionId === row.action_id} onClick={() => void reset(row)}><RefreshIcon fontSize="small" color="error" /></IconButton> : row.trang_thai === 'de_xuat' ? (
           <>
             <IconButton aria-label="Duyệt" disabled={busyActionId === row.action_id} onClick={() => void approve(row)}><CheckCircleIcon fontSize="small" color="success" /></IconButton>
             <IconButton aria-label="Từ chối" disabled={busyActionId === row.action_id} onClick={() => void reject(row)}><CancelIcon fontSize="small" color="error" /></IconButton>
@@ -168,7 +184,7 @@ export default function AdminAgentPage() {
       <Paper variant="outlined" sx={{ mt: 3, p: 2 }}>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
           <SmartToyIcon fontSize="small" />
-          <Typography variant="subtitle1" fontWeight={600}>Hỏi Operations Agent</Typography>
+          <Typography variant="subtitle1" fontWeight={600}>Ask Operations Agent</Typography>
         </Stack>
         <Stack spacing={1} sx={{ maxHeight: 280, overflowY: 'auto', mb: 1.5 }}>
           {chatLog.length === 0 && <Typography variant="body2" color="text.secondary">Hỏi về tình trạng vận hành, ví dụ: "hôm nay có vấn đề gì không?"</Typography>}

@@ -2,7 +2,7 @@
 // Leafie needs ALL data to provide accurate recommendations
 import { getProducts, getProductVariants } from '../services/productService'
 import { getGiftBoxes } from '../services/giftBoxService'
-import { getVouchers } from '../services/admin/voucherService'
+import { getActiveVouchers } from '../services/voucherService'
 import type { LeafieContextBase } from '../types/leafie'
 import type { Product } from '../types/product'
 
@@ -92,7 +92,7 @@ export async function buildLeafieContext(): Promise<LeafieContextBase> {
     // Fetch ALL active vouchers
     let vouchers: LeafieContextBase['vouchers'] = []
     try {
-      const activeVouchers = await getVouchers({ status: 'active' })
+      const activeVouchers = await getActiveVouchers()
       vouchers = activeVouchers.map((v) => ({
         code: v.code,
         type: v.type,

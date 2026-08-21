@@ -1,5 +1,6 @@
 // Alert Service - API calls for inventory alerts
 import { apiClient } from '../api'
+import type { Page } from '../../types/page'
 
 export interface Alert {
   canhbao_id: number
@@ -48,19 +49,17 @@ export interface AlertUpdate {
 }
 
 // Get all alerts with optional filters
-export async function getAlerts(filters?: AlertFilters): Promise<Alert[]> {
-  const params = new URLSearchParams()
-  
-  if (filters?.loai_canh_bao) params.append('loai_canh_bao', filters.loai_canh_bao)
-  if (filters?.muc_do) params.append('muc_do', filters.muc_do)
-  if (filters?.trang_thai) params.append('trang_thai', filters.trang_thai)
-  if (filters?.skip !== undefined) params.append('skip', String(filters.skip))
-  if (filters?.limit !== undefined) params.append('limit', String(filters.limit))
-  
-  const queryString = params.toString()
-  const url = queryString ? `/alerts?${queryString}` : '/alerts'
-  
-  return await apiClient.get<Alert[]>(url)
+export async function getAlerts(filters?: AlertFilters & { sort_by?: string; sort_dir?: 'asc' | 'desc' }): Promise<Page<Alert>> {
+  return await apiClient.get<Page<Alert>>('/alerts', {
+    loai_canh_bao: filters?.loai_canh_bao,
+    muc_do: filters?.muc_do,
+    trang_thai: filters?.trang_thai,
+    skip: filters?.skip ?? 0,
+    limit: filters?.limit ?? 50,
+    paginated: true,
+    sort_by: filters?.sort_by ?? 'ngay_tao',
+    sort_dir: filters?.sort_dir ?? 'desc',
+  })
 }
 
 // Get alerts summary for dashboard

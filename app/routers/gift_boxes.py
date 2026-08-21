@@ -11,7 +11,8 @@ from typing import Literal, Optional, List, Union
 from decimal import Decimal
 
 from ..db import get_db
-from ..core.dependencies import require_role, get_optional_user
+from ..core.capabilities import require_capability
+from ..core.dependencies import get_optional_user
 from ..models import NguoiDung
 from ..services.gift_boxes import GiftBoxService, DomainError
 from pydantic import BaseModel, ConfigDict, Field
@@ -117,7 +118,7 @@ def list_gift_boxes(
     dang_hoat_dong: Optional[bool] = Query(None),
     min_price: Optional[Decimal] = Query(None, gt=0),
     max_price: Optional[Decimal] = Query(None, gt=0),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("giftbox.read")),
     db: Session = Depends(get_db)
 ):
     """Danh sách hộp quà"""
@@ -131,7 +132,7 @@ def list_gift_boxes(
 @router.get("/{gift_box_id}", response_model=GiftBoxResponse)
 def get_gift_box(
     gift_box_id: int,
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("giftbox.read")),
     db: Session = Depends(get_db)
 ):
     """Lấy thông tin một hộp quà"""
@@ -144,7 +145,7 @@ def get_gift_box(
 @router.post("", response_model=GiftBoxResponse, status_code=status.HTTP_201_CREATED)
 def create_gift_box(
     gift_box_data: GiftBoxCreate,
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("giftbox.write")),
     db: Session = Depends(get_db)
 ):
     """Tạo hộp quà mới"""
@@ -158,7 +159,7 @@ def create_gift_box(
 def update_gift_box(
     gift_box_id: int,
     gift_box_data: GiftBoxUpdate,
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("giftbox.write")),
     db: Session = Depends(get_db)
 ):
     """Cập nhật hộp quà"""
@@ -171,7 +172,7 @@ def update_gift_box(
 @router.delete("/{gift_box_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_gift_box(
     gift_box_id: int,
-    current_user: NguoiDung = Depends(require_role("admin")),
+    current_user: NguoiDung = Depends(require_capability("giftbox.delete")),
     db: Session = Depends(get_db)
 ):
     """Xóa hộp quà (cascade sẽ xóa BOM)"""
@@ -188,7 +189,7 @@ def delete_gift_box(
 @router.get("/{gift_box_id}/bom", response_model=List[BomItemResponse])
 def get_gift_box_bom(
     gift_box_id: int,
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("giftbox.read")),
     db: Session = Depends(get_db)
 ):
     """Lấy danh sách BOM của hộp quà"""
@@ -202,7 +203,7 @@ def get_gift_box_bom(
 def add_bom_item(
     gift_box_id: int,
     bom_item: BomItemCreate,
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("bom.write")),
     db: Session = Depends(get_db)
 ):
     """Thêm item vào BOM"""
@@ -217,7 +218,7 @@ def update_bom_item(
     gift_box_id: int,
     bom_id: int,
     bom_item: BomItemUpdate,
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("bom.write")),
     db: Session = Depends(get_db)
 ):
     """Cập nhật số lượng BOM item"""
@@ -231,7 +232,7 @@ def update_bom_item(
 def delete_bom_item(
     gift_box_id: int,
     bom_id: int,
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("bom.write")),
     db: Session = Depends(get_db)
 ):
     """Xóa BOM item"""

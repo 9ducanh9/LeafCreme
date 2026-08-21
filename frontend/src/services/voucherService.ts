@@ -1,8 +1,41 @@
-// Voucher service for validating and applying vouchers
-// Real backend "validate voucher" endpoint is not implemented in this repository.
-import { getVouchers, DEMO_VOUCHER_MODE_ENABLED } from './admin/voucherService'
+// Voucher service for validating and applying vouchers.
+// The backend remains authoritative at checkout; this lookup only provides
+// immediate storefront feedback before the order is submitted.
 import type { Voucher } from '../types/admin'
 import { CartItem } from '../types/cart'
+import { apiClient } from './api'
+
+interface PublicVoucher {
+  phieugiam_id: number
+  ma_phieu: string
+  ten_phieu: string
+  loai_giam: 'phantram' | 'sotien'
+  gia_tri_giam: number
+  tong_tien_toi_thieu: number
+  ngay_het_han: string
+  dang_hoat_dong: boolean
+  san_pham_ap_dung?: { loai_ap_dung: 'all' | 'san_pham' | 'danh_muc'; danh_sach_id?: Array<number | string> | null } | null
+}
+
+function mapPublicVoucher(row: PublicVoucher): Voucher {
+  const application = row.san_pham_ap_dung
+  return {
+    id: String(row.phieugiam_id),
+    code: row.ma_phieu,
+    type: row.loai_giam === 'phantram' ? 'percent' : 'fixed_amount',
+    discountValue: Number(row.gia_tri_giam),
+    appliesTo: application?.loai_ap_dung === 'san_pham' ? 'product' : application?.loai_ap_dung === 'danh_muc' ? 'category' : 'all',
+    targetId: application?.danh_sach_id?.[0] !== undefined ? String(application.danh_sach_id[0]) : undefined,
+    minOrderValue: Number(row.tong_tien_toi_thieu || 0),
+    expiresAt: row.ngay_het_han,
+    status: row.dang_hoat_dong ? 'active' : 'inactive',
+  }
+}
+
+export async function getActiveVouchers(): Promise<Voucher[]> {
+  const rows = await apiClient.get<PublicVoucher[]>('/vouchers/active')
+  return rows.map(mapPublicVoucher)
+}
 
 export interface VoucherValidationResult {
   valid: boolean
@@ -11,24 +44,13 @@ export interface VoucherValidationResult {
   error?: string
 }
 
-const VOUCHER_DISABLED_MESSAGE =
-  'Tính năng mã giảm giá hiện đang ở chế độ demo/dev-only và chưa có backend xác thực riêng.'
-
 export async function validateVoucher(
   code: string,
   subtotal: number,
   cartItems: CartItem[]
 ): Promise<VoucherValidationResult> {
-  if (!DEMO_VOUCHER_MODE_ENABLED) {
-    return {
-      valid: false,
-      discountAmount: 0,
-      error: VOUCHER_DISABLED_MESSAGE,
-    }
-  }
-
   try {
-    const vouchers = await getVouchers({ status: 'active' })
+    const vouchers = await getActiveVouchers()
     const voucher = vouchers.find((item) => item.code.toUpperCase() === code.toUpperCase().trim())
 
     if (!voucher) {
@@ -67,7 +89,9 @@ export async function validateVoucher(
 
     if (voucher.appliesTo !== 'all') {
       const cartProductIds = cartItems.map((item) => item.productId)
-      const cartCategories: string[] = []
+      const cartCategories = cartItems
+        .map((item) => item.category?.trim())
+        .filter((category): category is string => Boolean(category))
 
       if (voucher.appliesTo === 'product') {
         if (!voucher.targetId || !cartProductIds.includes(Number(voucher.targetId))) {

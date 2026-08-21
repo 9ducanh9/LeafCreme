@@ -2,11 +2,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Box, Button, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import CategoryIcon from '@mui/icons-material/Category'
 import ProductTable from '../../components/admin/products/ProductTable'
 import ProductFilters from '../../components/admin/products/ProductFilters'
 import ProductForm from '../../components/admin/products/ProductForm'
-import CategoryManager from '../../components/admin/products/CategoryManager'
 import {
   getProductVariants,
   createProductVariant,
@@ -15,13 +13,17 @@ import {
 } from '../../services/admin/productService'
 import { ProductVariant } from '../../types/admin'
 import { useToast } from '../../contexts/ToastContext'
+import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { useDataTableState } from '../../hooks/admin/useDataTableState'
 
 export default function AdminProductPage() {
   const { showSuccess, showError } = useToast()
+  const { can } = useAuth()
+  const canWrite = can('products.write')
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [formOpen, setFormOpen] = useState(false)
-  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
+  const table = useDataTableState({ key: 'products', defaultSortBy: 'ten', defaultSortDir: 'asc', defaultPageSize: 50, filterKeys: [] })
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
     open: false,
@@ -32,18 +34,22 @@ export default function AdminProductPage() {
   const [category, setCategory] = useState('')
   const [size, setSize] = useState('')
   const [search, setSearch] = useState('')
+  const [total, setTotal] = useState(0)
+  const [tableStatus, setTableStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [tableError, setTableError] = useState<string | null>(null)
 
   const loadVariants = useCallback(async () => {
     try {
-      // Force fresh data by adding timestamp to prevent caching
-      const data = await getProductVariants({ category, size, search })
-      setVariants(data)
+      setTableStatus('loading'); setTableError(null)
+      const data = await getProductVariants({ category, size, search, skip: table.skip, limit: table.pageSize, sort_by: table.sortBy, sort_dir: table.sortDir })
+      setVariants(data.items); setTotal(data.total); setTableStatus('idle')
     } catch (error: unknown) {
       console.error('Error loading variants:', error)
       const message = error instanceof Error ? error.message : ''
       showError(message || 'Không thể tải danh sách sản phẩm')
+      setTableError(message || 'Không thể tải danh sách sản phẩm'); setTableStatus('error')
     }
-  }, [category, search, showError, size])
+  }, [category, search, showError, size, table.pageSize, table.skip, table.sortBy, table.sortDir])
 
   useEffect(() => {
     loadVariants()
@@ -105,12 +111,9 @@ export default function AdminProductPage() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Quản lý sản phẩm</Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button variant="outlined" startIcon={<CategoryIcon />} onClick={() => setCategoryManagerOpen(true)}>
-            Quản lý danh mục
-          </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          {canWrite && <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
             Thêm sản phẩm
-          </Button>
+          </Button>}
         </Box>
       </Box>
 
@@ -118,34 +121,22 @@ export default function AdminProductPage() {
         category={category}
         size={size}
         search={search}
-        onCategoryChange={setCategory}
-        onSizeChange={setSize}
-        onSearchChange={setSearch}
+        onCategoryChange={(value) => { setCategory(value); table.patch({ page: 0 }) }}
+        onSizeChange={(value) => { setSize(value); table.patch({ page: 0 }) }}
+        onSearchChange={(value) => { setSearch(value); table.patch({ page: 0 }) }}
       />
 
-      <ProductTable variants={variants} onEdit={handleEdit} onDelete={handleDelete} />
+      <ProductTable variants={variants} onEdit={handleEdit} onDelete={handleDelete} total={total} page={table.page} pageSize={table.pageSize} onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })} sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })} status={tableStatus} error={tableError} onRetry={() => void loadVariants()} />
 
       <ProductForm
         open={formOpen}
         variant={editingVariant}
+        sizeOptions={Array.from(new Set(variants.map((item) => item.size).filter(Boolean)))}
         onClose={() => {
           setFormOpen(false)
           setEditingVariant(null)
         }}
         onSubmit={handleSubmit}
-      />
-
-      <CategoryManager
-        open={categoryManagerOpen}
-        onClose={() => {
-          setCategoryManagerOpen(false)
-          // Reload variants and refresh filters when category manager closes
-          loadVariants()
-        }}
-        onCategoriesChange={() => {
-          // Reload variants to refresh category filter
-          loadVariants()
-        }}
       />
 
       <ConfirmDialog

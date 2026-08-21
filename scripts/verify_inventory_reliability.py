@@ -409,7 +409,6 @@ def run_product_single_flow(db: Session, service: OrderService, data: dict, veri
     print_snapshot("Product single-order after create", after_create)
 
     early_id = data["product_lot_early"].lohang_id
-    late_id = data["product_lot_late"].lohang_id
     allocations = allocations_for_order(db, order_id)
     verifier.check(after_create["product_early"] == (before["product_early"][0] - 1, before["product_early"][1] + 1), "Product order deducted earliest batch first")
     verifier.check(after_create["product_late"] == before["product_late"], "Product order did not deduct later batch when earliest had enough stock")

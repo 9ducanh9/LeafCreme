@@ -1,97 +1,65 @@
 // Product Table component - displays product variants in a table
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip,
-  Avatar,
-  Box,
-} from '@mui/material'
+import { IconButton, Chip, Avatar, Box } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { ProductVariant } from '../../../types/admin'
 import { formatPrice } from '../../../utils/formatPrice'
 import { getImageUrl } from '../../../utils/getImageUrl'
+import { useAuth } from '../../../contexts/AuthContext'
+import DataTable, { type Column, type SortDirection } from '../ui/data-table'
 
 interface ProductTableProps {
   variants: ProductVariant[]
   onEdit: (variant: ProductVariant) => void
   onDelete: (id: string) => void
+  total: number
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
+  sortBy: string
+  sortDir: SortDirection
+  onSortChange: (sortBy: string, sortDir: SortDirection) => void
+  status?: 'idle' | 'loading' | 'error'
+  error?: string | null
+  onRetry?: () => void
 }
 
-export default function ProductTable({ variants, onEdit, onDelete }: ProductTableProps) {
+export default function ProductTable({ variants, onEdit, onDelete, total, page, pageSize, onPageChange, onPageSizeChange, sortBy, sortDir, onSortChange, status = 'idle', error, onRetry }: ProductTableProps) {
+  const { can } = useAuth()
+  const canWrite = can('products.write')
   const getStatusColor = (status: ProductVariant['status']) => {
     return status === 'active' ? 'success' : 'default'
   }
 
-  return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Hình ảnh</TableCell>
-            <TableCell>Tên</TableCell>
-            <TableCell>Mô tả</TableCell>
-            <TableCell>Danh mục</TableCell>
-            <TableCell align="right">Giá</TableCell>
-            <TableCell align="center">Kích thước</TableCell>
-            <TableCell align="center">Trạng thái</TableCell>
-            <TableCell>SKU</TableCell>
-            <TableCell align="right">Thao tác</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {variants.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={9} align="center" sx={{ py: 8, color: 'text.disabled' }}>
-                Không tìm thấy sản phẩm
-              </TableCell>
-            </TableRow>
-          ) : (
-            variants.map((variant, index) => (
-              <TableRow
-                key={`${variant.id}-${index}`}
-                sx={{ cursor: 'pointer', '&:hover .action-buttons': { opacity: 1 } }}
-              >
-                <TableCell>
-                  <Avatar src={variant.image ? getImageUrl(variant.image) : undefined} alt={variant.name} variant="rounded" sx={{ width: 48, height: 48 }}>
-                    {variant.name.charAt(0).toUpperCase()}
-                  </Avatar>
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>{variant.name}</TableCell>
-                <TableCell sx={{ color: 'text.secondary', maxWidth: 300 }}>{variant.description}</TableCell>
-                <TableCell>
-                  <Chip label={variant.category} size="small" color="warning" variant="outlined" />
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }} align="right">
-                  {formatPrice(variant.price)}
-                </TableCell>
-                <TableCell align="center">
-                  <Chip label={variant.size} size="small" sx={{ bgcolor: 'grey.100', color: 'text.secondary' }} />
-                </TableCell>
-                <TableCell align="center">
-                  <Chip label={variant.status === 'active' ? 'Hoạt động' : 'Ẩn'} color={getStatusColor(variant.status)} size="small" />
-                </TableCell>
-                <TableCell sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.8125rem' }}>
-                  {variant.sku || '-'}
-                </TableCell>
-                <TableCell align="right">
-                  <Box className="action-buttons" sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', opacity: 0, transition: 'opacity 0.2s ease' }}>
-                    <IconButton size="small" color="primary" onClick={() => onEdit(variant)}><EditIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" color="error" onClick={() => onDelete(variant.id)}><DeleteIcon fontSize="small" /></IconButton>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  )
+  const columns: Column<ProductVariant>[] = [
+    { id: 'image', label: 'Hình ảnh', render: (variant) => <Avatar src={variant.image ? getImageUrl(variant.image) : undefined} alt={variant.name} variant="rounded" sx={{ width: 48, height: 48 }}>{variant.name.charAt(0).toUpperCase()}</Avatar> },
+    { id: 'name', label: 'Tên', sortable: true, render: (variant) => <Box sx={{ fontWeight: 600 }}>{variant.name}</Box> },
+    { id: 'description', label: 'Mô tả', render: (variant) => <Box sx={{ color: 'text.secondary', maxWidth: 300 }}>{variant.description}</Box> },
+    { id: 'category', label: 'Danh mục', sortable: true, render: (variant) => <Chip label={variant.category || '-'} size="small" color="warning" variant="outlined" /> },
+    { id: 'price', label: 'Giá', numeric: true, sortable: true, render: (variant) => <Box sx={{ fontWeight: 700 }}>{formatPrice(variant.price)}</Box> },
+    { id: 'size', label: 'Kích thước', render: (variant) => <Chip label={variant.sizeLabel || variant.size || 'N/A'} size="small" sx={{ bgcolor: 'grey.100', color: 'text.secondary' }} /> },
+    { id: 'status', label: 'Trạng thái', render: (variant) => <Chip label={variant.status === 'active' ? 'Hoạt động' : 'Ẩn'} color={getStatusColor(variant.status)} size="small" /> },
+    { id: 'sku', label: 'SKU', render: (variant) => <Box sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.8125rem' }}>{variant.sku || '-'}</Box> },
+  ]
+  return <DataTable
+    caption="Danh sách sản phẩm"
+    columns={columns}
+    rows={variants}
+    status={status}
+    error={error}
+    onRetry={onRetry}
+    getRowId={(variant) => variant.id}
+    getRowLabel={(variant) => `${variant.name} · ${variant.sizeLabel || variant.size || 'Sản phẩm'}`}
+    total={total}
+    page={page}
+    pageSize={pageSize}
+    onPageChange={onPageChange}
+    onPageSizeChange={onPageSizeChange}
+    sortBy={sortBy}
+    sortDir={sortDir}
+    onSortChange={onSortChange}
+    rowActions={canWrite ? (variant) => <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}><IconButton size="small" color="primary" aria-label="Sửa sản phẩm" onClick={() => onEdit(variant)}><EditIcon fontSize="small" /></IconButton><IconButton size="small" color="error" aria-label="Xóa sản phẩm" onClick={() => onDelete(variant.id)}><DeleteIcon fontSize="small" /></IconButton></Box> : undefined}
+  />
 }
 

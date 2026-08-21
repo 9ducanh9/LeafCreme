@@ -1,14 +1,33 @@
 // Admin panel types and interfaces
 
 // Product & Variant types
+export type AdminEntityId = `variant:${number}` | `product:${number}`
+
+export type ParsedAdminEntityId =
+  | { kind: 'variant'; id: number }
+  | { kind: 'product'; id: number }
+
+export function parseAdminEntityId(value: string): ParsedAdminEntityId {
+  const [kind, raw] = value.split(':')
+  const id = Number(raw)
+  if ((kind !== 'variant' && kind !== 'product') || !Number.isInteger(id) || id <= 0) {
+    throw new Error(`ID admin không hợp lệ: ${value}`)
+  }
+  return { kind, id }
+}
+
 export interface ProductVariant {
-  id: string
+  id: AdminEntityId
   productId: string
   name: string
+  flavor: string
   description: string
   category: string // Changed to string to allow any category name
   price: number
-  size: 'S' | 'M' | 'L' | 'XL'
+  /** Giá trị kich_thuoc nguyên văn trong database. */
+  size: string
+  /** Nhãn dẫn xuất chỉ dùng để hiển thị, không gửi ngược về API. */
+  sizeLabel: string
   status: 'active' | 'hidden'
   image: string
   sku?: string

@@ -11,6 +11,7 @@
 import { apiClient } from '../api'
 import type { Order, OrderItem, OrderStatus, OrderType } from '../../types/admin'
 import { toAmount, type BackendOrder, type BackendOrderItem } from '../../types/api/order'
+import type { Page } from '../../types/page'
 
 function mapItems(raw?: BackendOrderItem[] | null): OrderItem[] {
   return (raw || []).map((item) => ({
@@ -51,25 +52,24 @@ export interface OrderListFilters {
   search?: string
 }
 
-export async function getOrders(filters?: OrderListFilters): Promise<Order[]> {
-  const params: Record<string, string | number | boolean | null> = { limit: 100 }
+export async function getOrders(filters?: OrderListFilters & { skip?: number; limit?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }): Promise<Page<Order>> {
+  const params: Record<string, string | number | boolean | null> = {
+    paginated: true,
+    skip: filters?.skip ?? 0,
+    limit: filters?.limit ?? 50,
+    sort_by: filters?.sort_by ?? 'ngay_tao',
+    sort_dir: filters?.sort_dir ?? 'desc',
+  }
   if (filters?.orderType) params.loai_don = filters.orderType
   if (filters?.status) params.trang_thai = filters.status
   if (filters?.dateFrom) params.from_date = filters.dateFrom
   if (filters?.dateTo) params.to_date = filters.dateTo
   if (filters?.search) params.ma_don_hang = filters.search
+  if (filters?.amountFrom !== undefined) params.tien_tu = filters.amountFrom
+  if (filters?.amountTo !== undefined) params.tien_den = filters.amountTo
 
-  const response = await apiClient.get<BackendOrder[]>('/orders', params)
-  let orders = response.map(mapOrder)
-
-  if (filters?.amountFrom !== undefined) {
-    orders = orders.filter((order) => order.totalAmount >= filters.amountFrom!)
-  }
-  if (filters?.amountTo !== undefined) {
-    orders = orders.filter((order) => order.totalAmount <= filters.amountTo!)
-  }
-
-  return orders
+  const response = await apiClient.get<Page<BackendOrder>>('/orders', params)
+  return { ...response, items: response.items.map(mapOrder) }
 }
 
 export async function getOrderById(id: string): Promise<Order> {

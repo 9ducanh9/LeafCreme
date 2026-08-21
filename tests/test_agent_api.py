@@ -103,6 +103,26 @@ class TestActionLifecycleViaApi:
         )
         assert response.status_code == 404
 
+    def test_staff_can_approve_a_draft_classified_action(self, client, db_session, admin_token, staff_token):
+        from app.models import CanhBaoTonKho
+
+        alert = CanhBaoTonKho(loai_canh_bao="ton_kho_thap", muc_do_nghiem_trong="cao", trang_thai="chua_xu_ly")
+        db_session.add(alert)
+        db_session.commit()
+
+        propose = client.post(
+            "/agent/actions",
+            json={"loai_hanh_dong": "draft_replenishment_note", "tham_so": {"alert_id": alert.canhbao_id, "so_luong_de_nghi": 10}},
+            headers=_auth(admin_token),
+        )
+        assert propose.status_code == 200
+        assert propose.json()["action"]["phan_loai"] == "draft"
+        action_id = propose.json()["action"]["action_id"]
+
+        approve = client.post(f"/agent/actions/{action_id}/approve", headers=_auth(staff_token))
+        assert approve.status_code == 200
+        assert approve.json()["trang_thai"] == "hoan_thanh"
+
 
 class TestChatEndpoint:
     def test_chat_returns_a_reply(self, client, staff_token):

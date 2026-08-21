@@ -608,8 +608,23 @@ class AgentAction(Base):
     tham_so: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     ly_do: Mapped[str | None] = mapped_column(Text, nullable=True)
     nguon: Mapped[str] = mapped_column(String(20), server_default="agent")
-    muc_do_rui_ro: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Tool classification at the time the action was created — "read" never
+    # reaches this table (see AgentTool docstring in tools.py), "draft"
+    # records a recommendation without an irreversible external effect,
+    # "execute" actually mutates business state. Drives who's allowed to
+    # approve (see agent_service._require_role_for_classification).
+    phan_loai: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Optional human-facing risk tier, independent of classification (an
+    # "execute" can be low-risk, e.g. pausing a batch; a "draft" is always
+    # low-risk by definition but this lets a future tool say otherwise).
+    muc_do_uu_tien: Mapped[str | None] = mapped_column(String(20), nullable=True)
     trang_thai: Mapped[str] = mapped_column(String(20), server_default="de_xuat")
+    # Snapshot of the live state a mutating tool's target was in when this
+    # action was proposed (AgentTool.capture_state). Re-checked against
+    # live state at approval time (AgentTool.revalidate_state) so an
+    # approval can't execute against a target that moved on since the
+    # proposal was made — see agent_service.approve_action.
+    dieu_kien_tien_quyet: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     ket_qua: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     loi: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Who proposed it (set at propose time) vs who approved/rejected it (set
@@ -618,11 +633,15 @@ class AgentAction(Base):
     nguoidung_de_xuat_id: Mapped[int | None] = mapped_column(ForeignKey("nguoidung.nguoidung_id", ondelete="SET NULL"), nullable=True)
     nguoidung_duyet_id: Mapped[int | None] = mapped_column(ForeignKey("nguoidung.nguoidung_id", ondelete="SET NULL"), nullable=True)
     ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    ngay_bat_dau_xu_ly: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ngay_xu_ly: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    nguoidung_reset_id: Mapped[int | None] = mapped_column(ForeignKey("nguoidung.nguoidung_id", ondelete="SET NULL"), nullable=True)
+    ngay_reset: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     __table_args__ = (
         CheckConstraint("nguon IN ('agent', 'nhan_vien')", name="ck_agent_actions_nguon"),
-        CheckConstraint("muc_do_rui_ro IN ('doc', 'thay_doi')", name="ck_agent_actions_muc_do_rui_ro"),
+        CheckConstraint("phan_loai IN ('read', 'draft', 'execute')", name="ck_agent_actions_phan_loai"),
+        CheckConstraint("muc_do_uu_tien IN ('low', 'medium', 'high')", name="ck_agent_actions_muc_do_uu_tien"),
         CheckConstraint("trang_thai IN ('de_xuat', 'dang_xu_ly', 'hoan_thanh', 'tu_choi', 'that_bai')", name="ck_agent_actions_trang_thai"),
     )
 

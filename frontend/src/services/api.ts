@@ -186,7 +186,7 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string, params?: Record<string, string | number | boolean | null>): Promise<T> {
+  async get<T>(endpoint: string, params?: Record<string, string | number | boolean | null | undefined>): Promise<T> {
     const queryString = params
       ? '?' + new URLSearchParams(
           Object.entries(params)
@@ -200,7 +200,7 @@ class ApiClient {
     })
   }
 
-  async post<T>(endpoint: string, data?: unknown, options?: { params?: Record<string, string | number | boolean | null> }): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown, options?: { params?: Record<string, string | number | boolean | null | undefined> }): Promise<T> {
     let url = endpoint
     if (options?.params) {
       const queryString = new URLSearchParams(
@@ -229,7 +229,7 @@ class ApiClient {
     })
   }
 
-  async patch<T>(endpoint: string, data?: unknown, options?: { params?: Record<string, string | number | boolean | null> }): Promise<T> {
+  async patch<T>(endpoint: string, data?: unknown, options?: { params?: Record<string, string | number | boolean | null | undefined> }): Promise<T> {
     let url = endpoint
     if (options?.params) {
       const queryString = new URLSearchParams(

@@ -142,7 +142,7 @@ class TestImageUpload:
     def test_rejects_non_image_content_type(self, service):
         with pytest.raises(DomainError) as exc_info:
             service.store_product_image("text/plain", "notes.txt", b"hello")
-        assert exc_info.value.status_code == 400
+        assert exc_info.value.status_code == 415
 
     def test_rejects_oversized_file(self, service):
         oversized = b"x" * (5 * 1024 * 1024 + 1)

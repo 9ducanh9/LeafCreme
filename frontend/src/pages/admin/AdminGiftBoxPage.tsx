@@ -3,6 +3,8 @@ import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconB
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import Inventory2Icon from '@mui/icons-material/Inventory2'
+import { useNavigate } from 'react-router-dom'
 import AdminPage from '../../components/admin/ui/admin-page'
 import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
@@ -11,6 +13,8 @@ import {
   createGiftBox, deleteGiftBox, getGiftBoxes, updateGiftBox, type GiftBoxCreate, type GiftBoxUpdate,
 } from '../../services/admin/giftBoxService'
 import type { BackendGiftBox } from '../../types/giftBox'
+import { useAuth } from '../../contexts/AuthContext'
+import { useDataTableState } from '../../hooks/admin/useDataTableState'
 
 const blank: GiftBoxCreate = { ten_hop_qua: '', sku: '', gia_ban: 0, mo_ta: '', hinh_anh_url: '', kich_thuoc: '', trong_luong: 0, dang_hoat_dong: true }
 const columns: Column<BackendGiftBox>[] = [
@@ -22,7 +26,11 @@ const columns: Column<BackendGiftBox>[] = [
 ]
 
 export default function AdminGiftBoxPage() {
+  const { can } = useAuth()
+  const navigate = useNavigate()
+  const table = useDataTableState({ key: 'gift_boxes', defaultSortBy: 'ngay_tao', defaultSortDir: 'desc', defaultPageSize: 50 })
   const [rows, setRows] = useState<BackendGiftBox[]>([])
+  const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -33,9 +41,12 @@ export default function AdminGiftBoxPage() {
 
   const load = useCallback(async () => {
     setStatus('loading'); setError(null)
-    try { setRows(await getGiftBoxes({ search: search || undefined })); setStatus('idle') }
+    try {
+      const page = await getGiftBoxes({ search: search || undefined, skip: table.skip, limit: table.pageSize, sort_by: table.sortBy, sort_dir: table.sortDir })
+      setRows(page.items); setTotal(page.total); setStatus('idle')
+    }
     catch { setError('Không thể tải danh sách hộp quà'); setStatus('error') }
-  }, [search])
+  }, [search, table.skip, table.pageSize, table.sortBy, table.sortDir])
   useEffect(() => { void load() }, [load])
 
   const openCreate = () => { setEditing(null); setForm({ ...blank }); setDialogOpen(true) }
@@ -67,8 +78,8 @@ export default function AdminGiftBoxPage() {
   return (
     <AdminPage title="Hộp quà" breadcrumb={[{ label: 'Hộp quà' }]}>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <DataTableToolbar search={search} onSearchChange={setSearch} onClear={search ? () => setSearch('') : undefined} actions={<Button startIcon={<AddIcon />} variant="contained" onClick={openCreate}>Thêm hộp quà</Button>} />
-      <DataTable caption="Danh sách hộp quà" columns={columns} rows={rows} getRowId={(row) => row.hop_qua_id} getRowLabel={(row) => row.ten_hop_qua} total={rows.length} page={0} pageSize={Math.max(25, rows.length || 25)} onPageChange={() => undefined} onPageSizeChange={() => undefined} status={status} error={error} onRetry={() => void load()} hasActiveFilters={Boolean(search)} onClearFilters={() => setSearch('')} rowActions={(row) => <><IconButton aria-label="Sửa hộp quà" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton><IconButton aria-label="Xoá hộp quà" onClick={() => setDeleteId(row.hop_qua_id)}><DeleteIcon fontSize="small" /></IconButton></>} />
+      <DataTableToolbar search={search} onSearchChange={(value) => { setSearch(value); table.patch({ page: 0 }) }} onClear={search ? () => { setSearch(''); table.patch({ page: 0 }) } : undefined} actions={can('giftbox.write') ? <Button startIcon={<AddIcon />} variant="contained" onClick={openCreate}>Thêm hộp quà</Button> : undefined} />
+      <DataTable caption="Danh sách hộp quà" columns={columns} rows={rows} getRowId={(row) => row.hop_qua_id} getRowLabel={(row) => row.ten_hop_qua} total={total} page={table.page} pageSize={table.pageSize} onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })} sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })} status={status} error={error} onRetry={() => void load()} hasActiveFilters={Boolean(search)} onClearFilters={() => { setSearch(''); table.patch({ page: 0 }) }} rowActions={(row) => <>{can('giftbox.read') && <IconButton aria-label="Mở công thức BOM" onClick={() => navigate(`/admin/gift-boxes/${row.hop_qua_id}/bom`)}><Inventory2Icon fontSize="small" /></IconButton>}{can('giftbox.write') && <IconButton aria-label="Sửa hộp quà" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>}{can('giftbox.delete') && <IconButton aria-label="Xoá hộp quà" onClick={() => setDeleteId(row.hop_qua_id)}><DeleteIcon fontSize="small" /></IconButton>}</>} />
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>{editing ? 'Chỉnh sửa hộp quà' : 'Tạo hộp quà mới'}</DialogTitle>
         <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>

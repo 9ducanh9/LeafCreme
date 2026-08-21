@@ -1,6 +1,7 @@
 // Admin Gift Box Service - API calls for gift box management
 import { apiClient } from '../api'
 import { BackendGiftBox, BomItem } from '../../types/giftBox'
+import type { Page } from '../../types/page'
 
 export interface GiftBoxCreate {
   ten_hop_qua: string
@@ -29,23 +30,28 @@ export interface GiftBoxFilters {
   dang_hoat_dong?: boolean
   min_price?: number
   max_price?: number
+  skip?: number
+  limit?: number
+  sort_by?: string
+  sort_dir?: 'asc' | 'desc'
 }
 
 /**
  * Get all gift boxes
  */
-export async function getGiftBoxes(filters?: GiftBoxFilters): Promise<BackendGiftBox[]> {
+export async function getGiftBoxes(filters?: GiftBoxFilters): Promise<Page<BackendGiftBox>> {
   try {
-    const params = new URLSearchParams()
-    if (filters?.search) params.append('search', filters.search)
-    if (filters?.dang_hoat_dong !== undefined) params.append('dang_hoat_dong', String(filters.dang_hoat_dong))
-    if (filters?.min_price) params.append('min_price', String(filters.min_price))
-    if (filters?.max_price) params.append('max_price', String(filters.max_price))
-    
-    const queryString = params.toString()
-    const url = `/admin/gift-boxes${queryString ? `?${queryString}` : ''}`
-    const response = await apiClient.get<BackendGiftBox[]>(url)
-    return response
+    return await apiClient.get<Page<BackendGiftBox>>('/admin/gift-boxes', {
+      search: filters?.search,
+      dang_hoat_dong: filters?.dang_hoat_dong,
+      min_price: filters?.min_price,
+      max_price: filters?.max_price,
+      skip: filters?.skip ?? 0,
+      limit: filters?.limit ?? 50,
+      paginated: true,
+      sort_by: filters?.sort_by ?? 'ngay_tao',
+      sort_dir: filters?.sort_dir ?? 'desc',
+    })
   } catch (error) {
     console.error('Error fetching gift boxes:', error)
     throw error

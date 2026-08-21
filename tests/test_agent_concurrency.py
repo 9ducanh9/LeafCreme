@@ -49,9 +49,19 @@ def test_concurrent_approve_executes_the_underlying_tool_exactly_once():
 
     setup = SessionLocal()
     try:
-        role = VaiTro(ten_vai_tro=f"concurrency_admin_role_{suffix}")
-        setup.add(role)
-        setup.flush()
+        # approve_action now checks the caller's real role name ("admin"/
+        # "manager"/"staff") against the target tool's classification —
+        # a made-up role string like the old "concurrency_admin_role_*"
+        # would correctly get rejected with 403 before ever reaching the
+        # claim step this test is exercising. Reuse "admin" if another
+        # test already committed it in this DB; only clean it up here if
+        # this run is the one that created it.
+        role = setup.query(VaiTro).filter(VaiTro.ten_vai_tro == "admin").first()
+        created_role = role is None
+        if role is None:
+            role = VaiTro(ten_vai_tro="admin")
+            setup.add(role)
+            setup.flush()
         user = NguoiDung(
             ten_dang_nhap=f"concurrency_admin_{suffix}",
             email=f"concurrency_admin_{suffix}@example.com",
@@ -97,6 +107,7 @@ def test_concurrent_approve_executes_the_underlying_tool_exactly_once():
             "sanpham_id": product.sanpham_id,
             "nguoidung_id": user.nguoidung_id,
             "vaitro_id": role.vaitro_id,
+            "created_role": created_role,
         }
     finally:
         setup.close()
@@ -149,7 +160,8 @@ def test_concurrent_approve_executes_the_underlying_tool_exactly_once():
             cleanup.query(BienTheSanPham).filter(BienTheSanPham.bienthe_id == created["bienthe_id"]).delete()
             cleanup.query(SanPham).filter(SanPham.sanpham_id == created["sanpham_id"]).delete()
             cleanup.query(NguoiDung).filter(NguoiDung.nguoidung_id == created["nguoidung_id"]).delete()
-            cleanup.query(VaiTro).filter(VaiTro.vaitro_id == created["vaitro_id"]).delete()
+            if created.get("created_role"):
+                cleanup.query(VaiTro).filter(VaiTro.vaitro_id == created["vaitro_id"]).delete()
             cleanup.commit()
         finally:
             cleanup.close()

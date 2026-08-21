@@ -33,6 +33,14 @@ def role_admin(db_session):
     return role
 
 
+@pytest.fixture()
+def role_staff(db_session):
+    role = VaiTro(ten_vai_tro="staff")
+    db_session.add(role)
+    db_session.flush()
+    return role
+
+
 def _make_user(db_session, role, suffix: str) -> NguoiDung:
     user = NguoiDung(
         ten_dang_nhap=f"user_{suffix}",
@@ -46,10 +54,11 @@ def _make_user(db_session, role, suffix: str) -> NguoiDung:
     return user
 
 
-def _make_order(db_session, owner: NguoiDung, tien_thanh_toan: Decimal, suffix: str) -> DonHang:
+def _make_order(db_session, owner: NguoiDung, tien_thanh_toan: Decimal, suffix: str, creator: NguoiDung | None = None) -> DonHang:
     order = DonHang(
         ma_don_hang=f"ORD-TEST-{suffix}",
         nguoidung_id=owner.nguoidung_id,
+        nhan_vien_tao=creator.nguoidung_id if creator else None,
         loai_don="online",
         tong_tien=tien_thanh_toan,
         tien_thanh_toan=tien_thanh_toan,
@@ -66,9 +75,10 @@ def service() -> PaymentService:
 
 
 class TestCreatePayment:
-    def test_cash_payment_for_full_amount_completes_order(self, db_session, role_customer, service):
+    def test_cash_payment_for_full_amount_completes_order(self, db_session, role_customer, role_staff, service):
         customer = _make_user(db_session, role_customer, "buyer1")
-        order = _make_order(db_session, customer, Decimal("100000"), "cash-full")
+        staff = _make_user(db_session, role_staff, "cashier1")
+        order = _make_order(db_session, customer, Decimal("100000"), "cash-full", creator=staff)
 
         class Payload:
             donhang_id = order.donhang_id
@@ -77,15 +87,35 @@ class TestCreatePayment:
             ma_giao_dich = None
             thong_tin_giao_dich = None
 
-        result = service.create_payment(db_session, Payload(), customer)
+        result = service.create_payment(db_session, Payload(), staff)
 
         assert result["trang_thai"] == "thanh_cong"
         db_session.refresh(order)
         assert order.trang_thai == "hoan_thanh"
 
-    def test_rejects_amount_over_remaining_balance(self, db_session, role_customer, service):
+    def test_customer_cannot_create_manual_payment(self, db_session, role_customer, service):
+        customer = _make_user(db_session, role_customer, "buyer-manual-forbidden")
+        order = _make_order(db_session, customer, Decimal("100000"), "manual-forbidden")
+
+        class Payload:
+            donhang_id = order.donhang_id
+            phuong_thuc = "tien_mat"
+            so_tien = Decimal("100000")
+            ma_giao_dich = None
+            thong_tin_giao_dich = None
+
+        with pytest.raises(DomainError) as exc_info:
+            service.create_payment(db_session, Payload(), customer)
+
+        assert exc_info.value.status_code == 403
+        assert db_session.query(ThanhToan).filter(ThanhToan.donhang_id == order.donhang_id).count() == 0
+        db_session.refresh(order)
+        assert order.trang_thai == "cho"
+
+    def test_rejects_amount_over_remaining_balance(self, db_session, role_customer, role_staff, service):
         customer = _make_user(db_session, role_customer, "buyer2")
-        order = _make_order(db_session, customer, Decimal("50000"), "cash-over")
+        staff = _make_user(db_session, role_staff, "cashier2")
+        order = _make_order(db_session, customer, Decimal("50000"), "cash-over", creator=staff)
 
         class Payload:
             donhang_id = order.donhang_id
@@ -95,12 +125,13 @@ class TestCreatePayment:
             thong_tin_giao_dich = None
 
         with pytest.raises(DomainError) as exc_info:
-            service.create_payment(db_session, Payload(), customer)
+            service.create_payment(db_session, Payload(), staff)
         assert exc_info.value.status_code == 400
 
-    def test_rejects_invalid_payment_method(self, db_session, role_customer, service):
+    def test_rejects_invalid_payment_method(self, db_session, role_customer, role_staff, service):
         customer = _make_user(db_session, role_customer, "buyer3")
-        order = _make_order(db_session, customer, Decimal("50000"), "bad-method")
+        staff = _make_user(db_session, role_staff, "cashier3")
+        order = _make_order(db_session, customer, Decimal("50000"), "bad-method", creator=staff)
 
         class Payload:
             donhang_id = order.donhang_id
@@ -110,7 +141,7 @@ class TestCreatePayment:
             thong_tin_giao_dich = None
 
         with pytest.raises(DomainError) as exc_info:
-            service.create_payment(db_session, Payload(), customer)
+            service.create_payment(db_session, Payload(), staff)
         assert exc_info.value.status_code == 400
 
     def test_forbidden_for_another_customers_order(self, db_session, role_customer, service):
@@ -144,10 +175,41 @@ class TestCreatePayment:
         result = service.create_payment(db_session, Payload(), admin)
         assert result["trang_thai"] == "thanh_cong"
 
+    def test_staff_cannot_read_or_pay_another_staff_members_order(self, db_session, role_customer, role_staff, service):
+        customer = _make_user(db_session, role_customer, "payment-scope-customer")
+        staff_a = _make_user(db_session, role_staff, "payment-scope-a")
+        staff_b = _make_user(db_session, role_staff, "payment-scope-b")
+        order = _make_order(db_session, customer, Decimal("50000"), "payment-scope", creator=staff_a)
+        payment = ThanhToan(
+            donhang_id=order.donhang_id,
+            phuong_thuc="tien_mat",
+            so_tien=Decimal("10000"),
+            trang_thai="dang_xu_ly",
+        )
+        db_session.add(payment)
+        db_session.flush()
+
+        assert service.list_payments(db_session, staff_b) == []
+        with pytest.raises(DomainError) as exc_info:
+            service.get_order_payments(db_session, order.donhang_id, staff_b)
+        assert exc_info.value.status_code == 403
+
+        class Payload:
+            donhang_id = order.donhang_id
+            phuong_thuc = "tien_mat"
+            so_tien = Decimal("10000")
+            ma_giao_dich = None
+            thong_tin_giao_dich = None
+
+        with pytest.raises(DomainError) as exc_info:
+            service.create_payment(db_session, Payload(), staff_b)
+        assert exc_info.value.status_code == 403
+
 
 class TestUpdatePaymentStatus:
-    def test_transition_to_success_completes_order_when_fully_paid(self, db_session, role_customer, service):
+    def test_transition_to_success_completes_order_when_fully_paid(self, db_session, role_customer, role_manager, service):
         customer = _make_user(db_session, role_customer, "buyer4")
+        manager = _make_user(db_session, role_manager, "manager1")
         order = _make_order(db_session, customer, Decimal("70000"), "status-transition")
         payment = ThanhToan(
             donhang_id=order.donhang_id,
@@ -164,14 +226,15 @@ class TestUpdatePaymentStatus:
             thong_tin_giao_dich = None
             ngay_thanh_toan = None
 
-        result = service.update_payment_status(db_session, payment.thanhtoan_id, Payload(), customer)
+        result = service.update_payment_status(db_session, payment.thanhtoan_id, Payload(), manager)
 
         assert result["trang_thai"] == "thanh_cong"
         db_session.refresh(order)
         assert order.trang_thai == "hoan_thanh"
 
-    def test_rejects_invalid_status_value(self, db_session, role_customer, service):
+    def test_rejects_invalid_status_value(self, db_session, role_customer, role_manager, service):
         customer = _make_user(db_session, role_customer, "buyer5")
+        manager = _make_user(db_session, role_manager, "manager2")
         order = _make_order(db_session, customer, Decimal("30000"), "bad-status")
         payment = ThanhToan(
             donhang_id=order.donhang_id,
@@ -189,7 +252,7 @@ class TestUpdatePaymentStatus:
             ngay_thanh_toan = None
 
         with pytest.raises(DomainError) as exc_info:
-            service.update_payment_status(db_session, payment.thanhtoan_id, Payload(), customer)
+            service.update_payment_status(db_session, payment.thanhtoan_id, Payload(), manager)
         assert exc_info.value.status_code == 400
 
 

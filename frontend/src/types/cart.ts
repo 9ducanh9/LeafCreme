@@ -8,6 +8,7 @@ export interface CartItem {
   price: number
   quantity: number
   sku?: string
+  category?: string
 }
 
 export interface Cart {

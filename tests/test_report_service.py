@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.models import ChiTietDonHang, DonHang
+from app.models import BienTheSanPham, ChiTietDonHang, DonHang, LoHangSanPham, SanPham
 from app.services.reports import DomainError, ReportService
 
 
@@ -36,6 +36,57 @@ def _make_completed_order(db_session, ma_don_hang, ngay_tao, tong_tien, so_luong
     db_session.add(item)
     db_session.flush()
     return order
+
+
+def _make_product_order(db_session, suffix: str, ngay_tao: datetime, amount: Decimal, category: str = "P2 report"):
+    product = SanPham(
+        ten=f"Report product {suffix}",
+        sku=f"REPORT-{suffix}",
+        loai="bien_the",
+        gia_co_ban=amount,
+        danh_muc=category,
+    )
+    db_session.add(product)
+    db_session.flush()
+    variant = BienTheSanPham(
+        sanpham_id=product.sanpham_id,
+        huong_vi="Report flavor",
+        kich_thuoc="M",
+        gia_bienthe=amount,
+        sku_bienthe=f"REPORT-V-{suffix}",
+    )
+    db_session.add(variant)
+    db_session.flush()
+    lot = LoHangSanPham(
+        bienthe_sanpham_id=variant.bienthe_id,
+        ma_lo=f"REPORT-LOT-{suffix}",
+        ngay_het_han=ngay_tao,
+        so_luong=20,
+        gia_don_vi=amount,
+        trang_thai="hoatdong",
+    )
+    db_session.add(lot)
+    db_session.flush()
+    order = DonHang(
+        ma_don_hang=f"ORD-REPORT-PRODUCT-{suffix}",
+        tong_tien=amount,
+        tien_thanh_toan=amount,
+        trang_thai="hoan_thanh",
+        ngay_tao=ngay_tao,
+    )
+    db_session.add(order)
+    db_session.flush()
+    db_session.add(
+        ChiTietDonHang(
+            donhang_id=order.donhang_id,
+            lohang_sanpham_id=lot.lohang_id,
+            so_luong=2,
+            gia_don_vi=amount / 2,
+            tong_tien_phu=amount,
+        )
+    )
+    db_session.flush()
+    return product, order
 
 
 class TestGetSalesReport:
@@ -76,3 +127,30 @@ class TestGetSalesReport:
 
         results = service.get_sales_report(db_session, from_date=date(2026, 4, 1), to_date=date(2026, 4, 1))
         assert results == []
+
+
+class TestRevenueAggregates:
+    def test_product_and_category_aggregates_use_completed_sales_definition(self, db_session, service):
+        product, _ = _make_product_order(
+            db_session,
+            "AGG-1",
+            datetime(2026, 5, 10, 12, 0, 0),
+            Decimal("120000"),
+        )
+        pending = DonHang(
+            ma_don_hang="ORD-REPORT-AGG-PENDING",
+            tong_tien=Decimal("999000"),
+            tien_thanh_toan=Decimal("999000"),
+            trang_thai="cho",
+            ngay_tao=datetime(2026, 5, 10, 13, 0, 0),
+        )
+        db_session.add(pending)
+        db_session.flush()
+
+        sales = service.get_sales_report(db_session, date(2026, 5, 10), date(2026, 5, 10))
+        by_product = service.get_revenue_by_product(db_session, date(2026, 5, 10), date(2026, 5, 10))
+        by_category = service.get_revenue_by_category(db_session, date(2026, 5, 10), date(2026, 5, 10))
+
+        assert sales[0]["tong_doanh_thu"] == Decimal("120000")
+        assert by_product == [{"sanpham_id": product.sanpham_id, "ten": product.ten, "doanh_thu": Decimal("120000"), "so_luong": 2}]
+        assert by_category == [{"danh_muc": "P2 report", "doanh_thu": Decimal("120000"), "so_luong": 2}]

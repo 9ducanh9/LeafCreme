@@ -7,6 +7,7 @@ import {
   DialogActions,
   Button,
   Alert,
+  Autocomplete,
   TextField,
   Select,
   MenuItem,
@@ -27,11 +28,10 @@ import ProductImageCropper from './ProductImageCropper'
 interface ProductFormProps {
   open: boolean
   variant: ProductVariant | null
+  sizeOptions?: string[]
   onClose: () => void
   onSubmit: (data: Omit<ProductVariant, 'id'>) => Promise<void>
 }
-
-const SIZES: ProductVariant['size'][] = ['S', 'M', 'L', 'XL']
 
 // Helper function to generate SKU
 function generateSKU(name: string, size: string): string {
@@ -48,14 +48,16 @@ function generateSKU(name: string, size: string): string {
   return `${nameAbbr}-${size}-${number}`
 }
 
-export default function ProductForm({ open, variant, onClose, onSubmit }: ProductFormProps) {
+export default function ProductForm({ open, variant, sizeOptions = [], onClose, onSubmit }: ProductFormProps) {
   const [formData, setFormData] = useState<Omit<ProductVariant, 'id'>>({
     productId: '',
     name: '',
+    flavor: '',
     description: '',
     category: '',
     price: 0,
-    size: 'M',
+    size: '',
+    sizeLabel: '',
     status: 'active',
     image: '',
     sku: '',
@@ -72,6 +74,11 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
     if (!values.description.trim()) next.description = 'Mô tả sản phẩm là bắt buộc'
     if (!values.category.trim()) next.category = 'Danh mục là bắt buộc'
     if (values.price <= 0) next.price = 'Giá phải lớn hơn 0'
+    const isVariant = !variant || variant.id.startsWith('variant:')
+    if (isVariant && !values.flavor.trim()) next.flavor = 'Hương vị là bắt buộc'
+    if (isVariant && !values.size.trim()) next.size = 'Kích thước là bắt buộc'
+    if (values.size.length > 50) next.size = 'Kích thước tối đa 50 ký tự'
+    if (values.flavor.length > 100) next.flavor = 'Hương vị tối đa 100 ký tự'
     return next
   }
   const adminForm = useAdminForm({ initialValues: formData, validate })
@@ -82,8 +89,7 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
   useEffect(() => {
     // Load categories whenever form opens
     if (open) {
-      const cats = getCategories()
-      setCategories(cats)
+      void getCategories().then(setCategories).catch(() => setCategories([]))
     }
   }, [open])
 
@@ -92,10 +98,12 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
       setFormData({
         productId: variant.productId,
         name: variant.name,
+        flavor: variant.flavor,
         description: variant.description,
         category: variant.category,
         price: variant.price,
         size: variant.size,
+        sizeLabel: variant.sizeLabel,
         status: variant.status,
         image: variant.image,
         sku: variant.sku || '',
@@ -114,10 +122,12 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
       setFormData({
         productId: '',
         name: '',
+        flavor: '',
         description: '',
         category: categories.length > 0 ? categories[0] : '',
         price: 0,
-        size: 'M',
+        size: '',
+        sizeLabel: '',
         status: 'active',
         image: '',
         sku: '',
@@ -197,6 +207,17 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
               helperText="Mô tả chi tiết về sản phẩm"
             />
 
+            <TextField
+              label="Hương vị"
+              required={!variant || variant.id.startsWith('variant:')}
+              fullWidth
+              value={formData.flavor}
+              onChange={(e) => setFormData({ ...formData, flavor: e.target.value })}
+              error={Boolean(fieldErrors.flavor)}
+              helperText={fieldErrors.flavor || 'Tên hương vị của biến thể'}
+              inputProps={{ maxLength: 100 }}
+            />
+
             <FormControl fullWidth required>
               <InputLabel>Danh mục</InputLabel>
               <Select
@@ -214,22 +235,23 @@ export default function ProductForm({ open, variant, onClose, onSubmit }: Produc
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               <Box sx={{ flex: 1, minWidth: '200px' }}>
-                <FormControl fullWidth required>
-                  <InputLabel>Kích thước</InputLabel>
-                  <Select
-                    value={formData.size}
-                    label="Kích thước"
-                    onChange={(e) =>
-                      setFormData({ ...formData, size: e.target.value as ProductVariant['size'] })
-                    }
-                  >
-                    {SIZES.map((size) => (
-                      <MenuItem key={size} value={size}>
-                        {size}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  freeSolo
+                  options={sizeOptions}
+                  value={formData.size}
+                  onChange={(_, value) => setFormData({ ...formData, size: value || '' })}
+                  onInputChange={(_, value) => setFormData({ ...formData, size: value })}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Kích thước"
+                      required={!variant || variant.id.startsWith('variant:')}
+                      error={Boolean(fieldErrors.size)}
+                      helperText={fieldErrors.size || 'Giữ nguyên dạng như 16cm, 8in'}
+                      inputProps={{ ...params.inputProps, maxLength: 50 }}
+                    />
+                  )}
+                />
               </Box>
 
               <Box sx={{ flex: 1, minWidth: '200px' }}>

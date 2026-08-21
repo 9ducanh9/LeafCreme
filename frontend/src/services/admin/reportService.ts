@@ -1,4 +1,4 @@
-// Admin Report Service - backend-backed where available, explicit gaps where not available
+// Admin Report Service - all dashboard data comes from backend aggregates.
 import { RevenueData, ProductRevenue, BestSeller, DashboardStats } from '../../types/admin'
 import { apiClient } from '../api'
 
@@ -7,9 +7,6 @@ export interface CategoryRevenue {
   revenue: number
   quantity: number
 }
-
-export const REPORTS_DEMO_ONLY_MESSAGE =
-  'Reporting breakdown APIs are not implemented in backend yet (demo/dev-only).'
 
 interface SalesReportRow {
   ngay: string
@@ -68,28 +65,35 @@ export async function getMonthlyRevenue(): Promise<RevenueData[]> {
   }))
 }
 
-export async function getRevenueByProduct(): Promise<ProductRevenue[]> {
-  return []
+export async function getRevenueByProduct(fromDate?: string, toDate?: string): Promise<ProductRevenue[]> {
+  const range = fromDate && toDate ? { fromDate, toDate } : getDateRange(30)
+  const rows = await apiClient.get<Array<{ sanpham_id: number; ten: string; doanh_thu: number; so_luong: number }>>('/reports/revenue-by-product', { from_date: range.fromDate, to_date: range.toDate, limit: 20 })
+  return rows.map((row) => ({ productName: row.ten, revenue: Number(row.doanh_thu), quantity: Number(row.so_luong) }))
 }
 
-export async function getBestSellers(_limit: number = 5): Promise<BestSeller[]> {
-  return []
+export async function getBestSellers(limit: number = 5, fromDate?: string, toDate?: string): Promise<BestSeller[]> {
+  const range = fromDate && toDate ? { fromDate, toDate } : getDateRange(30)
+  const rows = await apiClient.get<Array<{ name: string; sold_count: number; base_price: number }>>('/analytics/best-sellers', { limit, from_date: range.fromDate, to_date: range.toDate })
+  return rows.map((row) => ({ productName: row.name, quantity: Number(row.sold_count), revenue: Number(row.base_price) * Number(row.sold_count) }))
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  const { fromDate, toDate } = getDateRange(30)
-  const rows = await getSalesReport(fromDate, toDate)
+export async function getDashboardStats(fromDate?: string, toDate?: string): Promise<DashboardStats> {
+  const range = fromDate && toDate ? { fromDate, toDate } : getDateRange(30)
+  const rows = await getSalesReport(range.fromDate, range.toDate)
 
   const totalRevenue = rows.reduce((sum, row) => sum + Number(row.tong_doanh_thu), 0)
   const totalOrders = rows.reduce((sum, row) => sum + Number(row.so_don_hang), 0)
 
+  const sellers = await getBestSellers(1, range.fromDate, range.toDate)
   return {
     totalRevenue,
     totalOrders,
-    bestSeller: 'N/A',
+    bestSeller: sellers[0]?.productName || '',
   }
 }
 
-export async function getRevenueByCategory(): Promise<CategoryRevenue[]> {
-  return []
+export async function getRevenueByCategory(fromDate?: string, toDate?: string): Promise<CategoryRevenue[]> {
+  const range = fromDate && toDate ? { fromDate, toDate } : getDateRange(30)
+  const rows = await apiClient.get<Array<{ danh_muc: string; doanh_thu: number; so_luong: number }>>('/reports/revenue-by-category', { from_date: range.fromDate, to_date: range.toDate })
+  return rows.map((row) => ({ category: row.danh_muc, revenue: Number(row.doanh_thu), quantity: Number(row.so_luong) }))
 }

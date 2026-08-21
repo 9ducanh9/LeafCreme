@@ -7,9 +7,10 @@ from .agent_service import (
     list_actions,
     propose_action,
     reject_action,
+    reset_action,
 )
 from .state_service import build_snapshot
-from .tools import TOOL_REGISTRY, anthropic_tool_schemas, describe_tools
+from .tools import TOOL_REGISTRY, chat_tool_schemas, describe_tools
 
 __all__ = [
     "DomainError",
@@ -19,8 +20,9 @@ __all__ = [
     "list_actions",
     "propose_action",
     "reject_action",
+    "reset_action",
     "build_snapshot",
     "TOOL_REGISTRY",
     "describe_tools",
-    "anthropic_tool_schemas",
+    "chat_tool_schemas",
 ]

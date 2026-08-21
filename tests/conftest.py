@@ -10,18 +10,57 @@ Base.metadata.create_all) so the test suite exercises the same schema path
 that staging/production go through.
 """
 import os
+import re
 import sys
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, event
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+_PROTECTED_ENVS = {"prod", "production", "staging"}
+_DISPOSABLE_DB = re.compile(r"(^|[_-])test([_-]|$)", re.IGNORECASE)
+
+
+def _assert_disposable(url: str) -> None:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    if app_env in _PROTECTED_ENVS:
+        pytest.exit(f"APP_ENV={app_env!r} — từ chối chạy test suite.", returncode=4)
+
+    database = make_url(url).database or ""
+    if not _DISPOSABLE_DB.search(database):
+        pytest.exit(
+            f"Từ chối chạy test trên database {database!r}: tên database phải chứa "
+            "'test' (ví dụ bakery_test). Suite này chạy alembic downgrade base "
+            "ở teardown và sẽ xoá schema. Đặt TEST_DATABASE_URL tới database dùng một lần.",
+            returncode=4,
+        )
+
+
+@pytest.fixture()
+def role_staff(db_session):
+    from app.models import VaiTro
+
+    role = VaiTro(ten_vai_tro="staff")
+    db_session.add(role)
+    db_session.flush()
+    return role
+
+
+@pytest.fixture()
+def role_manager(db_session):
+    from app.models import VaiTro
+
+    role = VaiTro(ten_vai_tro="manager")
+    db_session.add(role)
+    db_session.flush()
+    return role
 
 
 def _alembic_config() -> Config:
@@ -35,10 +74,12 @@ def _migrated_schema():
     """Apply all migrations once before the test session, tear the schema
     back down afterwards so re-runs start clean."""
     if not TEST_DATABASE_URL:
-        pytest.skip(
-            "DATABASE_URL/TEST_DATABASE_URL is not set — see .env.example. "
-            "Run `docker compose up -d db` locally first."
+        pytest.exit(
+            "Chưa set TEST_DATABASE_URL — xem .env.example. "
+            "Không dùng DATABASE_URL của môi trường dev/production để chạy test.",
+            returncode=4,
         )
+    _assert_disposable(TEST_DATABASE_URL)
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
     cfg = _alembic_config()
     command.upgrade(cfg, "head")

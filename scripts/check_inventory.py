@@ -85,7 +85,7 @@ def check_product_inventory(db: Session, show_detail: bool = False):
         print(f"{ten_sp:<30} {huong_vi:<25} {kich_thuoc:<20} {format_number(ton_kho):<15} {format_number(da_ban):<15} {so_lo:<10}")
     
     print("-" * 100)
-    print(f"\n📊 TỔNG HỢP THEO SẢN PHẨM:")
+    print("\n📊 TỔNG HỢP THEO SẢN PHẨM:")
     for ten_sp, tong in sorted(product_totals.items()):
         print(f"   • {ten_sp}: {format_number(tong)} sản phẩm")
     

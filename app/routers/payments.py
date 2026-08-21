@@ -15,7 +15,8 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.db import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.capabilities import require_capability
+from app.core.dependencies import get_current_user
 from app.core.config import settings
 from app.models import NguoiDung
 from app.schemas import ThongTinGiaoDich
@@ -119,7 +120,7 @@ def list_payments(
     donhang_id: Optional[int] = Query(None, description="Filter theo đơn hàng"),
     trang_thai: Optional[str] = Query(None, description="Filter theo trạng thái"),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_user),
+    current_user: NguoiDung = Depends(require_capability("payments.read")),
 ):
     """Danh sách thanh toán"""
     return payment_service.list_payments(
@@ -133,7 +134,7 @@ def list_payments(
 
 
 @router.get("/{payment_id}", response_model=PaymentResponse)
-def get_payment(payment_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)):
+def get_payment(payment_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(require_capability("payments.read"))):
     """Lấy thông tin chi tiết thanh toán"""
     try:
         return payment_service.get_payment(db, payment_id, current_user)
@@ -209,7 +210,7 @@ def confirm_momo_qr_payment(
     payment_id: int,
     payload: MomoQRConfirmRequest,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("payments.manual.create")),
 ):
     """
     Admin xác nhận đã nhận tiền MoMo (manual confirmation)
@@ -222,7 +223,7 @@ def confirm_momo_qr_payment(
 
 @router.get("/orders/{order_id}", response_model=List[PaymentResponse])
 def get_order_payments(
-    order_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)
+    order_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(require_capability("payments.read"))
 ):
     """Lấy danh sách thanh toán của đơn hàng"""
     try:
@@ -233,7 +234,7 @@ def get_order_payments(
 
 @router.post("", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
 def create_payment(
-    payload: PaymentCreate, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)
+    payload: PaymentCreate, db: Session = Depends(get_db), current_user: NguoiDung = Depends(require_capability("payments.manual.create"))
 ):
     """Tạo thanh toán mới"""
     try:
@@ -247,7 +248,7 @@ def update_payment_status(
     payment_id: int,
     payload: PaymentUpdate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("payments.verify")),
 ):
     """Cập nhật trạng thái thanh toán (chỉ admin/manager)"""
     try:
@@ -261,7 +262,7 @@ def verify_payment(
     payment_id: int,
     payload: PaymentVerifyRequest,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("payments.verify")),
 ):
     """
     Verify thanh toán từ callback của payment gateway

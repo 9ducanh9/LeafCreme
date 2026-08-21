@@ -34,6 +34,7 @@ from app.routers import (
     alerts,
     inventory_trace,
     agent,
+    vouchers,
 )
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.security_middleware import SecurityMiddleware
@@ -122,6 +123,7 @@ app.include_router(leafie.router)
 app.include_router(alerts.router)
 app.include_router(inventory_trace.router)
 app.include_router(agent.router)
+app.include_router(vouchers.router)
 
 
 @app.get("/", tags=["root"])

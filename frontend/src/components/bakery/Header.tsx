@@ -16,7 +16,7 @@ function navClass({ isActive }: { isActive: boolean }) {
 
 export default function Header() {
   const { cart, openCartDrawer } = useCart()
-  const { user, logout } = useAuth()
+  const { user, logout, can } = useAuth()
   const { openChat } = useLeafieContext()
   const location = useLocation()
   const navigate = useNavigate()
@@ -25,7 +25,7 @@ export default function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const isAdmin = user?.vaitro?.ten_vai_tro?.toLowerCase() === 'admin' || user?.vaitro?.vaitro_id === 1
+  const isAdmin = can('admin.access')
 
   useEffect(() => { setMobileOpen(false); setProductMenuOpen(false); setUserMenuOpen(false) }, [location.pathname])
   useEffect(() => { setAvatarLoadFailed(false) }, [user?.avatar_url])

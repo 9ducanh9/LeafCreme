@@ -23,6 +23,7 @@ from app.models import (
     VaiTro,
 )
 from app.services.alerts import AlertService, DomainError
+from app.routers.alerts import AlertSortField
 
 
 @pytest.fixture()
@@ -161,3 +162,14 @@ class TestDeleteAlert:
         with pytest.raises(DomainError) as exc_info:
             service.delete_alert(db_session, 999999)
         assert exc_info.value.status_code == 404
+
+
+def test_alert_sort_accepts_admin_table_timestamp_field(db_session, service):
+    result = service.list_alerts(
+        db_session,
+        paginated=True,
+        sort_by=AlertSortField.ngay_canh_bao.value,
+    )
+
+    assert result["items"] == []
+    assert result["total"] == 0

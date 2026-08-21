@@ -2,9 +2,17 @@
 chat, and the propose -> approve/reject action lifecycle.
 
 Thin by design — see app.services.agent for the business logic. Every
-mutating tool call goes through AgentAction (propose, then a separate
-approve) so nothing the agent recommends executes without a human
-decision; read-only tools (and read-only chat questions) run directly.
+"draft"/"execute" tool call goes through AgentAction (propose, then a
+separate approve) so nothing the agent recommends executes without a
+human decision; "read" tools (and read-only chat questions) run directly.
+
+Approve/reject role requirements below are intentionally the widest tier
+(admin/manager/staff) — the actual, tighter check (draft needs
+admin/manager/staff, execute needs admin/manager) happens inside
+agent_service.approve_action/reject_action once the target action's tool
+classification is known, since the router dependency runs before the
+action_id in the path is resolved to anything. See
+agent_service._require_role_for_classification.
 """
 from typing import Any, Dict, List, Optional
 
@@ -12,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..core.dependencies import get_current_active_user, require_role
+from ..core.capabilities import require_capability
 from ..db import get_db
 from ..models import NguoiDung
 from ..services.agent import (
@@ -25,6 +33,7 @@ from ..services.agent import (
     list_actions,
     propose_action,
     reject_action,
+    reset_action,
 )
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -63,7 +72,7 @@ class RejectActionRequest(BaseModel):
 @router.get("/state")
 def get_state(
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("agent.chat")),
 ):
     return build_snapshot(db).to_dict()
 
@@ -74,7 +83,7 @@ def get_state(
 @router.get("/insights")
 def get_agent_insights(
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("agent.chat")),
 ):
     return {"insights": get_insights(db)}
 
@@ -84,7 +93,7 @@ def get_agent_insights(
 # =========================================================
 @router.get("/tools")
 def get_tools(
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("agent.chat")),
 ):
     return {"tools": describe_tools()}
 
@@ -96,7 +105,7 @@ def get_tools(
 def post_chat(
     payload: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("agent.chat")),
 ):
     return agent_chat(db, payload.message, current_user, payload.history)
 
@@ -108,7 +117,7 @@ def post_chat(
 def post_propose_action(
     payload: ProposeActionRequest,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("agent.action.draft")),
 ):
     try:
         return propose_action(
@@ -127,7 +136,7 @@ def get_actions(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff")),
+    current_user: NguoiDung = Depends(require_capability("agent.chat")),
 ):
     return list_actions(db, trang_thai=trang_thai, skip=skip, limit=limit)
 
@@ -139,7 +148,7 @@ def get_actions(
 def post_approve_action(
     action_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("agent.action.approve")),
 ):
     try:
         return approve_action(db, action_id, current_user)
@@ -155,9 +164,21 @@ def post_reject_action(
     action_id: int,
     payload: RejectActionRequest,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("agent.action.approve")),
 ):
     try:
         return reject_action(db, action_id, current_user, note=payload.note)
+    except DomainError as exc:
+        _raise_http(exc)
+
+
+@router.post("/actions/{action_id}/reset")
+def post_reset_action(
+    action_id: int,
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_capability("agent.action.execute")),
+):
+    try:
+        return reset_action(db, action_id, current_user)
     except DomainError as exc:
         _raise_http(exc)

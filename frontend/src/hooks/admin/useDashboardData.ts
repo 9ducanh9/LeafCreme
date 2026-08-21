@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getAlertsSummary, type AlertSummary } from '../../services/admin/alertService'
 import {
   getBestSellers,
@@ -20,11 +20,16 @@ export function useDashboardData(timeRange: 'daily' | 'monthly') {
   const [alertsSummary, setAlertsSummary] = useState<AlertSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [reloadToken, setReloadToken] = useState(0)
+  const reload = useCallback(() => setReloadToken((value) => value + 1), [])
 
   useEffect(() => {
     let active = true
     setLoading(true)
     setErrors({})
+    const range = timeRange === 'daily'
+      ? { fromDate: new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10), toDate: new Date().toISOString().slice(0, 10) }
+      : (() => { const today = new Date(); return { fromDate: new Date(today.getFullYear(), today.getMonth() - 11, 1).toISOString().slice(0, 10), toDate: today.toISOString().slice(0, 10) } })()
     let remaining = 6
     const complete = () => {
       remaining -= 1
@@ -36,13 +41,13 @@ export function useDashboardData(timeRange: 'daily' | 'monthly') {
       }).finally(complete)
     }
     load('revenue', timeRange === 'daily' ? getDailyRevenue : getMonthlyRevenue, setRevenueData)
-    load('products', getRevenueByProduct, setProductRevenue)
-    load('sellers', () => getBestSellers(5), setBestSellers)
-    load('categories', getRevenueByCategory, setCategoryRevenue)
-    load('stats', getDashboardStats, setStats)
+    load('products', () => getRevenueByProduct(range.fromDate, range.toDate), setProductRevenue)
+    load('sellers', () => getBestSellers(5, range.fromDate, range.toDate), setBestSellers)
+    load('categories', () => getRevenueByCategory(range.fromDate, range.toDate), setCategoryRevenue)
+    load('stats', () => getDashboardStats(range.fromDate, range.toDate), setStats)
     load('alerts', getAlertsSummary, setAlertsSummary)
     return () => { active = false }
-  }, [timeRange])
+  }, [reloadToken, timeRange])
 
-  return { revenueData, productRevenue, bestSellers, categoryRevenue, stats, alertsSummary, loading, errors }
+  return { revenueData, productRevenue, bestSellers, categoryRevenue, stats, alertsSummary, loading, errors, reload }
 }

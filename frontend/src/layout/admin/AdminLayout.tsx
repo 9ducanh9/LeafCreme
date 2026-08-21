@@ -35,14 +35,20 @@ export default function AdminLayout() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
+  const visibleNavGroups = useMemo(
+    () => adminNavGroups
+      .map((group) => ({ ...group, items: group.items.filter((item) => can(item.capability)) }))
+      .filter((group) => group.items.length > 0),
+    [can],
+  )
   const [mobileOpen, setMobileOpen] = useState(false)
   const [sidebarExpanded, setSidebarExpanded] = useState(() => localStorage.getItem('admin-sidebar-expanded') !== 'false')
   useEffect(() => { localStorage.setItem('admin-sidebar-expanded', String(sidebarExpanded)) }, [sidebarExpanded])
 
   const currentItem = useMemo(
-    () => adminNavGroups.flatMap((group) => group.items).find((item) => location.pathname === item.path),
-    [location.pathname],
+    () => visibleNavGroups.flatMap((group) => group.items).find((item) => location.pathname === item.path),
+    [location.pathname, visibleNavGroups],
   )
   const expanded = isMobile || sidebarExpanded
   const currentDrawerWidth = sidebarExpanded ? DRAWER_WIDTH : DRAWER_WIDTH_COLLAPSED
@@ -57,17 +63,19 @@ export default function AdminLayout() {
       </Box>
       {!isMobile && <IconButton aria-label={sidebarExpanded ? 'Thu gọn thanh bên' : 'Mở rộng thanh bên'} aria-expanded={sidebarExpanded} onClick={() => setSidebarExpanded((value) => !value)} sx={{ alignSelf: expanded ? 'flex-end' : 'center', m: 1 }}><MenuIcon /></IconButton>}
       <List sx={{ pt: 1, px: 1, flexGrow: 1 }}>
-        {adminNavGroups.map((group) => <Box key={group.label} component="li" sx={{ listStyle: 'none' }}>
+        {visibleNavGroups.map((group) => <Box key={group.label} component="li" sx={{ listStyle: 'none' }}>
           {expanded && <Typography variant="overline" color="text.secondary" sx={{ px: 2, display: 'block', mt: 1 }}>{group.label}</Typography>}
-          {group.items.map((item) => {
-            const isActive = location.pathname === item.path || (item.key === 'overview' && location.pathname === '/admin')
-            return <ListItem key={item.key} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton component={Link} to={item.path} aria-current={isActive ? 'page' : undefined} selected={isActive} onClick={() => isMobile && setMobileOpen(false)} sx={{ minHeight: 46, justifyContent: expanded ? 'initial' : 'center', px: expanded ? 2 : 0, borderRadius: 2 }}>
-                <ListItemIcon sx={{ minWidth: 0, mr: expanded ? 2 : 0, justifyContent: 'center' }}>{iconFor(item.icon)}</ListItemIcon>
-                {expanded && <ListItemText primary={item.label} />}
-              </ListItemButton>
-            </ListItem>
-          })}
+          <List disablePadding>
+            {group.items.map((item) => {
+              const isActive = location.pathname === item.path || (item.key === 'overview' && location.pathname === '/admin')
+              return <ListItem key={item.key} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton component={Link} to={item.path} aria-current={isActive ? 'page' : undefined} selected={isActive} onClick={() => isMobile && setMobileOpen(false)} sx={{ minHeight: 46, justifyContent: expanded ? 'initial' : 'center', px: expanded ? 2 : 0, borderRadius: 2 }}>
+                  <ListItemIcon sx={{ minWidth: 0, mr: expanded ? 2 : 0, justifyContent: 'center' }}>{iconFor(item.icon)}</ListItemIcon>
+                  {expanded && <ListItemText primary={item.label} />}
+                </ListItemButton>
+              </ListItem>
+            })}
+          </List>
         </Box>)}
       </List>
     </Box>

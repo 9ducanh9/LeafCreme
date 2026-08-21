@@ -46,7 +46,7 @@ class ThongTinThanhToan(BaseModel):
 class SanPhamApDung(BaseModel):
     """Cấu trúc JSONB cho danh sách sản phẩm/danh mục áp dụng phiếu giảm giá"""
     loai_ap_dung: str = Field(..., description="Loại áp dụng: 'all' (tất cả), 'san_pham', 'danh_muc'")
-    danh_sach_id: Optional[List[int]] = Field(
+    danh_sach_id: Optional[List[int | str]] = Field(
         None, 
         description="Nếu loai_ap_dung != 'all', đây là mảng chứa các sanpham_id hoặc danhmuc_id được áp dụng"
     )

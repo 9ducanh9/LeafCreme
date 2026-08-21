@@ -1,6 +1,6 @@
 // Admin Voucher Management Page
 import { useState, useEffect, useCallback } from 'react'
-import { Alert, Box, Button, Typography } from '@mui/material'
+import { Box, Button, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import VoucherTable from '../../components/admin/vouchers/VoucherTable'
 import VoucherFilters from '../../components/admin/vouchers/VoucherFilters'
@@ -10,15 +10,17 @@ import {
   createVoucher,
   updateVoucher,
   deleteVoucher,
-  DEMO_VOUCHER_MODE_ENABLED,
 } from '../../services/admin/voucherService'
 import { Voucher } from '../../types/admin'
 import { useToast } from '../../contexts/ToastContext'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { useDataTableState } from '../../hooks/admin/useDataTableState'
 
 export default function AdminVoucherPage() {
   const { showSuccess, showError } = useToast()
+  const table = useDataTableState({ key: 'vouchers', defaultSortBy: 'ngay_tao', defaultSortDir: 'desc', defaultPageSize: 50, filterKeys: [] })
   const [vouchers, setVouchers] = useState<Voucher[]>([])
+  const [total, setTotal] = useState(0)
   const [formOpen, setFormOpen] = useState(false)
   const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
@@ -32,25 +34,19 @@ export default function AdminVoucherPage() {
   const [search, setSearch] = useState('')
 
   const loadVouchers = useCallback(async () => {
-    if (!DEMO_VOUCHER_MODE_ENABLED) {
-      setVouchers([])
-      return
-    }
-
     try {
-      const data = await getVouchers({ status, type, search })
-      setVouchers(data)
+      const data = await getVouchers({ status, type, search, skip: table.skip, limit: table.pageSize, sort_dir: table.sortDir })
+      setVouchers(data.items); setTotal(data.total)
     } catch (error) {
       showError('Không thể tải danh sách mã giảm giá')
     }
-  }, [search, showError, status, type])
+  }, [search, showError, status, table.pageSize, table.skip, table.sortDir, type])
 
   useEffect(() => {
     loadVouchers()
   }, [loadVouchers])
 
   const handleCreate = () => {
-    if (!DEMO_VOUCHER_MODE_ENABLED) return
     setEditingVoucher(null)
     setFormOpen(true)
   }
@@ -98,28 +94,21 @@ export default function AdminVoucherPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Quản lý mã giảm giá</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate} disabled={!DEMO_VOUCHER_MODE_ENABLED}>
+      <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
           Tạo mã giảm giá
         </Button>
       </Box>
-
-      {!DEMO_VOUCHER_MODE_ENABLED && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Quản lý mã giảm giá hiện là chức năng demo/dev-only. Backend chưa có API CRUD voucher thật.
-          Nếu cần xem demo local, bật <code>VITE_ENABLE_DEMO_VOUCHERS=true</code> trong frontend env rồi reload.
-        </Alert>
-      )}
 
       <VoucherFilters
         status={status}
         type={type}
         search={search}
-        onStatusChange={setStatus}
-        onTypeChange={setType}
-        onSearchChange={setSearch}
+        onStatusChange={(value) => { setStatus(value); table.patch({ page: 0 }) }}
+        onTypeChange={(value) => { setType(value); table.patch({ page: 0 }) }}
+        onSearchChange={(value) => { setSearch(value); table.patch({ page: 0 }) }}
       />
 
-      <VoucherTable vouchers={vouchers} onEdit={handleEdit} onDelete={handleDelete} />
+      <VoucherTable vouchers={vouchers} onEdit={handleEdit} onDelete={handleDelete} total={total} page={table.page} pageSize={table.pageSize} onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })} />
 
       <VoucherForm
         open={formOpen}

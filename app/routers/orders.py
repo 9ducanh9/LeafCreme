@@ -11,7 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, require_role
+from app.core.capabilities import require_capability
+from app.core.dependencies import get_current_user
 from app.db import get_db
 from app.models import NguoiDung
 from app.services.orders import DomainError, OrderService
@@ -132,6 +133,13 @@ class OrderSortField(str, Enum):
     ngay_giao_du_kien = "ngay_giao_du_kien"
 
 
+class OrderTypeParam(str, Enum):
+    pos = "pos"
+    online = "online"
+    dattruoc = "dattruoc"
+    dat_truoc = "dat_truoc"
+
+
 def _raise_http(exc: DomainError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
@@ -148,6 +156,8 @@ def list_orders(
     ma_don_hang: Optional[str] = Query(None, description="Tìm kiếm theo mã đơn hàng"),
     from_date: Optional[datetime] = Query(None, description="Từ ngày (YYYY-MM-DD)"),
     to_date: Optional[datetime] = Query(None, description="Đến ngày (YYYY-MM-DD)"),
+    tien_tu: Optional[Decimal] = Query(None, ge=0, description="Giá trị thanh toán tối thiểu"),
+    tien_den: Optional[Decimal] = Query(None, ge=0, description="Giá trị thanh toán tối đa"),
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_user),
 ):
@@ -162,6 +172,8 @@ def list_orders(
             ma_don_hang=ma_don_hang,
             from_date=from_date,
             to_date=to_date,
+            tien_tu=tien_tu,
+            tien_den=tien_den,
             paginated=paginated,
             sort_by=sort_by.value,
             sort_dir=sort_dir,
@@ -186,7 +198,7 @@ def get_order(
 @router.post("", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
     payload: OrderCreate,
-    loai_don: str = Query("pos", description="Loại đơn: pos, online, dattruoc"),
+    loai_don: OrderTypeParam = Query(OrderTypeParam.online, description="Loại đơn: pos, online, dattruoc"),
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_user),
 ):
@@ -194,7 +206,7 @@ def create_order(
         order_dict = order_service.create_order(
             db=db,
             payload=payload,
-            loai_don=loai_don,
+            loai_don=loai_don.value,
             current_user=current_user,
         )
         return OrderResponse(**order_dict)
@@ -257,7 +269,7 @@ def cancel_order(
 def delete_order(
     order_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager")),
+    current_user: NguoiDung = Depends(require_capability("orders.delete")),
 ):
     try:
         order_service.delete_order(db=db, order_id=order_id)

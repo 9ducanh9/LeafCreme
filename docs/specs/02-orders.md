@@ -50,14 +50,17 @@ sequenceDiagram
 
 Enum thực tế trong code: `cho | cho_coc | dang_xu_ly | dang_giao | hoan_thanh | da_huy`.
 
+> **Cập nhật 2026-08-21**: trước đây đơn `pos` ("Thủ công") bị hardcode thẳng `hoan_thanh` ngay lúc `create_order`, kể cả khi tạo qua `ManualOrderForm` — form này **không thu tiền**, nên đơn $0-đã-thanh-toán vẫn hiện "Hoàn thành" (ăn luôn vào doanh thu ở `analytics_service.py`/`report_service.py`, vốn lọc theo `trang_thai == "hoan_thanh"`). Đã sửa: `pos` giờ khởi tạo `dang_xu_ly` giống `online`, đi qua đúng đường có sẵn — nhân viên tự chuyển trạng thái qua `PUT/PATCH /orders/{id}/status`, hoặc tự động hoàn tất khi `PaymentService._maybe_complete_order` thấy tổng thanh toán ≥ `tien_thanh_toan` (vì `dang_xu_ly` nằm trong `_COMPLETABLE_STATUSES`). Diagram bên dưới đã phản ánh hành vi mới.
+
 ```mermaid
 stateDiagram-v2
-    [*] --> hoan_thanh: POS (thanh toán ngay tại quầy)
+    [*] --> dang_xu_ly: POS (thủ công tại quầy / nhắn tin)
     [*] --> dang_xu_ly: Online
     [*] --> cho_coc: Đặt trước (chờ cọc)
     cho_coc --> dang_xu_ly: cọc thành công (Payments domain)
     dang_xu_ly --> dang_giao
     dang_giao --> hoan_thanh
+    dang_xu_ly --> hoan_thanh: thanh toán đủ (PaymentService._maybe_complete_order)
     dang_xu_ly --> da_huy: cancel / payment_failed
     cho_coc --> da_huy: cancel / payment_failed
     da_huy --> [*]

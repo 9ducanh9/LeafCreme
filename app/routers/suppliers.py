@@ -11,7 +11,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.db import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.capabilities import require_capability
 from app.schemas import ThongTinThanhToan
 from app.services.suppliers import SupplierService, DomainError
 
@@ -82,7 +82,7 @@ def list_suppliers(
     search: Optional[str] = Query(None, description="Tìm kiếm theo tên, mã, email, số điện thoại"),
     dang_hoat_dong: Optional[bool] = Query(None, description="Filter theo trạng thái hoạt động"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_capability("suppliers.read"))
 ):
     """Danh sách nhà cung cấp với filter và pagination"""
     return supplier_service.list_suppliers(db, skip=skip, limit=limit, search=search, dang_hoat_dong=dang_hoat_dong)
@@ -92,7 +92,7 @@ def list_suppliers(
 def get_supplier(
     supplier_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_capability("suppliers.read"))
 ):
     """Lấy thông tin chi tiết nhà cung cấp"""
     try:
@@ -105,7 +105,7 @@ def get_supplier(
 def create_supplier(
     payload: SupplierCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role("admin", "manager"))
+    current_user = Depends(require_capability("suppliers.write"))
 ):
     """Tạo nhà cung cấp mới (chỉ admin/manager)"""
     try:
@@ -119,7 +119,7 @@ def update_supplier(
     supplier_id: int,
     payload: SupplierUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role("admin", "manager"))
+    current_user = Depends(require_capability("suppliers.write"))
 ):
     """Cập nhật thông tin nhà cung cấp (chỉ admin/manager)"""
     try:
@@ -133,7 +133,7 @@ def delete_supplier(
     supplier_id: int,
     hard_delete: bool = Query(False, description="Xóa vĩnh viễn (thay vì vô hiệu hóa)"),
     db: Session = Depends(get_db),
-    current_user = Depends(require_role("admin", "manager"))
+    current_user = Depends(require_capability("suppliers.write"))
 ):
     """Xóa/vô hiệu hóa nhà cung cấp (chỉ admin/manager)"""
     try:

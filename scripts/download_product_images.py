@@ -34,7 +34,7 @@ GIFTBOX_DIR.mkdir(parents=True, exist_ok=True)
 def search_unsplash_image(query: str, max_results: int = 10, skip_index: int = 0) -> Optional[str]:
     """Tìm ảnh trên Unsplash với khả năng skip để tránh trùng"""
     if not UNSPLASH_ACCESS_KEY:
-        print(f"⚠️  UNSPLASH_ACCESS_KEY chưa được set. Bỏ qua Unsplash.")
+        print("⚠️  UNSPLASH_ACCESS_KEY chưa được set. Bỏ qua Unsplash.")
         return None
     
     try:
@@ -74,7 +74,7 @@ def search_unsplash_image(query: str, max_results: int = 10, skip_index: int = 0
 def search_pexels_image(query: str, max_results: int = 5) -> Optional[str]:
     """Tìm ảnh trên Pexels"""
     if not PEXELS_API_KEY:
-        print(f"⚠️  PEXELS_API_KEY chưa được set. Bỏ qua Pexels.")
+        print("⚠️  PEXELS_API_KEY chưa được set. Bỏ qua Pexels.")
         return None
     
     try:

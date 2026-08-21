@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.time import utc_now
+from app.core.dependencies import BACK_OFFICE_ROLES, MANAGEMENT_ROLES, role_name
 from app.models import (
     BienTheSanPham,
     ChiTietDonHang,
@@ -47,6 +48,25 @@ _ORDER_TYPE_ALIASES = {"dattruoc": "dat_truoc"}
 _ORDER_STATUS_ALIASES = {"thanh_toan": "hoan_thanh", "da_nhan": "hoan_thanh", "huy": "da_huy"}
 
 
+def can_access_order(order: DonHang, current_user: NguoiDung) -> bool:
+    """Apply the same ownership rule to orders and payment lookups.
+
+    Management roles see all orders. Staff see orders they created at the
+    counter and orders they placed themselves online. Customers only see
+    orders owned by their account.
+    """
+
+    role = role_name(current_user)
+    if role in MANAGEMENT_ROLES:
+        return True
+    if role in BACK_OFFICE_ROLES:
+        return (
+            order.nhan_vien_tao == current_user.nguoidung_id
+            or order.nguoidung_id == current_user.nguoidung_id
+        )
+    return order.nguoidung_id == current_user.nguoidung_id
+
+
 class OrderService:
     def __init__(self):
         self.inventory_service = InventoryService()
@@ -69,10 +89,14 @@ class OrderService:
         ma_don_hang: Optional[str] = None,
         from_date: Optional[datetime] = None,
         to_date: Optional[datetime] = None,
+        tien_tu: Optional[Decimal] = None,
+        tien_den: Optional[Decimal] = None,
         paginated: bool = False,
         sort_by: str = "ngay_tao",
         sort_dir: str = "desc",
     ):
+        if tien_tu is not None and tien_den is not None and tien_tu > tien_den:
+            raise DomainError(status_code=400, detail="Khoảng tiền không hợp lệ: giá trị từ không được lớn hơn giá trị đến")
         query = db.query(DonHang)
 
         if loai_don:
@@ -87,9 +111,20 @@ class OrderService:
             query = query.filter(DonHang.ngay_tao >= from_date)
         if to_date:
             query = query.filter(DonHang.ngay_tao < to_date + timedelta(days=1))
+        if tien_tu is not None:
+            query = query.filter(DonHang.tien_thanh_toan >= tien_tu)
+        if tien_den is not None:
+            query = query.filter(DonHang.tien_thanh_toan <= tien_den)
 
-        vaitro_ten = current_user.vaitro.ten_vai_tro if current_user.vaitro else None
-        if vaitro_ten not in ["admin", "manager"]:
+        role = role_name(current_user)
+        if role in MANAGEMENT_ROLES:
+            pass
+        elif role in BACK_OFFICE_ROLES:
+            query = query.filter(
+                (DonHang.nhan_vien_tao == current_user.nguoidung_id)
+                | (DonHang.nguoidung_id == current_user.nguoidung_id)
+            )
+        else:
             query = query.filter(DonHang.nguoidung_id == current_user.nguoidung_id)
 
         if not paginated:
@@ -112,8 +147,7 @@ class OrderService:
         if not order:
             raise DomainError(status_code=404, detail="Đơn hàng không tồn tại")
 
-        vaitro_ten = current_user.vaitro.ten_vai_tro if current_user.vaitro else None
-        if vaitro_ten not in ["admin", "manager"] and order.nguoidung_id != current_user.nguoidung_id:
+        if not can_access_order(order, current_user):
             raise DomainError(status_code=403, detail="Bạn không có quyền xem đơn hàng này")
 
         items = db.query(ChiTietDonHang).filter(ChiTietDonHang.donhang_id == order_id).all()
@@ -226,6 +260,8 @@ class OrderService:
         loai_don = _ORDER_TYPE_ALIASES.get(loai_don, loai_don)
         if loai_don not in ["pos", "online", "dat_truoc"]:
             raise DomainError(status_code=400, detail="Loại đơn không hợp lệ. Chọn: pos, online, dattruoc")
+        if loai_don == "pos" and role_name(current_user) not in BACK_OFFICE_ROLES:
+            raise DomainError(status_code=403, detail="Chỉ nhân viên mới được tạo đơn bán tại quầy (POS).")
 
         for item in payload.items:
             if not item.bienthe_id and not item.hop_qua_id:
@@ -242,15 +278,19 @@ class OrderService:
                 tien_giam_gia=Decimal("0"),
                 tien_thanh_toan=Decimal("0"),
                 tien_dat_coc=payload.tien_dat_coc or Decimal("0"),
-                trang_thai="cho_coc"
-                if loai_don == "dat_truoc"
-                else ("dang_xu_ly" if loai_don == "online" else "hoan_thanh"),
+                # POS ("Thủ công") orders start "dang_xu_ly" just like online —
+                # this endpoint takes no payment, so marking them hoan_thanh at
+                # creation used to record a $0-paid order as fully completed.
+                # Staff advance it explicitly (PUT /orders/{id}/status) or it
+                # auto-completes via PaymentService._maybe_complete_order once a
+                # real payment covers tien_thanh_toan.
+                trang_thai="cho_coc" if loai_don == "dat_truoc" else "dang_xu_ly",
                 ten_khach_hang=payload.ten_khach_hang,
                 so_dien_thoai_khach=payload.so_dien_thoai_khach,
                 dia_chi_giao_hang=payload.dia_chi_giao_hang,
                 ngay_giao_du_kien=payload.ngay_giao_du_kien,
                 ghi_chu=payload.ghi_chu,
-                nhan_vien_tao=current_user.nguoidung_id if loai_don == "pos" else None,
+                nhan_vien_tao=current_user.nguoidung_id if role_name(current_user) in BACK_OFFICE_ROLES and loai_don == "pos" else None,
             )
             db.add(order)
             db.flush()

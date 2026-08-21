@@ -3,12 +3,12 @@ Analytics domain service.
 
 Extracted from app/routers/analytics.py (Phase 1 service-layer migration).
 Moved verbatim — including the try/except fallback around the best-seller
-subquery and the "no sales data yet" fallback to newest-active-products.
-Both looked like defensive leftovers rather than deliberate behavior, but
-this migration preserves behavior rather than silently removing them; see
-LeafCreme_Restructure_Plan.md for the "no drive-by fixes" rule.
+subquery. The unbounded legacy call still falls back to newest-active-products
+for compatibility, while a bounded dashboard period returns an empty list
+when there are no sales in that period.
 """
 import logging
+from datetime import date
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -18,7 +18,7 @@ from app.models import BienTheSanPham, ChiTietDonHang, DonHang, LoHangSanPham, S
 
 class AnalyticsService:
     @staticmethod
-    def get_best_sellers(db: Session, limit: int) -> list[dict]:
+    def get_best_sellers(db: Session, limit: int, from_date: date | None = None, to_date: date | None = None) -> list[dict]:
         try:
             subquery = (
                 db.query(
@@ -46,6 +46,25 @@ class AnalyticsService:
                 .all()
             )
             return [_fallback_row(p) for p in products]
+
+        # Date filters belong on the completed-order subquery. Rebuild the
+        # aggregate when a dashboard asks for a bounded period.
+        if from_date is not None or to_date is not None:
+            dated = db.query(
+                BienTheSanPham.sanpham_id,
+                func.sum(ChiTietDonHang.so_luong).label("sold_count"),
+            ).select_from(ChiTietDonHang).join(
+                DonHang, DonHang.donhang_id == ChiTietDonHang.donhang_id,
+            ).join(
+                LoHangSanPham, LoHangSanPham.lohang_id == ChiTietDonHang.lohang_sanpham_id,
+            ).join(
+                BienTheSanPham, BienTheSanPham.bienthe_id == LoHangSanPham.bienthe_sanpham_id,
+            ).filter(DonHang.trang_thai == "hoan_thanh", ChiTietDonHang.lohang_sanpham_id.isnot(None))
+            if from_date is not None:
+                dated = dated.filter(func.date(DonHang.ngay_tao) >= from_date)
+            if to_date is not None:
+                dated = dated.filter(func.date(DonHang.ngay_tao) <= to_date)
+            subquery = dated.group_by(BienTheSanPham.sanpham_id).subquery()
 
         results = (
             db.query(
@@ -75,7 +94,7 @@ class AnalyticsService:
             for row in results
         ]
 
-        if not best_sellers or all(bs["sold_count"] == 0 for bs in best_sellers):
+        if (from_date is None and to_date is None) and (not best_sellers or all(bs["sold_count"] == 0 for bs in best_sellers)):
             products = (
                 db.query(SanPham)
                 .filter(SanPham.dang_hoat_dong == True)  # noqa: E712
@@ -84,6 +103,10 @@ class AnalyticsService:
                 .all()
             )
             best_sellers = [_fallback_row(p) for p in products]
+        elif not best_sellers or all(bs["sold_count"] == 0 for bs in best_sellers):
+            # A bounded dashboard period with no completed sales is genuinely
+            # empty. Do not turn the newest catalog rows into fake sellers.
+            best_sellers = []
 
         return best_sellers
 

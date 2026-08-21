@@ -10,6 +10,7 @@ export interface User {
   gioi_tinh?: string
   avatar_url?: string
   dang_hoat_dong: boolean
+  capabilities?: string[]
   vaitro?: {
     vaitro_id: number
     ten_vai_tro: string

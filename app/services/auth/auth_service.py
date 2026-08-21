@@ -24,6 +24,7 @@ from app.core.security import (
     verify_password,
 )
 from app.core.time import utc_now
+from app.core.capabilities import capabilities_for
 from app.models import NguoiDung, VaiTro
 from app.services.errors import DomainError
 
@@ -231,6 +232,7 @@ class AuthService:
 
     @staticmethod
     def current_user_info(current_user: NguoiDung) -> dict:
+        role = current_user.vaitro.ten_vai_tro if current_user.vaitro else None
         return {
             "nguoidung_id": current_user.nguoidung_id,
             "ten_dang_nhap": current_user.ten_dang_nhap,
@@ -242,6 +244,7 @@ class AuthService:
             "gioi_tinh": current_user.gioi_tinh,
             "avatar_url": current_user.avatar_url,
             "dang_hoat_dong": current_user.dang_hoat_dong,
+            "capabilities": capabilities_for(role),
             "vaitro": {
                 "vaitro_id": current_user.vaitro.vaitro_id,
                 "ten_vai_tro": current_user.vaitro.ten_vai_tro,

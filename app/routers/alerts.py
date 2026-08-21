@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..db import get_db
 from ..models import NguoiDung
-from ..core.dependencies import get_current_active_user, require_role
+from ..core.capabilities import require_capability
 from ..services.alerts import AlertService, DomainError
 from ..schemas import Page
 
@@ -51,6 +51,8 @@ class AlertResponse(BaseModel):
 class AlertSortField(str, Enum):
     muc_do = "muc_do"
     ngay_tao = "ngay_tao"
+    # The admin table uses the domain field name for its sortable column.
+    ngay_canh_bao = "ngay_canh_bao"
 
 
 class AlertUpdate(BaseModel):
@@ -88,7 +90,7 @@ def get_alerts(
     sort_by: AlertSortField = Query(AlertSortField.ngay_tao),
     sort_dir: Literal["asc", "desc"] = Query("desc"),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("alerts.read"))
 ):
     """Lấy danh sách cảnh báo tồn kho"""
     return alert_service.list_alerts(
@@ -103,7 +105,7 @@ def get_alerts(
 @router.get("/summary", response_model=AlertSummary)
 def get_alerts_summary(
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("alerts.read"))
 ):
     """Lấy thống kê tổng quan cảnh báo cho dashboard"""
     return alert_service.get_summary(db)
@@ -117,7 +119,7 @@ def generate_alerts(
     low_stock_threshold: int = Query(10, ge=1, description="Ngưỡng tồn kho thấp"),
     expiring_days: int = Query(7, ge=1, le=30, description="Số ngày trước khi hết hạn"),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_capability("alerts.generate"))
 ):
     """Tự động tạo cảnh báo dựa trên tình trạng tồn kho hiện tại"""
     return alert_service.generate_alerts(db, low_stock_threshold, expiring_days)
@@ -131,7 +133,7 @@ def update_alert(
     alert_id: int,
     update_data: AlertUpdate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("alerts.update"))
 ):
     """Cập nhật trạng thái cảnh báo"""
     try:
@@ -147,7 +149,7 @@ def update_alert(
 def delete_alert(
     alert_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager"))
+    current_user: NguoiDung = Depends(require_capability("alerts.delete"))
 ):
     """Xóa cảnh báo"""
     try:
@@ -162,7 +164,7 @@ def delete_alert(
 @router.delete("/resolved/clear")
 def clear_resolved_alerts(
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin"))
+    current_user: NguoiDung = Depends(require_capability("alerts.delete"))
 ):
     """Xóa tất cả cảnh báo đã xử lý"""
     return alert_service.clear_resolved_alerts(db)

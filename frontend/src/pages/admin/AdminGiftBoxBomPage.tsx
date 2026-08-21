@@ -16,7 +16,7 @@ import {
 import { getProductVariants } from '../../services/admin/productService'
 import { BomItem } from '../../types/giftBox'
 import type { BackendGiftBox } from '../../types/giftBox'
-import { ProductVariant } from '../../types/admin'
+import { parseAdminEntityId, ProductVariant } from '../../types/admin'
 import { useToast } from '../../contexts/ToastContext'
 import Button from '../../components/ui/Button'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
@@ -49,11 +49,14 @@ export default function AdminGiftBoxBomPage() {
       const [box, bom, allVariants] = await Promise.all([
         getGiftBoxById(giftBoxId),
         getGiftBoxBom(giftBoxId),
-        getProductVariants({ category: categoryFilter, size: sizeFilter, search: searchFilter }),
+        // This is a picker rather than a paginated table. Load the full
+        // server-side selection window so a valid variant beyond page 1 is
+        // still available for a BOM.
+        getProductVariants({ category: categoryFilter, size: sizeFilter, search: searchFilter, limit: 200 }),
       ])
       setGiftBox(box)
       setBomItems(bom)
-      setVariants(allVariants)
+      setVariants(allVariants.items)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : ''
       showError(message || 'Không thể tải dữ liệu')
@@ -82,7 +85,9 @@ export default function AdminGiftBoxBomPage() {
     }
 
     try {
-      await addBomItem(giftBoxId, parseInt(selectedVariantId), quantity)
+      const selectedId = parseAdminEntityId(selectedVariantId)
+      if (selectedId.kind !== 'variant') throw new Error('Chỉ biến thể sản phẩm mới được thêm vào BOM')
+      await addBomItem(giftBoxId, selectedId.id, quantity)
       showSuccess('Đã thêm vào BOM')
       await loadData()
       setSelectedVariantId('')
@@ -133,9 +138,10 @@ export default function AdminGiftBoxBomPage() {
   }, 0)
 
   // Filter variants that are not already in BOM
-  const availableVariants = variants.filter(
-    (v) => !bomItems.some((bom) => bom.bienthe_id === parseInt(v.id))
-  )
+  const availableVariants = variants.filter((v) => {
+    const entity = parseAdminEntityId(v.id)
+    return entity.kind === 'variant' && !bomItems.some((bom) => bom.bienthe_id === entity.id)
+  })
 
   if (loading) {
     return (

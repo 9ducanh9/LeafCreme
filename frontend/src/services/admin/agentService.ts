@@ -14,8 +14,13 @@ export interface Insight {
   severity: 'cao' | 'binh_thuong' | 'thap'
   category: string
   description: string
+  // Optional defensively: older/mismatched backend responses (e.g. a dev
+  // server that hasn't picked up a schema change yet) may omit this field.
+  evidence?: string[]
   recommended_action: RecommendedAction | null
 }
+
+export type AgentActionClassification = 'read' | 'draft' | 'execute'
 
 export interface AgentAction {
   action_id: number
@@ -23,14 +28,20 @@ export interface AgentAction {
   tham_so: Record<string, unknown>
   ly_do: string | null
   nguon: 'agent' | 'nhan_vien'
-  muc_do_rui_ro: 'doc' | 'thay_doi'
+  phan_loai: AgentActionClassification
+  muc_do_uu_tien: 'low' | 'medium' | 'high' | null
   trang_thai: 'de_xuat' | 'dang_xu_ly' | 'hoan_thanh' | 'tu_choi' | 'that_bai'
+  dieu_kien_tien_quyet: Record<string, unknown> | null
   ket_qua: Record<string, unknown> | null
   loi: string | null
   nguoidung_de_xuat_id: number | null
   nguoidung_duyet_id: number | null
   ngay_tao: string
+  ngay_bat_dau_xu_ly: string | null
   ngay_xu_ly: string | null
+  nguoidung_reset_id: number | null
+  ngay_reset: string | null
+  is_stale: boolean
 }
 
 export interface AgentActionPage {
@@ -43,7 +54,8 @@ export interface AgentActionPage {
 export interface ToolDescriptor {
   name: string
   description: string
-  risk: 'doc' | 'thay_doi'
+  classification: AgentActionClassification
+  risk_level: 'low' | 'medium' | 'high'
   required_params: string[]
   optional_params: string[]
 }
@@ -103,6 +115,10 @@ export async function rejectAction(actionId: number, note?: string): Promise<Age
   return await apiClient.post<AgentAction>(`/agent/actions/${actionId}/reject`, { note })
 }
 
+export async function resetAction(actionId: number): Promise<AgentAction> {
+  return await apiClient.post<AgentAction>(`/agent/actions/${actionId}/reset`)
+}
+
 export function getSeverityColor(severity: Insight['severity']): 'error' | 'warning' | 'success' {
   if (severity === 'cao') return 'error'
   if (severity === 'binh_thuong') return 'warning'
@@ -118,4 +134,19 @@ export function getActionStatusLabel(status: AgentAction['trang_thai']): string 
     that_bai: 'Thất bại',
   }
   return labels[status] || status
+}
+
+export function getClassificationLabel(classification: AgentActionClassification): string {
+  const labels: Record<AgentActionClassification, string> = {
+    read: 'Chỉ đọc',
+    draft: 'Đề xuất ghi chú',
+    execute: 'Thay đổi dữ liệu',
+  }
+  return labels[classification] || classification
+}
+
+export function getClassificationColor(classification: AgentActionClassification): 'default' | 'info' | 'error' {
+  if (classification === 'execute') return 'error'
+  if (classification === 'draft') return 'info'
+  return 'default'
 }

@@ -13,6 +13,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs, { type Dayjs } from 'dayjs'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { getProductVariants } from '../../../services/admin/productService'
+import { parseAdminEntityId } from '../../../types/admin'
 import { getGiftBoxes } from '../../../services/admin/giftBoxService'
 import { createOrder, type CreateOrderLineItem } from '../../../services/admin/adminOrderService'
 import type { Order } from '../../../types/admin'
@@ -61,13 +62,16 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
     if (!open) return
     let cancelled = false
     setLoadingPickables(true)
-    Promise.all([getProductVariants(), getGiftBoxes({ dang_hoat_dong: true })])
-      .then(([variants, giftBoxes]) => {
+    Promise.all([getProductVariants({ limit: 200 }), getGiftBoxes({ dang_hoat_dong: true })])
+      .then(([variantPage, giftBoxPage]) => {
         if (cancelled) return
-        const variantItems: PickableItem[] = variants
-          .filter((v) => v.status === 'active')
-          .map((v) => ({ key: `variant:${v.id}`, label: `${v.name} — ${v.size}`, price: v.price, bienthe_id: Number(v.id) }))
-        const giftBoxItems: PickableItem[] = giftBoxes.map((g) => ({
+        const variantItems: PickableItem[] = variantPage.items
+          .filter((v) => v.status === 'active' && parseAdminEntityId(v.id).kind === 'variant')
+          .map((v) => {
+            const entity = parseAdminEntityId(v.id)
+            return { key: v.id, label: `${v.name} — ${v.sizeLabel || v.size}`, price: v.price, bienthe_id: entity.kind === 'variant' ? entity.id : undefined }
+          })
+        const giftBoxItems: PickableItem[] = giftBoxPage.items.map((g) => ({
           key: `giftbox:${g.hop_qua_id}`, label: `${g.ten_hop_qua} (Hộp quà)`, price: g.gia_ban, hop_qua_id: g.hop_qua_id,
         }))
         setPickables([...variantItems, ...giftBoxItems])

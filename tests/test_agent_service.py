@@ -21,6 +21,7 @@ from app.models import (
     TonKhoSanPham,
     VaiTro,
 )
+from app.core.time import utc_now
 from app.services.agent import DomainError, agent_service, state_service, tools as tool_registry
 from app.services.alerts import AlertService
 
@@ -403,10 +404,52 @@ class TestListActions:
 
         assert result["limit"] <= 200
 
+    def test_stale_action_is_visible_and_can_be_reset_without_execution(self, db_session, admin_user):
+        action = AgentAction(
+            loai_hanh_dong="resolve_alert",
+            tham_so={"alert_id": 999999},
+            nguon="nhan_vien",
+            phan_loai="execute",
+            muc_do_uu_tien="high",
+            trang_thai="dang_xu_ly",
+            nguoidung_duyet_id=admin_user.nguoidung_id,
+            ngay_bat_dau_xu_ly=utc_now() - timedelta(minutes=16),
+        )
+        db_session.add(action)
+        db_session.flush()
+
+        listed = agent_service.list_actions(db_session, trang_thai="dang_xu_ly")
+        assert listed["items"][0]["is_stale"] is True
+
+        reset = agent_service.reset_action(db_session, action.action_id, admin_user)
+
+        assert reset["trang_thai"] == "de_xuat"
+        assert reset["nguoidung_duyet_id"] is None
+        assert reset["nguoidung_reset_id"] == admin_user.nguoidung_id
+        assert reset["ngay_reset"] is not None
+        assert reset["is_stale"] is False
+
+    def test_recent_action_cannot_be_reset(self, db_session, admin_user):
+        action = AgentAction(
+            loai_hanh_dong="resolve_alert",
+            tham_so={"alert_id": 999999},
+            nguon="nhan_vien",
+            phan_loai="execute",
+            muc_do_uu_tien="high",
+            trang_thai="dang_xu_ly",
+            ngay_bat_dau_xu_ly=utc_now(),
+        )
+        db_session.add(action)
+        db_session.flush()
+
+        with pytest.raises(DomainError) as exc_info:
+            agent_service.reset_action(db_session, action.action_id, admin_user)
+        assert exc_info.value.status_code == 400
+
 
 class TestChat:
     def test_falls_back_to_deterministic_summary_without_api_key(self, db_session, admin_user, monkeypatch):
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
         _make_low_stock_alert(db_session, so_luong=3)
 
         result = agent_service.chat(db_session, "what needs attention?", admin_user)

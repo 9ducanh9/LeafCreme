@@ -1,8 +1,8 @@
 // Admin Product Service - API calls for product management (using real backend API)
-import { ProductVariant } from '../../types/admin'
+import { parseAdminEntityId, ProductVariant } from '../../types/admin'
 import { Product, ProductVariant as BackendVariant } from '../../types/product'
 import { apiClient } from '../api'
-import { normalizeSize, getSizeCode } from '../../utils/sizeNormalizer'
+import { normalizeSize, getSizeDisplayLabel } from '../../utils/sizeNormalizer'
 import type { Page } from '../../types/page'
 
 /**
@@ -15,13 +15,15 @@ function mapToAdminVariant(
   // If variant exists, use variant data
   if (variant) {
     return {
-      id: variant.bienthe_id.toString(),
+      id: `variant:${variant.bienthe_id}`,
       productId: product.sanpham_id.toString(),
       name: product.ten,
+      flavor: variant.huong_vi || '',
       description: product.mo_ta || '',
       category: product.danh_muc || '',
       price: variant.gia_bienthe,
-      size: getSizeCode(normalizeSize(variant.kich_thuoc)) || 'M',
+      size: variant.kich_thuoc || '',
+      sizeLabel: getSizeDisplayLabel(normalizeSize(variant.kich_thuoc)),
       status: variant.dang_hoat_dong ? 'active' : 'hidden',
       image: product.hinh_anh_url || '',
       sku: variant.sku_bienthe || product.sku,
@@ -30,13 +32,15 @@ function mapToAdminVariant(
   
   // If no variant, use product data (for 'don' type products)
   return {
-    id: product.sanpham_id.toString(),
+    id: `product:${product.sanpham_id}`,
     productId: product.sanpham_id.toString(),
     name: product.ten,
+    flavor: '',
     description: product.mo_ta || '',
     category: product.danh_muc || '',
     price: product.gia_co_ban,
-    size: 'M', // Default size for non-variant products
+    size: '',
+    sizeLabel: '',
     status: product.dang_hoat_dong ? 'active' : 'hidden',
     image: product.hinh_anh_url || '',
     sku: product.sku,
@@ -69,78 +73,54 @@ export async function getProductVariants(filters?: {
   category?: string
   size?: string
   search?: string
-}): Promise<ProductVariant[]> {
+  skip?: number
+  limit?: number
+  sort_by?: string
+  sort_dir?: 'asc' | 'desc'
+  dang_hoat_dong?: boolean
+}): Promise<Page<ProductVariant>> {
   try {
-    // Deleted records are soft-deleted in the API. They should not remain in
-    // the default admin list after a successful delete action.
-    const params: Record<string, string | number | boolean | null> = {
-      limit: 50,
+    const rows = await apiClient.get<Page<{
+      bienthe_id: number | null
+      sanpham_id: number
+      ten: string
+      huong_vi: string | null
+      kich_thuoc: string | null
+      gia: number
+      sku: string | null
+      danh_muc: string | null
+      mo_ta: string | null
+      hinh_anh_url: string | null
+      dang_hoat_dong: boolean
+    }>>('/products/variants', {
+      search: filters?.search || undefined,
+      danh_muc: filters?.category || undefined,
+      kich_thuoc: filters?.size || undefined,
+      dang_hoat_dong: filters?.dang_hoat_dong ?? true,
+      skip: filters?.skip ?? 0,
+      limit: filters?.limit ?? 50,
       paginated: true,
-    }
-    
-    if (filters?.category) {
-      params.danh_muc = filters.category
-    }
-    
-    if (filters?.search) {
-      params.search = filters.search
-    }
-    
-    const productPage = await apiClient.get<Page<Product>>('/products', params)
-    const products = productPage.items.filter((product) => product.dang_hoat_dong)
+      sort_by: filters?.sort_by ?? 'ten',
+      sort_dir: filters?.sort_dir ?? 'asc',
+    })
 
-    // Fetch variants for each product that has type 'bien_the'
-    const variantsMap = new Map<number, BackendVariant[]>()
-    
-    // Fetch variants in parallel for better performance
-    const variantPromises = products
-      .filter(p => p.loai === 'bien_the')
-      .map(async (product) => {
-        try {
-          const variants = await apiClient.get<BackendVariant[]>(
-            `/products/${product.sanpham_id}/variants`
-          )
-          variantsMap.set(product.sanpham_id, variants)
-        } catch (error) {
-          // Product might not have variants yet
-          console.warn(`No variants found for product ${product.sanpham_id}`)
-          variantsMap.set(product.sanpham_id, [])
-        }
-      })
-    
-    await Promise.all(variantPromises)
-
-    // Combine products and variants into admin format
-    const adminVariants: ProductVariant[] = []
-
-    for (const product of products) {
-      if (product.loai === 'bien_the') {
-        // For variant products, create one admin variant per backend variant
-        const variants = variantsMap.get(product.sanpham_id) || []
-        if (variants.length > 0) {
-          for (const variant of variants.filter((item) => item.dang_hoat_dong)) {
-            const adminVariant = mapToAdminVariant(product, variant)
-            
-            // Apply size filter
-            if (filters?.size && adminVariant.size !== filters.size) {
-              continue
-            }
-            
-            adminVariants.push(adminVariant)
-          }
-        }
-        // Note: Don't create placeholder if product has no variants
-        // Admin should create variants explicitly
-      } else {
-        // For non-variant products ('don'), create one admin variant
-        const adminVariant = mapToAdminVariant(product)
-        if (!filters?.size || adminVariant.size === filters.size) {
-          adminVariants.push(adminVariant)
-        }
-      }
+    return {
+      ...rows,
+      items: rows.items.map((row) => ({
+        id: row.bienthe_id === null ? `product:${row.sanpham_id}` : `variant:${row.bienthe_id}`,
+        productId: String(row.sanpham_id),
+        name: row.ten,
+        flavor: row.huong_vi || '',
+        description: row.mo_ta || '',
+        category: row.danh_muc || '',
+        price: Number(row.gia),
+        size: row.kich_thuoc || '',
+        sizeLabel: row.kich_thuoc ? getSizeDisplayLabel(normalizeSize(row.kich_thuoc)) : '',
+        status: row.dang_hoat_dong ? 'active' : 'hidden',
+        image: row.hinh_anh_url || '',
+        sku: row.sku || undefined,
+      })),
     }
-
-    return adminVariants
   } catch (error) {
     console.error('Error fetching product variants:', error)
     throw error
@@ -152,27 +132,14 @@ export async function getProductVariants(filters?: {
  */
 export async function getProductVariantById(id: string): Promise<ProductVariant> {
   try {
-    // First, try to get as variant ID
-    const variantId = parseInt(id)
-    if (!isNaN(variantId)) {
-      try {
-        const variant = await apiClient.get<BackendVariant>(`/products/variants/${variantId}`)
-        // Get the product
-        const product = await apiClient.get<Product>(`/products/${variant.sanpham_id}`)
-        return mapToAdminVariant(product, variant)
-      } catch (error) {
-        // Not a variant ID, try as product ID
-      }
+    const parsed = parseAdminEntityId(id)
+    if (parsed.kind === 'variant') {
+      const variant = await apiClient.get<BackendVariant>(`/products/variants/${parsed.id}`)
+      const product = await apiClient.get<Product>(`/products/${variant.sanpham_id}`)
+      return mapToAdminVariant(product, variant)
     }
-
-    // Try as product ID
-    const productId = parseInt(id)
-    if (!isNaN(productId)) {
-      const product = await apiClient.get<Product>(`/products/${productId}`)
-      return mapToAdminVariant(product)
-    }
-
-    throw new Error('Product variant not found')
+    const product = await apiClient.get<Product>(`/products/${parsed.id}`)
+    return mapToAdminVariant(product)
   } catch (error) {
     console.error('Error fetching product variant:', error)
     throw error
@@ -244,7 +211,7 @@ export async function createProductVariant(
     if (product.loai === 'bien_the') {
       const variant = await apiClient.post<BackendVariant>('/products/variants', {
         sanpham_id: product.sanpham_id,
-        huong_vi: data.name, // Use product name as flavor
+        huong_vi: data.flavor,
         kich_thuoc: data.size,
         gia_bienthe: data.price,
         sku_bienthe: data.sku || `${product.sku}-${data.size}`,
@@ -274,14 +241,14 @@ export async function updateProductVariant(
   data: Partial<ProductVariant>
 ): Promise<ProductVariant> {
   try {
-    const variantId = parseInt(id)
-    
-    if (!isNaN(variantId)) {
+    const parsed = parseAdminEntityId(id)
+
+    if (parsed.kind === 'variant') {
       // Update variant - only include fields that are provided
       const variantUpdatePayload: Record<string, unknown> = {}
       
       if (data.name !== undefined && data.name !== null && data.name.trim() !== '') {
-        variantUpdatePayload.huong_vi = data.name
+        variantUpdatePayload.huong_vi = data.flavor
       }
       if (data.size !== undefined && data.size !== null) {
         variantUpdatePayload.kich_thuoc = data.size
@@ -296,7 +263,7 @@ export async function updateProductVariant(
         variantUpdatePayload.dang_hoat_dong = data.status === 'active'
       }
       
-      const variant = await apiClient.put<BackendVariant>(`/products/variants/${variantId}`, variantUpdatePayload)
+      const variant = await apiClient.put<BackendVariant>(`/products/variants/${parsed.id}`, variantUpdatePayload)
 
       // Update product
       const imagePath = toRelativeImagePath(data.image)
@@ -327,9 +294,7 @@ export async function updateProductVariant(
       return mapToAdminVariant(updatedProduct, variant)
     }
 
-    // If not a variant ID, try as product ID
-    const productId = parseInt(id)
-    if (!isNaN(productId)) {
+    if (parsed.kind === 'product') {
       // Get existing product first
       const imagePath = toRelativeImagePath(data.image)
       
@@ -355,7 +320,7 @@ export async function updateProductVariant(
         productUpdatePayload.dang_hoat_dong = data.status === 'active'
       }
       
-      const product = await apiClient.put<Product>(`/products/${productId}`, productUpdatePayload)
+      const product = await apiClient.put<Product>(`/products/${parsed.id}`, productUpdatePayload)
       return mapToAdminVariant(product)
     }
 
@@ -371,19 +336,17 @@ export async function updateProductVariant(
  */
 export async function deleteProductVariant(id: string): Promise<void> {
   try {
-    const variantId = parseInt(id)
-    
-    if (!isNaN(variantId)) {
+    const parsed = parseAdminEntityId(id)
+
+    if (parsed.kind === 'variant') {
       // Delete variant (soft delete)
-      await apiClient.delete(`/products/variants/${variantId}`)
+      await apiClient.delete(`/products/variants/${parsed.id}`)
       return
     }
 
-    // If not a variant ID, try as product ID
-    const productId = parseInt(id)
-    if (!isNaN(productId)) {
+    if (parsed.kind === 'product') {
       // Soft delete product
-      await apiClient.delete(`/products/${productId}`)
+      await apiClient.delete(`/products/${parsed.id}`)
       return
     }
 

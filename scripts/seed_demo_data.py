@@ -21,6 +21,9 @@ from pathlib import Path
 from sqlalchemy import or_
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from seed_guard import require_seed_environment
+
+require_seed_environment(__file__)
 
 from app.core.security import get_password_hash
 from app.db import SessionLocal

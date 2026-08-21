@@ -14,7 +14,7 @@ from decimal import Decimal
 from datetime import date, datetime
 
 from ..db import get_db
-from ..core.dependencies import get_current_active_user, require_role
+from ..core.capabilities import require_capability
 from ..models import NguoiDung
 from ..services.batches import BatchService, DomainError
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -194,7 +194,7 @@ class GiftBoxBatchResponse(BaseModel):
 def create_product_batch(
     batch_data: ProductBatchCreate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff"))
+    current_user: NguoiDung = Depends(require_capability("batches.write"))
 ):
     """Tạo lô hàng sản phẩm mới"""
     try:
@@ -214,7 +214,7 @@ def list_product_batches(
     trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
     search: Optional[str] = Query(None, description="Tìm kiếm theo mã lô hoặc mã QR"),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Danh sách lô hàng sản phẩm"""
     return batch_service.list_batches(
@@ -228,7 +228,7 @@ def list_product_batches(
 def get_product_batch(
     batch_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Chi tiết lô hàng sản phẩm"""
     try:
@@ -242,7 +242,7 @@ def update_product_batch(
     batch_id: int,
     batch_data: ProductBatchUpdate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff"))
+    current_user: NguoiDung = Depends(require_capability("batches.write"))
 ):
     """Cập nhật lô hàng sản phẩm"""
     try:
@@ -258,7 +258,7 @@ def update_product_batch(
 def create_component_batch(
     batch_data: ComponentBatchCreate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff"))
+    current_user: NguoiDung = Depends(require_capability("batches.write"))
 ):
     """Tạo lô hàng linh kiện mới"""
     try:
@@ -278,7 +278,7 @@ def list_component_batches(
     trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Danh sách lô hàng linh kiện"""
     return batch_service.list_batches(
@@ -292,7 +292,7 @@ def list_component_batches(
 def get_component_batch(
     batch_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Chi tiết lô hàng linh kiện"""
     try:
@@ -306,7 +306,7 @@ def update_component_batch(
     batch_id: int,
     batch_data: ComponentBatchUpdate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff"))
+    current_user: NguoiDung = Depends(require_capability("batches.write"))
 ):
     """Cập nhật lô hàng linh kiện"""
     try:
@@ -322,7 +322,7 @@ def update_component_batch(
 def create_gift_box_batch(
     batch_data: GiftBoxBatchCreate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff"))
+    current_user: NguoiDung = Depends(require_capability("batches.write"))
 ):
     """Tạo lô hàng hộp quà mới"""
     try:
@@ -342,7 +342,7 @@ def list_gift_box_batches(
     trang_thai: Optional[str] = Query(None, pattern="^(hoatdong|tamdung|hethan|daxuathet)$"),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Danh sách lô hàng hộp quà"""
     return batch_service.list_batches(
@@ -356,7 +356,7 @@ def list_gift_box_batches(
 def get_gift_box_batch(
     batch_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Chi tiết lô hàng hộp quà"""
     try:
@@ -370,7 +370,7 @@ def update_gift_box_batch(
     batch_id: int,
     batch_data: GiftBoxBatchUpdate,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_role("admin", "manager", "staff"))
+    current_user: NguoiDung = Depends(require_capability("batches.write"))
 ):
     """Cập nhật lô hàng hộp quà"""
     try:
@@ -386,7 +386,7 @@ def update_gift_box_batch(
 def get_expiring_batches(
     days: int = Query(7, ge=1, le=30, description="Số ngày trước khi hết hạn"),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Cảnh báo các lô hàng sắp hết hạn"""
     return batch_service.get_expiring_batches(db, days)
@@ -399,7 +399,7 @@ def get_expiring_batches(
 def get_product_inventory(
     bienthe_id: Optional[int] = Query(None, gt=0),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Tồn kho sản phẩm"""
     return batch_service.get_product_inventory(db, bienthe_id)
@@ -409,7 +409,7 @@ def get_product_inventory(
 def get_component_inventory(
     linh_kien_id: Optional[int] = Query(None, gt=0),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Tồn kho linh kiện"""
     return batch_service.get_component_inventory(db, linh_kien_id)
@@ -419,7 +419,7 @@ def get_component_inventory(
 def get_gift_box_inventory(
     hop_qua_id: Optional[int] = Query(None, gt=0),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Tồn kho hộp quà"""
     return batch_service.get_gift_box_inventory(db, hop_qua_id)
@@ -432,7 +432,7 @@ def get_gift_box_inventory(
 def batches_by_variant(
     bienthe_id: int,
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(get_current_active_user)
+    current_user: NguoiDung = Depends(require_capability("inventory.read"))
 ):
     """Danh sách lô hàng theo biến thể (backward compatibility)"""
     return batch_service.batches_by_variant(db, bienthe_id)

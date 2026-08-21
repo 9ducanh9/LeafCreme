@@ -1,9 +1,7 @@
 // Product Filters component - filter by category, size, search
 import { useState, useEffect } from 'react'
 import { Box, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
-import { ProductVariant } from '../../../types/admin'
 import { getCategories } from '../../../services/admin/categoryService'
-import { getProducts } from '../../../services/productService'
 
 interface ProductFiltersProps {
   category: string
@@ -13,8 +11,6 @@ interface ProductFiltersProps {
   onSizeChange: (size: string) => void
   onSearchChange: (search: string) => void
 }
-
-const SIZES: ProductVariant['size'][] = ['S', 'M', 'L', 'XL']
 
 export default function ProductFilters({
   category,
@@ -32,24 +28,7 @@ export default function ProductFilters({
 
   const loadCategories = async () => {
     try {
-      // Load categories from localStorage first (for backward compatibility)
-      const localCats = getCategories()
-      
-      // Also fetch categories from API to get real-time updates
-      try {
-        const products = await getProducts({ limit: 50 })
-        const apiCategories = Array.from(
-          new Set(products.map(p => p.danh_muc).filter(Boolean))
-        ) as string[]
-        
-        // Merge both sources, prioritizing API data
-        const allCategories = Array.from(new Set([...apiCategories, ...localCats]))
-        setCategories(allCategories)
-      } catch (error) {
-        // Fallback to localStorage if API fails
-        console.warn('Failed to load categories from API, using localStorage:', error)
-        setCategories(localCats)
-      }
+      setCategories(await getCategories())
     } catch (error) {
       console.error('Error loading categories:', error)
       setCategories([])
@@ -102,17 +81,15 @@ export default function ProductFilters({
         </Select>
       </FormControl>
 
-      <FormControl size="small" sx={{ minWidth: 140 }}>
-        <InputLabel>Kích thước</InputLabel>
-        <Select value={size} label="Kích thước" onChange={(e) => onSizeChange(e.target.value)}>
-          <MenuItem value="">Tất cả kích thước</MenuItem>
-          {SIZES.map((s) => (
-            <MenuItem key={s} value={s}>
-              {s}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <TextField
+        label="Kích thước"
+        variant="outlined"
+        size="small"
+        value={size}
+        onChange={(e) => onSizeChange(e.target.value)}
+        placeholder="Ví dụ: 16cm"
+        sx={{ minWidth: 140 }}
+      />
     </Box>
   )
 }

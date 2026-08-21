@@ -8,6 +8,9 @@ from pathlib import Path
 
 # Add parent directory to path để import app modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from seed_guard import require_seed_environment
+
+require_seed_environment(__file__)
 
 from sqlalchemy.orm import Session
 from app.db import SessionLocal, engine
@@ -253,14 +256,16 @@ def create_gift_boxes(db: Session):
     
     db.commit()
     
-    print(f"\n📊 Tổng kết:")
+    print("\n📊 Tổng kết:")
     print(f"   - Gift boxes created: {created_count}")
     print(f"   - Gift boxes updated: {updated_count}")
     print(f"   - BOM items created: {bom_count}")
-    print(f"\n✅ Hoàn thành!")
+    print("\n✅ Hoàn thành!")
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     db = SessionLocal()
     try:
         # Hiển thị danh sách sản phẩm có sẵn

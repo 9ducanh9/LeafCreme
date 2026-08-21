@@ -26,6 +26,7 @@ import { Voucher } from '../../../types/admin'
 import { getProducts } from '../../../services/productService'
 import { Product } from '../../../types/product'
 import { useUnsavedChanges } from '../../../hooks/admin/useUnsavedChanges'
+import { getCategories } from '../../../services/admin/categoryService'
 
 // Configure dayjs
 dayjs.extend(customParseFormat)
@@ -59,8 +60,11 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
   const isDirty = Boolean(formData.code || formData.discountValue || formData.targetId || formData.expiresAt)
   useUnsavedChanges(open && isDirty && !loading)
   
-  // Available categories
-  const categories = ['Bánh kem', 'Bông lan', 'Mousse', 'Tiramisu']
+  const [categories, setCategories] = useState<string[]>([])
+
+  useEffect(() => {
+    if (open && formData.appliesTo === 'category') void getCategories().then(setCategories).catch(() => setCategories([]))
+  }, [open, formData.appliesTo])
 
   const loadProducts = useCallback(async () => {
     if (loadingProducts || products.length > 0) return [] // Already loading or loaded

@@ -165,7 +165,11 @@ class AlertService:
 
         if paginated:
             total = query.count()
-            sort_map = {"muc_do": CanhBaoTonKho.muc_do_nghiem_trong, "ngay_tao": CanhBaoTonKho.ngay_canh_bao}
+            sort_map = {
+                "muc_do": CanhBaoTonKho.muc_do_nghiem_trong,
+                "ngay_tao": CanhBaoTonKho.ngay_canh_bao,
+                "ngay_canh_bao": CanhBaoTonKho.ngay_canh_bao,
+            }
             sort_column = sort_map.get(sort_by, CanhBaoTonKho.ngay_canh_bao)
             direction = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
             alerts = query.order_by(direction, CanhBaoTonKho.canhbao_id.asc()).offset(skip).limit(limit).all()

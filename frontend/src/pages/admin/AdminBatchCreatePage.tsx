@@ -10,6 +10,8 @@ import { getSuppliers } from '../../services/admin/supplierService'
 import { getComponents } from '../../services/admin/componentService'
 import { createProductBatch, createComponentBatch, createGiftBoxBatch } from '../../services/admin/batchService'
 import { useToast } from '../../contexts/ToastContext'
+import { parseAdminEntityId, type ProductVariant } from '../../types/admin'
+import type { BackendGiftBox } from '../../types/giftBox'
 
 type BatchKind = 'product' | 'component' | 'giftbox'
 const emptyValues = { ncc_id: '', ma_lo: '', ngay_het_han: '', so_luong: 1, gia_don_vi: 0, ghi_chu: '' }
@@ -20,9 +22,9 @@ export default function AdminBatchCreatePage() {
   const [values, setValues] = useState(emptyValues)
   const [selectedId, setSelectedId] = useState('')
   const [suppliers, setSuppliers] = useState<Awaited<ReturnType<typeof getSuppliers>>>([])
-  const [variants, setVariants] = useState<Awaited<ReturnType<typeof getProductVariants>>>([])
+  const [variants, setVariants] = useState<ProductVariant[]>([])
   const [components, setComponents] = useState<Awaited<ReturnType<typeof getComponents>>>([])
-  const [giftBoxes, setGiftBoxes] = useState<Awaited<ReturnType<typeof getGiftBoxes>>>([])
+  const [giftBoxes, setGiftBoxes] = useState<BackendGiftBox[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
@@ -34,12 +36,12 @@ export default function AdminBatchCreatePage() {
   useUnsavedChanges(!loading && Boolean(values.ma_lo || values.ngay_het_han || values.ghi_chu))
 
   useEffect(() => {
-    Promise.all([getSuppliers({ dang_hoat_dong: true }), getProductVariants(), getComponents({ dang_hoat_dong: true }), getGiftBoxes({ dang_hoat_dong: true })])
-      .then(([nextSuppliers, nextVariants, nextComponents, nextGiftBoxes]) => { setSuppliers(nextSuppliers); setVariants(nextVariants); setComponents(nextComponents); setGiftBoxes(nextGiftBoxes) })
+    Promise.all([getSuppliers({ dang_hoat_dong: true }), getProductVariants({ limit: 200 }), getComponents({ dang_hoat_dong: true }), getGiftBoxes({ dang_hoat_dong: true })])
+      .then(([nextSuppliers, nextVariantPage, nextComponents, nextGiftBoxPage]) => { setSuppliers(nextSuppliers); setVariants(nextVariantPage.items); setComponents(nextComponents); setGiftBoxes(nextGiftBoxPage.items) })
       .catch(() => setError('Không thể tải danh mục cho nhập lô'))
   }, [])
 
-  const options = useMemo(() => kind === 'product' ? variants.map((item) => ({ id: item.id, label: `${item.name} · ${item.sku}`, price: item.price })) : kind === 'component' ? components.map((item) => ({ id: String(item.linh_kien_id), label: `${item.ten_linh_kien}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_don_vi })) : giftBoxes.map((item) => ({ id: String(item.hop_qua_id), label: `${item.ten_hop_qua}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_ban })), [components, giftBoxes, kind, variants])
+  const options = useMemo(() => kind === 'product' ? variants.filter((item) => parseAdminEntityId(item.id).kind === 'variant').map((item) => ({ id: item.id, label: `${item.name} · ${item.sizeLabel || item.size} · ${item.sku}`, price: item.price })) : kind === 'component' ? components.map((item) => ({ id: String(item.linh_kien_id), label: `${item.ten_linh_kien}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_don_vi })) : giftBoxes.map((item) => ({ id: String(item.hop_qua_id), label: `${item.ten_hop_qua}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_ban })), [components, giftBoxes, kind, variants])
   const selectItem = (id: string) => { setSelectedId(id); const selected = options.find((item) => item.id === id); if (selected) setValues((current) => ({ ...current, gia_don_vi: selected.price })) }
 
   const reset = () => { setValues(emptyValues); setSelectedId(''); setError(null); setWarning(null) }
@@ -52,7 +54,11 @@ export default function AdminBatchCreatePage() {
     setLoading(true); setError(null)
     try {
       const common = { ncc_id: values.ncc_id ? Number(values.ncc_id) : null, ma_lo: values.ma_lo.trim(), ngay_het_han: new Date(`${values.ngay_het_han}T23:59:59`).toISOString(), so_luong: Number(values.so_luong), gia_don_vi: Number(values.gia_don_vi), ghi_chu: values.ghi_chu.trim() || null, trang_thai: 'hoatdong' as const }
-      if (kind === 'product') await createProductBatch({ ...common, bienthe_sanpham_id: Number(selectedId) })
+      if (kind === 'product') {
+        const entity = parseAdminEntityId(selectedId)
+        if (entity.kind !== 'variant') throw new Error('Biến thể sản phẩm không hợp lệ')
+        await createProductBatch({ ...common, bienthe_sanpham_id: entity.id })
+      }
       if (kind === 'component') await createComponentBatch({ ...common, linh_kien_id: Number(selectedId) })
       if (kind === 'giftbox') await createGiftBoxBatch({ ...common, hop_qua_id: Number(selectedId) })
       showSuccess('Tạo lô hàng thành công'); reset()

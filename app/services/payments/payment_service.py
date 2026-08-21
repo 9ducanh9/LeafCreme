@@ -23,13 +23,14 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.dependencies import BACK_OFFICE_ROLES, MANAGEMENT_ROLES, role_name
 from app.core.time import utc_now
 from app.models import DonHang, NguoiDung, ThanhToan
 from app.schemas import validate_thong_tin_giao_dich
 from app.services.momo import create_payment_request, parse_momo_datetime, verify_signature
 from app.services.momo_qr import create_momo_payment_info
 from app.services.errors import DomainError
-from app.services.orders import OrderService
+from app.services.orders import OrderService, can_access_order
 
 _COMPLETABLE_STATUSES = ("cho", "cho_coc", "dang_xu_ly")
 
@@ -43,10 +44,16 @@ class PaymentService:
     # ------------------------------------------------------------------
     @staticmethod
     def _role(current_user: NguoiDung) -> Optional[str]:
-        return current_user.vaitro.ten_vai_tro if current_user.vaitro else None
+        return role_name(current_user)
 
-    def _ensure_order_access(self, order: DonHang, current_user: NguoiDung, message: str) -> None:
-        if self._role(current_user) not in ("admin", "manager") and order.nguoidung_id != current_user.nguoidung_id:
+    def _ensure_order_access(
+        self,
+        order: DonHang,
+        current_user: NguoiDung,
+        message: str,
+        allowed_roles: tuple[str, ...] = MANAGEMENT_ROLES,
+    ) -> None:
+        if self._role(current_user) not in allowed_roles and not can_access_order(order, current_user):
             raise DomainError(status_code=403, detail=message)
 
     @staticmethod
@@ -104,8 +111,16 @@ class PaymentService:
         if trang_thai:
             query = query.filter(ThanhToan.trang_thai == trang_thai)
 
-        if self._role(current_user) not in ("admin", "manager"):
-            query = query.join(DonHang).filter(DonHang.nguoidung_id == current_user.nguoidung_id)
+        role = self._role(current_user)
+        if role not in MANAGEMENT_ROLES:
+            query = query.join(DonHang)
+            if role in BACK_OFFICE_ROLES:
+                query = query.filter(
+                    (DonHang.nhan_vien_tao == current_user.nguoidung_id)
+                    | (DonHang.nguoidung_id == current_user.nguoidung_id)
+                )
+            else:
+                query = query.filter(DonHang.nguoidung_id == current_user.nguoidung_id)
 
         payments = query.order_by(desc(ThanhToan.ngay_tao)).offset(skip).limit(limit).all()
 
@@ -139,6 +154,9 @@ class PaymentService:
     # Generic (manual / non-gateway) payments
     # ------------------------------------------------------------------
     def create_payment(self, db: Session, payload: Any, current_user: NguoiDung) -> dict:
+        if self._role(current_user) not in BACK_OFFICE_ROLES:
+            raise DomainError(status_code=403, detail="Chỉ nhân viên mới được ghi nhận thanh toán thủ công.")
+
         method_aliases = {"the": "the_tin_dung"}
         phuong_thuc = method_aliases.get(payload.phuong_thuc, payload.phuong_thuc)
         valid_methods = ["tien_mat", "chuyen_khoan", "the_tin_dung", "vi_dien_tu"]
@@ -149,7 +167,7 @@ class PaymentService:
             )
 
         order = self._get_order_or_404(db, payload.donhang_id)
-        self._ensure_order_access(order, current_user, "Bạn chỉ có thể thanh toán đơn hàng của mình")
+        self._ensure_order_access(order, current_user, "Bạn không có quyền ghi nhận thanh toán cho đơn hàng này")
 
         total_paid = self._total_paid(db, payload.donhang_id)
         remaining = order.tien_thanh_toan - total_paid
@@ -186,6 +204,9 @@ class PaymentService:
         return self._to_response(payment, order)
 
     def update_payment_status(self, db: Session, payment_id: int, payload: Any, current_user: NguoiDung) -> dict:
+        if self._role(current_user) not in MANAGEMENT_ROLES:
+            raise DomainError(status_code=403, detail="Chỉ quản lý mới được cập nhật trạng thái thanh toán.")
+
         payment = self._get_payment_or_404(db, payment_id)
         order = self._get_order_or_404(db, payment.donhang_id)
 

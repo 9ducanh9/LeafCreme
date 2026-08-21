@@ -4,7 +4,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from app.core.time import utc_now
-from app.models import BienTheSanPham, DonHang, DonHangPhieuGiamGia, PhieuGiamGia
+from app.models import BienTheSanPham, DonHang, DonHangPhieuGiamGia, PhieuGiamGia, SanPham
 from app.schemas import SanPhamApDung
 
 from .errors import DomainError
@@ -50,7 +50,7 @@ class VoucherService:
             if now < voucher.ngay_bat_dau or now > voucher.ngay_het_han:
                 raise DomainError(status_code=400, detail=f"Voucher '{code}' đã hết hạn hoặc chưa có hiệu lực")
 
-            if voucher.so_lan_da_dung >= voucher.gioi_han_su_dung:
+            if voucher.gioi_han_su_dung > 0 and voucher.so_lan_da_dung >= voucher.gioi_han_su_dung:
                 raise DomainError(status_code=400, detail=f"Voucher '{code}' đã hết lượt sử dụng")
 
             if voucher.gioi_han_nguoi_dung:
@@ -87,7 +87,17 @@ class VoucherService:
                             elif item.get("hop_qua_id"):
                                 order_sp_ids.append(item["hop_qua_id"])
 
-                        if not any(sp_id in sp_ap_dung.danh_sach_id for sp_id in order_sp_ids):
+                        if sp_ap_dung.loai_ap_dung == "danh_muc":
+                            categories = [
+                                category
+                                for (category,) in db.query(SanPham.danh_muc).filter(SanPham.sanpham_id.in_(order_sp_ids)).all()
+                            ]
+                            allowed = {str(value) for value in (sp_ap_dung.danh_sach_id or [])}
+                            applies = any(category in allowed for category in categories)
+                        else:
+                            allowed = {int(value) for value in (sp_ap_dung.danh_sach_id or []) if str(value).isdigit()}
+                            applies = any(sp_id in allowed for sp_id in order_sp_ids)
+                        if not applies:
                             raise DomainError(
                                 status_code=400, detail=f"Voucher '{code}' không áp dụng cho sản phẩm trong đơn hàng"
                             )
