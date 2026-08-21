@@ -132,6 +132,34 @@ class TestRunAgentLoopChaining:
         assert proposed == []
         assert len(client.chat.completions.calls) == 3
 
+
+class TestConversationContext:
+    def test_chat_forwards_recent_trimmed_history_to_model(self, db_session, admin_user, monkeypatch):
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "fake-key-for-test")
+        client = _FakeDeepSeekClient([_text_response("Context received")])
+
+        import openai
+
+        monkeypatch.setattr(openai, "OpenAI", lambda **kwargs: client)
+        history = [
+            {"role": "user" if index % 2 == 0 else "assistant", "content": f"turn-{index}"}
+            for index in range(25)
+        ]
+        history[-1]["content"] = "x" * 5000
+
+        result = agent_service.chat(db_session, "new turn", admin_user, history=history)
+
+        messages = client.chat.completions.calls[0]["messages"]
+        sent_history = messages[1:-1]
+        assert len(sent_history) == 20
+        assert sent_history[0]["content"] == "turn-5"
+        sent_contents = {message["content"] for message in sent_history}
+        assert sent_contents.isdisjoint({f"turn-{index}" for index in range(5)})
+        assert len(sent_history[-1]["content"]) == 4001
+        assert sent_history[-1]["content"].endswith("…")
+        assert messages[-1] == {"role": "user", "content": "new turn"}
+        assert result["used_llm"] is True
+
     def test_single_turn_answer_without_tool_use(self, db_session, admin_user):
         client = _FakeDeepSeekClient([_text_response("Hi, how can I help?")])
 

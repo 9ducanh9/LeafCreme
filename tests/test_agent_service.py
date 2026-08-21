@@ -5,6 +5,7 @@ propose -> approve/reject action lifecycle.
 Mirrors the fixture style of test_alert_service.py / test_batch_service.py:
 a real Postgres session per test, hand-built rows instead of the API layer.
 """
+from dataclasses import replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -332,6 +333,29 @@ class TestApproveAction:
         with pytest.raises(DomainError) as exc_info:
             agent_service.approve_action(db_session, 999999, admin_user)
         assert exc_info.value.status_code == 404
+
+    def test_unexpected_tool_failure_marks_action_failed(self, db_session, admin_user, monkeypatch):
+        tool = tool_registry.TOOL_REGISTRY["resolve_alert"]
+
+        def fail_unexpectedly(db, params, current_user):
+            raise RuntimeError("unexpected tool failure")
+
+        monkeypatch.setitem(
+            tool_registry.TOOL_REGISTRY,
+            "resolve_alert",
+            replace(tool, execute=fail_unexpectedly),
+        )
+        proposal = agent_service.propose_action(
+            db_session, "resolve_alert", {"alert_id": 999999}, admin_user
+        )
+
+        with pytest.raises(DomainError) as exc_info:
+            agent_service.approve_action(db_session, proposal["action"]["action_id"], admin_user)
+
+        assert exc_info.value.status_code == 500
+        failed = db_session.query(AgentAction).filter_by(action_id=proposal["action"]["action_id"]).one()
+        assert failed.trang_thai == "that_bai"
+        assert failed.loi == "Đã xảy ra lỗi không mong đợi khi thực thi hành động"
 
 
 class TestRejectAction:

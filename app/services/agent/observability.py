@@ -54,11 +54,11 @@ def _get_client() -> Optional[Any]:
 @contextmanager
 def trace_conversation(user_id: Optional[int], message: str) -> Iterator[Optional[Any]]:
     """Top-level span for one full chat() tool-use loop."""
-    client = _get_client()
-    if client is None:
-        yield None
-        return
     try:
+        client = _get_client()
+        if client is None:
+            yield None
+            return
         with client.start_as_current_observation(
             name="operations-agent-chat",
             as_type="agent",
@@ -74,11 +74,11 @@ def trace_conversation(user_id: Optional[int], message: str) -> Iterator[Optiona
 @contextmanager
 def trace_llm_call(model: str, iteration: int) -> Iterator[Optional[Any]]:
     """One DeepSeek `chat.completions.create` call within the loop."""
-    client = _get_client()
-    if client is None:
-        yield None
-        return
     try:
+        client = _get_client()
+        if client is None:
+            yield None
+            return
         with client.start_as_current_observation(
             name=f"llm-call-{iteration}", as_type="generation", model=model,
         ) as generation:
@@ -91,11 +91,11 @@ def trace_llm_call(model: str, iteration: int) -> Iterator[Optional[Any]]:
 @contextmanager
 def trace_tool_call(tool_name: str, tool_input: dict) -> Iterator[Optional[Any]]:
     """One tool execution requested by the model."""
-    client = _get_client()
-    if client is None:
-        yield None
-        return
     try:
+        client = _get_client()
+        if client is None:
+            yield None
+            return
         with client.start_as_current_observation(
             name=f"tool:{tool_name}", as_type="tool", input=redact(tool_input),
         ) as span:
@@ -120,10 +120,10 @@ def safe_update(observation: Optional[Any], **kwargs: Any) -> None:
 def flush() -> None:
     """Best-effort flush at the end of a request so traces aren't stuck
     in an in-memory batch if the process exits or the worker recycles."""
-    client = _get_client()
-    if client is None:
-        return
     try:
+        client = _get_client()
+        if client is None:
+            return
         client.flush()
     except Exception:
         logger.debug("Langfuse flush failed", exc_info=True)
