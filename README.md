@@ -169,7 +169,7 @@ docker compose up -d
 ```
 
 This provides:
-- PostgreSQL on `localhost:5432`
+- PostgreSQL on `localhost:5433` (container-to-container hostname: `db:5432`)
 - Adminer on `http://localhost:8080`
 
 ### 2. Backend
@@ -183,7 +183,7 @@ pip install -r requirements.txt
 Create `.env` in the project root:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/bakery
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bakery
 APP_ENV=development
 SECRET_KEY=replace-with-a-long-random-secret
 FRONTEND_BASE_URL=http://localhost:3000
@@ -272,6 +272,8 @@ JSONB, native ENUM, and TEXT[] types.
 
 ```bash
 pip install -r requirements-dev.txt
+# PowerShell: $env:TEST_DATABASE_URL='postgresql+psycopg2://postgres:postgres@localhost:5433/bakery_test'
+# bash: export TEST_DATABASE_URL='postgresql+psycopg2://postgres:postgres@localhost:5433/bakery_test'
 pytest
 ```
 
