@@ -35,6 +35,11 @@ from ..services.agent import (
     reject_action,
     reset_action,
 )
+from ..services.agent.proactive_service import (
+    list_proactive_insights,
+    proactive_insight_summary,
+    update_proactive_insight_status,
+)
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -67,6 +72,12 @@ class RejectActionRequest(BaseModel):
     note: Optional[str] = Field(default=None, max_length=1000)
 
 
+class ProactiveInsightStatusRequest(BaseModel):
+    # unread is system-created, superseded is system-created. An admin can
+    # only acknowledge an insight or mark its recommendation handled.
+    trang_thai: str = Field(pattern="^(read|resolved)$")
+
+
 # =========================================================
 # GET /agent/state — raw business-state snapshot
 # =========================================================
@@ -87,6 +98,41 @@ def get_agent_insights(
     current_user: NguoiDung = Depends(require_capability("agent.chat")),
 ):
     return {"insights": get_insights(db)}
+
+
+# =========================================================
+# Proactive insights — durable notification/recommendation lifecycle
+# =========================================================
+@router.get("/proactive-insights")
+def get_proactive_insights(
+    trang_thai: Optional[str] = Query(None, pattern="^(unread|read|resolved|superseded)$"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_capability("agent.chat")),
+):
+    return list_proactive_insights(db, trang_thai=trang_thai, skip=skip, limit=limit)
+
+
+@router.get("/proactive-insights/summary")
+def get_proactive_insight_summary(
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_capability("agent.chat")),
+):
+    return proactive_insight_summary(db)
+
+
+@router.patch("/proactive-insights/{insight_id}")
+def patch_proactive_insight(
+    insight_id: int,
+    payload: ProactiveInsightStatusRequest,
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_capability("agent.chat")),
+):
+    try:
+        return update_proactive_insight_status(db, insight_id, payload.trang_thai)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 # =========================================================

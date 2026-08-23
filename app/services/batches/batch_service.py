@@ -41,6 +41,7 @@ shape instead.
 """
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+import logging
 from typing import Any, Callable, Optional
 
 from sqlalchemy import and_, or_
@@ -62,6 +63,37 @@ from app.models import (
 )
 from app.services.errors import DomainError
 from app.services.inventory_ledger_service import InventoryLedgerService
+
+logger = logging.getLogger("bakeryonl.batches")
+
+
+def _refresh_proactive_expiry_insights(db: Session) -> None:
+    """Run the existing deterministic detector immediately after a batch write.
+
+    A batch imported today can already be inside the high-severity expiry
+    window.  Waiting for the daily sweep would hide that fact.  The detector
+    itself remains AlertService.generate_alerts; this hook adds no new expiry
+    business rule and is best-effort so it cannot roll back a valid import.
+    """
+    try:
+        from app.services.agent.proactive_service import safe_refresh_expiring_batch_insights
+        from app.services.alerts.alert_service import (
+            DEFAULT_EXPIRING_DAYS,
+            DEFAULT_LOW_STOCK_THRESHOLD,
+            AlertService,
+        )
+
+        AlertService().generate_alerts(
+            db,
+            low_stock_threshold=DEFAULT_LOW_STOCK_THRESHOLD,
+            expiring_days=DEFAULT_EXPIRING_DAYS,
+        )
+        result = safe_refresh_expiring_batch_insights(db)
+        if result.get("created") or result.get("error"):
+            logger.info("Proactive expiry refresh after batch write: %s", result)
+    except Exception:
+        # Defensive outer guard: batch persistence has already committed.
+        logger.exception("Unable to refresh proactive expiry insights after batch write")
 
 
 @dataclass(frozen=True)
@@ -211,6 +243,7 @@ class BatchService:
 
         db.commit()
         db.refresh(batch)
+        _refresh_proactive_expiry_insights(db)
         return self._to_response(cfg, batch, inventory)
 
     def list_batches(
@@ -303,6 +336,8 @@ class BatchService:
 
         db.commit()
         db.refresh(batch)
+        if {"ngay_het_han", "trang_thai"} & update_data.keys():
+            _refresh_proactive_expiry_insights(db)
         return self._to_response(cfg, batch, self._get_inventory(db, cfg, batch.lohang_id))
 
     # ------------------------------------------------------------------

@@ -84,4 +84,10 @@ class MaintenanceService:
         """Thin passthrough to the existing, already-correct
         AlertService.generate_alerts — same defaults as the manual
         POST /alerts/generate endpoint (app/routers/alerts.py)."""
-        return self.alert_service.generate_alerts(db, low_stock_threshold, expiring_days)
+        result = self.alert_service.generate_alerts(db, low_stock_threshold, expiring_days)
+        # The detector owns the thresholds. The proactive layer only reviews
+        # high-severity expiry alerts created or still open after that scan.
+        from app.services.agent.proactive_service import safe_refresh_expiring_batch_insights
+
+        result["proactive"] = safe_refresh_expiring_batch_insights(db)
+        return result

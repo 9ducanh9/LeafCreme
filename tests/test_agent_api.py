@@ -60,6 +60,42 @@ class TestInsightsEndpoint:
         assert response.status_code in (401, 403)
 
 
+class TestProactiveInsightEndpoint:
+    def test_staff_can_list_and_acknowledge_proactive_insight(self, client, db_session, staff_token):
+        from app.models import CanhBaoTonKho, ProactiveInsight
+
+        alert = CanhBaoTonKho(loai_canh_bao="sap_het_han", muc_do_nghiem_trong="cao", trang_thai="chua_xu_ly")
+        db_session.add(alert)
+        db_session.flush()
+        insight = ProactiveInsight(
+            source_alert_id=alert.canhbao_id,
+            fingerprint="a" * 64,
+            scenario="expiring_batch",
+            muc_do_nghiem_trong="cao",
+            tieu_de="Hạn dùng cần xử lý",
+            khuyen_nghi="Kiểm tra lô trước khi bán tiếp.",
+            bang_chung={"alert_id": alert.canhbao_id},
+            tool_trace=[],
+            prompt_version="operations-agent-proactive-v1",
+            used_llm=False,
+            trang_thai="unread",
+        )
+        db_session.add(insight)
+        db_session.commit()
+
+        listing = client.get("/agent/proactive-insights", headers=_auth(staff_token))
+        assert listing.status_code == 200
+        assert listing.json()["items"][0]["status"] == "unread"
+
+        acknowledged = client.patch(
+            f"/agent/proactive-insights/{insight.insight_id}",
+            json={"trang_thai": "read"},
+            headers=_auth(staff_token),
+        )
+        assert acknowledged.status_code == 200
+        assert acknowledged.json()["status"] == "read"
+
+
 class TestActionLifecycleViaApi:
     def test_propose_execute_read_only_tool_immediately(self, client, admin_token):
         response = client.post(

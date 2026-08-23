@@ -20,6 +20,27 @@ export interface Insight {
   recommended_action: RecommendedAction | null
 }
 
+export type ProactiveInsightStatus = 'unread' | 'read' | 'resolved' | 'superseded'
+
+export interface ProactiveInsight {
+  insight_id: number
+  source_alert_id: number
+  scenario: string
+  severity: Insight['severity']
+  title: string
+  recommendation: string
+  evidence: Record<string, unknown>
+  tool_trace: ToolCallTrace[]
+  prompt_version: string
+  model: string | null
+  used_llm: boolean
+  status: ProactiveInsightStatus
+  created_at: string
+  read_at: string | null
+  resolved_at: string | null
+  superseded_at: string | null
+}
+
 export type AgentActionClassification = 'read' | 'draft' | 'execute'
 
 export interface AgentAction {
@@ -51,6 +72,13 @@ export interface AgentActionPage {
   limit: number
 }
 
+export interface ProactiveInsightPage {
+  items: ProactiveInsight[]
+  total: number
+  skip: number
+  limit: number
+}
+
 export interface ToolDescriptor {
   name: string
   description: string
@@ -62,8 +90,8 @@ export interface ToolDescriptor {
 
 export interface ToolCallTrace {
   tool: string
-  input: Record<string, unknown>
-  outcome: 'executed' | 'proposed'
+  input?: Record<string, unknown>
+  outcome: 'executed' | 'proposed' | 'rejected'
   action_id?: number
 }
 
@@ -78,6 +106,16 @@ export interface ChatReply {
 export async function getInsights(): Promise<Insight[]> {
   const data = await apiClient.get<{ insights: Insight[] }>('/agent/insights')
   return data.insights
+}
+
+export async function listProactiveInsights(status?: ProactiveInsightStatus, skip = 0, limit = 50): Promise<ProactiveInsightPage> {
+  const params: Record<string, string | number> = { skip, limit }
+  if (status) params.trang_thai = status
+  return await apiClient.get<ProactiveInsightPage>('/agent/proactive-insights', params)
+}
+
+export async function updateProactiveInsightStatus(insightId: number, status: 'read' | 'resolved'): Promise<ProactiveInsight> {
+  return await apiClient.patch<ProactiveInsight>(`/agent/proactive-insights/${insightId}`, { trang_thai: status })
 }
 
 export async function getState(): Promise<Record<string, unknown>> {

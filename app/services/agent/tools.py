@@ -36,6 +36,7 @@ Adding a new tool means adding one entry to TOOL_REGISTRY; nothing else in
 the agent stack needs to change to pick it up.
 """
 from dataclasses import dataclass, field
+from collections.abc import Collection
 from typing import Any, Callable, Optional
 
 from pydantic import BaseModel, Field
@@ -548,3 +549,25 @@ def chat_tool_schemas() -> list[dict[str, Any]]:
             },
         })
     return schemas
+
+
+def read_tool_schemas(allowed_names: Collection[str]) -> list[dict[str, Any]]:
+    """Return schemas for an explicit, code-governed read-only allowlist.
+
+    Proactive jobs must never receive the interactive chat registry, because
+    that registry also exposes draft/execute tools.  This function enforces
+    the boundary in code before anything is sent to an LLM.
+    """
+    allowed = frozenset(allowed_names)
+    unknown = allowed - TOOL_REGISTRY.keys()
+    if unknown:
+        raise ValueError(f"Unknown Agent tool(s): {', '.join(sorted(unknown))}")
+
+    non_read = [name for name in allowed if TOOL_REGISTRY[name].classification != "read"]
+    if non_read:
+        raise ValueError(f"Proactive tool allowlist may contain only read tools: {', '.join(sorted(non_read))}")
+
+    return [
+        schema for schema in chat_tool_schemas()
+        if schema["function"]["name"] in allowed
+    ]

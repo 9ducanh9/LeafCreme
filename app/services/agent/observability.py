@@ -104,6 +104,8 @@ def _propagate_trace_attributes(
     user_id: Optional[int],
     session_id: Optional[str],
     prompt_version: str,
+    trace_name: str = "operations-agent-chat",
+    feature: str = "operations-agent",
 ) -> Iterator[None]:
     """Propagate stable correlation fields to every child observation."""
     try:
@@ -118,9 +120,9 @@ def _propagate_trace_attributes(
         "user_id": str(user_id) if user_id is not None else None,
         "version": prompt_version,
         "environment": _tracing_environment(),
-        "trace_name": "operations-agent-chat",
-        "metadata": {"feature": "operations-agent", "promptversion": prompt_version},
-        "tags": ["operations-agent"],
+        "trace_name": trace_name,
+        "metadata": {"feature": feature, "promptversion": prompt_version},
+        "tags": ["operations-agent"] if feature == "operations-agent" else ["operations-agent", feature],
     }
     if session_id:
         kwargs["session_id"] = session_id
@@ -157,6 +159,49 @@ def trace_conversation(
                 user_id=user_id,
                 session_id=session_id,
                 prompt_version=prompt_version,
+            ):
+                yield span
+        except Exception as exc:
+            safe_update(span, level="ERROR", status_message=type(exc).__name__)
+            flush()
+            raise
+
+
+@contextmanager
+def trace_proactive_evaluation(
+    source_alert_id: int,
+    condition: dict[str, Any],
+    *,
+    prompt_version: str,
+) -> Iterator[Optional[Any]]:
+    """Trace one unattended, read-only proactive evaluation.
+
+    It deliberately has no user identity.  The source alert and the
+    deterministic condition provide the correlation path instead.
+    """
+    client = _get_client_safely()
+    if client is None:
+        yield None
+        return
+
+    with _best_effort_context(
+        lambda: client.start_as_current_observation(
+            name="operations-agent-proactive",
+            as_type="agent",
+            input=redact(condition),
+            metadata={"source_alert_id": source_alert_id, "scenario": "expiring_batch"},
+        )
+    ) as span:
+        if span is None:
+            yield None
+            return
+        try:
+            with _propagate_trace_attributes(
+                user_id=None,
+                session_id=f"proactive-alert-{source_alert_id}",
+                prompt_version=prompt_version,
+                trace_name="operations-agent-proactive",
+                feature="operations-agent-proactive",
             ):
                 yield span
         except Exception as exc:

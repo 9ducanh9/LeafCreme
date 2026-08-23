@@ -122,7 +122,12 @@ def generate_alerts(
     current_user: NguoiDung = Depends(require_capability("alerts.generate"))
 ):
     """Tự động tạo cảnh báo dựa trên tình trạng tồn kho hiện tại"""
-    return alert_service.generate_alerts(db, low_stock_threshold, expiring_days)
+    result = alert_service.generate_alerts(db, low_stock_threshold, expiring_days)
+    # Best effort: observability/LLM failures cannot invalidate an inventory scan.
+    from app.services.agent.proactive_service import safe_refresh_expiring_batch_insights
+
+    safe_refresh_expiring_batch_insights(db)
+    return result
 
 
 # =========================================================

@@ -647,6 +647,53 @@ class AgentAction(Base):
 
 
 # =========================================================
+# 30C. PROACTIVE AGENT INSIGHTS (separate from action audit)
+# =========================================================
+class ProactiveInsight(Base):
+    """A durable, deduplicated recommendation emitted by the proactive Agent.
+
+    This is deliberately not an ``AgentAction``: an insight is read-only
+    analysis of a business condition. Any follow-up mutation still has to
+    enter the existing proposal -> approval -> execution lifecycle.
+    """
+
+    __tablename__ = "proactive_insights"
+
+    insight_id: Mapped[int] = mapped_column(primary_key=True)
+    source_alert_id: Mapped[int] = mapped_column(
+        ForeignKey("canhbaotonkho.canhbao_id", ondelete="CASCADE"), nullable=False
+    )
+    # Hash of the alert condition that produced this recommendation. A new
+    # condition supersedes the previous insight instead of creating repeats.
+    fingerprint: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    scenario: Mapped[str] = mapped_column(String(50), nullable=False)
+    muc_do_nghiem_trong: Mapped[str] = mapped_column(String(20), nullable=False)
+    tieu_de: Mapped[str] = mapped_column(String(300), nullable=False)
+    khuyen_nghi: Mapped[str] = mapped_column(Text, nullable=False)
+    bang_chung: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    tool_trace: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    prompt_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    used_llm: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    trang_thai: Mapped[str] = mapped_column(String(20), nullable=False, server_default="unread")
+    ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    ngay_doc: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ngay_xu_ly: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ngay_thay_the: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "trang_thai IN ('unread', 'read', 'resolved', 'superseded')",
+            name="ck_proactive_insights_trang_thai",
+        ),
+        CheckConstraint(
+            "muc_do_nghiem_trong IN ('thap', 'binh_thuong', 'cao')",
+            name="ck_proactive_insights_muc_do",
+        ),
+    )
+
+
+# =========================================================
 # 30. SYSTEM LOG
 # =========================================================
 class SystemLog(Base):

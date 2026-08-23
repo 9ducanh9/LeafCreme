@@ -38,6 +38,25 @@ from app.models import (
 from app.services.errors import DomainError
 
 _ACTIVE_ALERT_STATUSES = ("chua_xu_ly", "dang_xu_ly")
+DEFAULT_LOW_STOCK_THRESHOLD = 10
+DEFAULT_EXPIRING_DAYS = 7
+HIGH_EXPIRY_DAYS = 3
+
+
+def is_current_high_expiry_alert(alert: dict[str, Any], now: Optional[datetime] = None) -> bool:
+    """Use the same expiry boundary as the deterministic alert detector.
+
+    Alerts are intentionally not auto-closed by the legacy domain flow, so
+    a proactive runner must re-check the actual batch date before surfacing
+    an old alert as a fresh recommendation.
+    """
+    expiry = alert.get("ngay_het_han")
+    if not isinstance(expiry, datetime):
+        return False
+    current = now or datetime.now()
+    if alert.get("loai_canh_bao") == "qua_han":
+        return expiry <= current
+    return alert.get("loai_canh_bao") == "sap_het_han" and current < expiry <= current + timedelta(days=HIGH_EXPIRY_DAYS)
 
 
 @dataclass(frozen=True)
@@ -213,7 +232,12 @@ class AlertService:
             "by_severity": by_severity,
         }
 
-    def generate_alerts(self, db: Session, low_stock_threshold: int, expiring_days: int) -> dict:
+    def generate_alerts(
+        self,
+        db: Session,
+        low_stock_threshold: int = DEFAULT_LOW_STOCK_THRESHOLD,
+        expiring_days: int = DEFAULT_EXPIRING_DAYS,
+    ) -> dict:
         now = datetime.now()
         expiring_date = now + timedelta(days=expiring_days)
 
@@ -261,7 +285,7 @@ class AlertService:
                         expired_created += 1
                     elif lo.ngay_het_han <= expiring_date:
                         days_left = (lo.ngay_het_han - now).days
-                        severity = "cao" if days_left <= 3 else "binh_thuong"
+                        severity = "cao" if days_left <= HIGH_EXPIRY_DAYS else "binh_thuong"
                         db.add(CanhBaoTonKho(
                             **{cfg.alert_fk_field: lo.lohang_id},
                             loai_canh_bao="sap_het_han",
@@ -295,6 +319,11 @@ class AlertService:
 
         db.commit()
         db.refresh(alert)
+        # A resolved/dismissed source alert makes any open proactive
+        # recommendation obsolete immediately instead of waiting for 06:00.
+        from app.services.agent.proactive_service import safe_refresh_expiring_batch_insights
+
+        safe_refresh_expiring_batch_insights(db)
         return self._enrich_with_batch_info(db, alert)
 
     def delete_alert(self, db: Session, alert_id: int) -> dict:

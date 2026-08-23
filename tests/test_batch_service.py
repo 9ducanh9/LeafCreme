@@ -28,6 +28,7 @@ from app.models import (
     HopQua,
     LinhKien,
     NguoiDung,
+    ProactiveInsight,
     SanPham,
     TonKhoLinhKien,
     TonKhoSanPham,
@@ -159,6 +160,21 @@ class TestCreateBatch:
         ).first()
         assert inv is not None
         assert inv.so_luong_hien_tai == 25
+
+    def test_new_near_expiry_batch_creates_proactive_insight_immediately(self, db_session, service, staff_user, variant, monkeypatch):
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        payload = _ProductBatchPayload(
+            variant.bienthe_id,
+            "LOT-PROACTIVE-EXPIRY",
+            so_luong=12,
+            ngay_het_han=_future(days=2),
+        )
+
+        result = service.create_batch(db_session, "products", payload, staff_user)
+
+        insight = db_session.query(ProactiveInsight).one()
+        assert insight.trang_thai == "unread"
+        assert insight.bang_chung["batch_id"] == result["lohang_id"]
 
     def test_rejects_unknown_item(self, db_session, service, staff_user):
         payload = _ProductBatchPayload(bienthe_sanpham_id=999999, ma_lo="LOT-002")
