@@ -58,7 +58,7 @@ function toPayload(data: Omit<Voucher, 'id'> | Partial<Voucher>, partial = false
   return payload
 }
 
-export async function getVouchers(filters?: { status?: string; type?: string; search?: string; skip?: number; limit?: number; sort_dir?: 'asc' | 'desc' }): Promise<Page<Voucher>> {
+export async function getVouchers(filters?: { status?: string; type?: string; search?: string; skip?: number; limit?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }): Promise<Page<Voucher>> {
   const response = await apiClient.get<Page<BackendVoucher>>('/vouchers', {
     paginated: true,
     skip: filters?.skip ?? 0,
@@ -66,6 +66,7 @@ export async function getVouchers(filters?: { status?: string; type?: string; se
     search: filters?.search || undefined,
     dang_hoat_dong: filters?.status === 'active' ? true : filters?.status === 'inactive' ? false : undefined,
     loai_giam: filters?.type === 'percent' ? 'phantram' : filters?.type === 'fixed_amount' ? 'sotien' : undefined,
+    sort_by: filters?.sort_by ?? 'ngay_tao',
     sort_dir: filters?.sort_dir ?? 'desc',
   })
   return { ...response, items: response.items.map(mapVoucher) }

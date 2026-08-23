@@ -52,6 +52,7 @@ logger = logging.getLogger("bakeryonl.agent")
 
 CHAT_MODEL = "deepseek-chat"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+SYSTEM_PROMPT_VERSION = "operations-agent-system-v1"
 MAX_TOOL_ITERATIONS = 6
 # Bounds on what gets sent to the model per chat call — without these, a
 # long-running conversation keeps resending its entire history on every
@@ -496,7 +497,12 @@ def _execute_tool_call(
 
 
 def _run_agent_loop(
-    client: Any, db: Session, current_user: NguoiDung, message: str, history: list[dict]
+    client: Any,
+    db: Session,
+    current_user: NguoiDung,
+    message: str,
+    history: list[dict],
+    session_id: Optional[str] = None,
 ) -> tuple[str, list[dict], list[dict]]:
     """The actual agentic loop: send the conversation + tool schemas to
     DeepSeek (via its OpenAI-compatible chat-completions API), execute
@@ -511,10 +517,16 @@ def _run_agent_loop(
     proposed_actions: list[dict] = []
     tool_trace: list[dict] = []
 
-    with observability.trace_conversation(current_user.nguoidung_id, message) as conv_span:
+    with observability.trace_conversation(
+        current_user.nguoidung_id,
+        message,
+        session_id=session_id,
+        prompt_version=SYSTEM_PROMPT_VERSION,
+    ) as conv_span:
         for iteration in range(MAX_TOOL_ITERATIONS):
             start = time.monotonic()
             with observability.trace_llm_call(CHAT_MODEL, iteration) as gen:
+                observability.safe_update(gen, input=observability.redact(messages))
                 response = client.chat.completions.create(
                     model=CHAT_MODEL,
                     max_tokens=1024,
@@ -527,11 +539,18 @@ def _run_agent_loop(
                     gen,
                     output={
                         "content": choice.message.content,
-                        "tool_calls": [tc.function.name for tc in (choice.message.tool_calls or [])],
+                        "tool_calls": [
+                            {"name": tc.function.name, "arguments": tc.function.arguments}
+                            for tc in (choice.message.tool_calls or [])
+                        ],
                     },
                     usage_details=(
-                        {"input": getattr(usage, "prompt_tokens", None), "output": getattr(usage, "completion_tokens", None)}
-                        if usage else None
+                        {
+                            "input_tokens": getattr(usage, "prompt_tokens", None),
+                            "output_tokens": getattr(usage, "completion_tokens", None),
+                        }
+                        if usage
+                        else None
                     ),
                     metadata={"latency_ms": round((time.monotonic() - start) * 1000)},
                 )
@@ -554,6 +573,15 @@ def _run_agent_loop(
                 try:
                     tool_input = json.loads(tool_call.function.arguments or "{}")
                 except json.JSONDecodeError:
+                    with observability.trace_tool_call(
+                        tool_call.function.name,
+                        {"raw_arguments": tool_call.function.arguments or ""},
+                    ) as tool_span:
+                        observability.safe_update(
+                            tool_span,
+                            output={"error": "Tham số gọi tool không phải JSON hợp lệ."},
+                            level="ERROR",
+                        )
                     messages.append({
                         "role": "tool", "tool_call_id": tool_call.id,
                         "content": json.dumps({"error": "Tham số gọi tool không phải JSON hợp lệ."}),
@@ -605,7 +633,13 @@ def _trim_history(history: list[dict]) -> list[dict]:
     ]
 
 
-def chat(db: Session, message: str, current_user: NguoiDung, history: Optional[list[dict]] = None) -> dict:
+def chat(
+    db: Session,
+    message: str,
+    current_user: NguoiDung,
+    history: Optional[list[dict]] = None,
+    session_id: Optional[str] = None,
+) -> dict:
     message = _truncate_text(message, MAX_MESSAGE_CHARS)
     history = _trim_history(history or [])
 
@@ -614,7 +648,9 @@ def chat(db: Session, message: str, current_user: NguoiDung, history: Optional[l
         try:
             import openai
             client = openai.OpenAI(api_key=api_key, base_url=os.getenv("DEEPSEEK_BASE_URL") or DEEPSEEK_BASE_URL)
-            reply, proposed_actions, tool_trace = _run_agent_loop(client, db, current_user, message, history)
+            reply, proposed_actions, tool_trace = _run_agent_loop(
+                client, db, current_user, message, history, session_id=session_id
+            )
             return {
                 "reply": reply,
                 "used_llm": True,

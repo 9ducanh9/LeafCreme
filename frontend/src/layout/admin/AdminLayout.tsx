@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  AppBar, Avatar, Box, CssBaseline, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  ThemeProvider, Toolbar, Typography, useMediaQuery, useTheme,
+  AppBar, Avatar, Badge, Box, CssBaseline, Dialog, DialogContent, DialogTitle, Drawer, IconButton, List, ListItem, ListItemButton,
+  ListItemIcon, ListItemText, Stack, ThemeProvider, Toolbar, Typography, useMediaQuery, useTheme,
 } from '@mui/material'
 import { adminTheme } from '../../theme/adminTheme'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -14,9 +14,14 @@ import PointOfSaleIcon from '@mui/icons-material/PointOfSale'
 import SettingsIcon from '@mui/icons-material/Settings'
 import HomeIcon from '@mui/icons-material/Home'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
+import KeyboardIcon from '@mui/icons-material/Keyboard'
 import { useAuth } from '../../contexts/AuthContext'
 import { getImageUrl } from '../../utils/getImageUrl'
 import { adminNavGroups, type AdminNavItem } from '../../config/admin-nav'
+import { useAdminShortcuts, type ShortcutSpec } from '../../hooks/admin/useAdminShortcuts'
+import { getAlertsSummary } from '../../services/admin/alertService'
+import { useAdminCreateActionRegistry } from '../../contexts/AdminCreateActionContext'
+import { ADMIN_SEARCH_FIELD_ID } from '../../components/admin/ui/data-table-toolbar'
 
 const DRAWER_WIDTH = 280
 const DRAWER_WIDTH_COLLAPSED = 72
@@ -46,11 +51,46 @@ export default function AdminLayout() {
   const [sidebarExpanded, setSidebarExpanded] = useState(() => localStorage.getItem('admin-sidebar-expanded') !== 'false')
   useEffect(() => { localStorage.setItem('admin-sidebar-expanded', String(sidebarExpanded)) }, [sidebarExpanded])
 
+  // Badge số trên "Cảnh báo" — nhân viên biết có việc cần xử lý mà không
+  // phải vào xem (spec 13 §7.1). Tải lại mỗi khi đổi trang để không bị cũ
+  // sau khi xử lý cảnh báo rồi quay lại trang khác.
+  const [pendingAlerts, setPendingAlerts] = useState(0)
+  const canSeeAlerts = can('alerts.read')
+  useEffect(() => {
+    if (!canSeeAlerts) return
+    let active = true
+    getAlertsSummary().then((summary) => { if (active) setPendingAlerts(summary.pending) }).catch(() => undefined)
+    return () => { active = false }
+  }, [canSeeAlerts, location.pathname])
+
   const currentItem = useMemo(
     () => visibleNavGroups.flatMap((group) => group.items).find((item) => location.pathname === item.path),
     [location.pathname, visibleNavGroups],
   )
   const expanded = isMobile || sidebarExpanded
+
+  const navigate = useNavigate()
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const flatItems = useMemo(() => visibleNavGroups.flatMap((group) => group.items), [visibleNavGroups])
+  const pathFor = (key: string) => flatItems.find((item) => item.key === key)?.path
+  const { Provider: CreateActionProvider, value: createActionValue, trigger: triggerCreateAction } = useAdminCreateActionRegistry()
+  const shortcuts = useMemo<ShortcutSpec[]>(() => {
+    const list: ShortcutSpec[] = []
+    const nav = (key: string, label: string, chord: string) => {
+      const path = pathFor(key)
+      if (path) list.push({ chord, label, action: () => navigate(path) })
+    }
+    nav('overview', 'Tới Tổng quan', 'g d')
+    nav('inventory', 'Tới Tồn kho', 'g i')
+    nav('batches', 'Tới Nhập lô', 'g b')
+    nav('alerts', 'Tới Cảnh báo', 'g a')
+    list.push({ chord: '/', label: 'Focus ô tìm kiếm', action: () => document.getElementById(ADMIN_SEARCH_FIELD_ID)?.focus() })
+    list.push({ chord: 'n', label: 'Tạo mới (theo trang hiện tại)', action: triggerCreateAction })
+    list.push({ chord: '?', label: 'Hiện danh sách phím tắt', action: () => setShortcutsOpen(true) })
+    return list
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flatItems, navigate, triggerCreateAction])
+  useAdminShortcuts(shortcuts)
   const currentDrawerWidth = sidebarExpanded ? DRAWER_WIDTH : DRAWER_WIDTH_COLLAPSED
 
   const drawer = (
@@ -70,7 +110,11 @@ export default function AdminLayout() {
               const isActive = location.pathname === item.path || (item.key === 'overview' && location.pathname === '/admin')
               return <ListItem key={item.key} disablePadding sx={{ mb: 0.5 }}>
                 <ListItemButton component={Link} to={item.path} aria-current={isActive ? 'page' : undefined} selected={isActive} onClick={() => isMobile && setMobileOpen(false)} sx={{ minHeight: 46, justifyContent: expanded ? 'initial' : 'center', px: expanded ? 2 : 0, borderRadius: 2 }}>
-                  <ListItemIcon sx={{ minWidth: 0, mr: expanded ? 2 : 0, justifyContent: 'center' }}>{iconFor(item.icon)}</ListItemIcon>
+                  <ListItemIcon sx={{ minWidth: 0, mr: expanded ? 2 : 0, justifyContent: 'center' }}>
+                    {item.key === 'alerts' && pendingAlerts > 0 ? (
+                      <Badge badgeContent={pendingAlerts} color="error" max={99}>{iconFor(item.icon)}</Badge>
+                    ) : iconFor(item.icon)}
+                  </ListItemIcon>
                   {expanded && <ListItemText primary={item.label} />}
                 </ListItemButton>
               </ListItem>
@@ -89,6 +133,7 @@ export default function AdminLayout() {
         <Toolbar>
           <IconButton color="inherit" aria-label="Mở menu" edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { md: 'none' }, mr: 2 }}><MenuIcon /></IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>{currentItem?.label || 'Tổng quan'}</Typography>
+          <IconButton onClick={() => setShortcutsOpen(true)} color="inherit" aria-label="Phím tắt"><KeyboardIcon /></IconButton>
           <IconButton component={Link} to="/" color="inherit" aria-label="Về trang chủ"><HomeIcon /></IconButton>
           {user && <Avatar src={user.avatar_url ? getImageUrl(user.avatar_url) : undefined} alt={user.ho_ten} sx={{ ml: 1, width: 32, height: 32 }}>{!user.avatar_url && user.ho_ten.charAt(0).toUpperCase()}</Avatar>}
         </Toolbar>
@@ -97,8 +142,23 @@ export default function AdminLayout() {
         <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}>{drawer}</Drawer>
         <Drawer variant="permanent" open sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: currentDrawerWidth, overflowX: 'hidden', transition: 'width .15s' } }}>{drawer}</Drawer>
       </Box>
-      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, mt: 8, width: { xs: '100%', md: `calc(100% - ${currentDrawerWidth}px)` } }}><Outlet /></Box>
+      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, mt: 8, width: { xs: '100%', md: `calc(100% - ${currentDrawerWidth}px)` } }}>
+        <CreateActionProvider value={createActionValue}><Outlet /></CreateActionProvider>
       </Box>
+      </Box>
+      <Dialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Phím tắt</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.25} sx={{ pb: 1 }}>
+            {shortcuts.map((s) => (
+              <Stack key={s.chord} direction="row" justifyContent="space-between" alignItems="center">
+                <Typography variant="body2">{s.label}</Typography>
+                <Box component="kbd" sx={{ fontFamily: 'monospace', fontSize: '0.8125rem', bgcolor: 'grey.100', border: 1, borderColor: 'divider', borderRadius: 1, px: 0.75, py: 0.25 }}>{s.chord}</Box>
+              </Stack>
+            ))}
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </ThemeProvider>
   )
 }

@@ -1,7 +1,9 @@
 // Admin Voucher Management Page
 import { useState, useEffect, useCallback } from 'react'
-import { Box, Button, Typography } from '@mui/material'
+import { Button } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import AdminPage from '../../components/admin/ui/admin-page'
 import VoucherTable from '../../components/admin/vouchers/VoucherTable'
 import VoucherFilters from '../../components/admin/vouchers/VoucherFilters'
 import VoucherForm from '../../components/admin/vouchers/VoucherForm'
@@ -15,10 +17,12 @@ import { Voucher } from '../../types/admin'
 import { useToast } from '../../contexts/ToastContext'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
+import { downloadCsv } from '../../utils/admin/exportCsv'
+import { useAdminCreateAction } from '../../contexts/AdminCreateActionContext'
 
 export default function AdminVoucherPage() {
   const { showSuccess, showError } = useToast()
-  const table = useDataTableState({ key: 'vouchers', defaultSortBy: 'ngay_tao', defaultSortDir: 'desc', defaultPageSize: 50, filterKeys: [] })
+  const table = useDataTableState({ key: 'vouchers', defaultSortBy: 'ngay_tao', defaultSortDir: 'desc', defaultPageSize: 50, filterKeys: ['status', 'type', 'search'] })
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [total, setTotal] = useState(0)
   const [formOpen, setFormOpen] = useState(false)
@@ -28,19 +32,20 @@ export default function AdminVoucherPage() {
     id: null,
   })
 
-  // Filters
-  const [status, setStatus] = useState('')
-  const [type, setType] = useState('')
-  const [search, setSearch] = useState('')
+  // Filters — vào URL qua table.filters (spec 10 §5)
+  const { status = '', type = '', search = '' } = table.filters
+  const [selected, setSelected] = useState<Set<string | number>>(new Set())
+  const filtersKey = JSON.stringify(table.filters)
+  useEffect(() => { setSelected(new Set()) }, [table.sortBy, table.sortDir, filtersKey])
 
   const loadVouchers = useCallback(async () => {
     try {
-      const data = await getVouchers({ status, type, search, skip: table.skip, limit: table.pageSize, sort_dir: table.sortDir })
+      const data = await getVouchers({ status, type, search, skip: table.skip, limit: table.pageSize, sort_by: table.sortBy, sort_dir: table.sortDir })
       setVouchers(data.items); setTotal(data.total)
     } catch (error) {
       showError('Không thể tải danh sách mã giảm giá')
     }
-  }, [search, showError, status, table.pageSize, table.skip, table.sortDir, type])
+  }, [search, showError, status, table.pageSize, table.skip, table.sortBy, table.sortDir, type])
 
   useEffect(() => {
     loadVouchers()
@@ -50,6 +55,7 @@ export default function AdminVoucherPage() {
     setEditingVoucher(null)
     setFormOpen(true)
   }
+  useAdminCreateAction(handleCreate)
 
   const handleEdit = (voucher: Voucher) => {
     setEditingVoucher(voucher)
@@ -77,6 +83,15 @@ export default function AdminVoucherPage() {
     setDeleteConfirm({ open: true, id })
   }
 
+  const exportSelected = () => {
+    const rows = vouchers.filter((v) => selected.has(v.id))
+    downloadCsv(
+      `ma-giam-gia-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Mã', 'Loại', 'Giá trị', 'Áp dụng', 'Đơn tối thiểu', 'Giới hạn', 'Hết hạn', 'Trạng thái'],
+      rows.map((v) => [v.code, v.type, v.discountValue, v.appliesTo, v.minOrderValue ?? '', v.usageLimit ?? '', v.expiresAt, v.status]),
+    )
+  }
+
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return
     try {
@@ -91,24 +106,27 @@ export default function AdminVoucherPage() {
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Quản lý mã giảm giá</Typography>
-      <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
-          Tạo mã giảm giá
-        </Button>
-      </Box>
-
+    <AdminPage
+      title="Mã giảm giá"
+      breadcrumb={[{ label: 'Mã giảm giá' }]}
+      actions={<Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>Tạo mã giảm giá</Button>}
+    >
       <VoucherFilters
         status={status}
         type={type}
         search={search}
-        onStatusChange={(value) => { setStatus(value); table.patch({ page: 0 }) }}
-        onTypeChange={(value) => { setType(value); table.patch({ page: 0 }) }}
-        onSearchChange={(value) => { setSearch(value); table.patch({ page: 0 }) }}
+        onStatusChange={(value) => table.patch({ filters: { ...table.filters, status: value } })}
+        onTypeChange={(value) => table.patch({ filters: { ...table.filters, type: value } })}
+        onSearchChange={(value) => table.patch({ filters: { ...table.filters, search: value } })}
       />
 
-      <VoucherTable vouchers={vouchers} onEdit={handleEdit} onDelete={handleDelete} total={total} page={table.page} pageSize={table.pageSize} onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })} />
+      <VoucherTable
+        vouchers={vouchers} onEdit={handleEdit} onDelete={handleDelete} total={total} page={table.page} pageSize={table.pageSize}
+        onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })}
+        sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })}
+        selectedIds={selected} onSelectionChange={setSelected}
+        bulkActions={<Button size="small" startIcon={<FileDownloadIcon />} onClick={exportSelected}>Xuất CSV</Button>}
+      />
 
       <VoucherForm
         open={formOpen}
@@ -129,7 +147,7 @@ export default function AdminVoucherPage() {
         onCancel={() => setDeleteConfirm({ open: false, id: null })}
         variant="danger"
       />
-    </Box>
+    </AdminPage>
   )
 }
 

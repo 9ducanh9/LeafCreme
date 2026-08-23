@@ -195,7 +195,15 @@ export default function VoucherForm({ open, voucher, onClose, onSubmit }: Vouche
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={(_, reason) => {
+        if (isDirty && (reason === 'backdropClick' || reason === 'escapeKeyDown')) return
+        onClose()
+      }}
+      disableEscapeKeyDown={isDirty}
+      maxWidth="md" fullWidth
+    >
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ pb: 1 }}>
           {voucher ? 'Chỉnh sửa mã giảm giá' : 'Tạo mã giảm giá mới'}

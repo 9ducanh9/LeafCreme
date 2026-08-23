@@ -84,7 +84,8 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
   const adminForm = useAdminForm({ initialValues: formData, validate })
   const { validateForm, errors: fieldErrors, setValues } = adminForm
   useEffect(() => { setValues(formData) }, [formData, setValues])
-  useUnsavedChanges(open && !loading && Boolean(formData.name || formData.description || formData.image))
+  const isDirty = Boolean(formData.name || formData.description || formData.image)
+  useUnsavedChanges(open && !loading && isDirty)
 
   useEffect(() => {
     // Load categories whenever form opens
@@ -177,7 +178,15 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={(_, reason) => {
+        if (isDirty && (reason === 'backdropClick' || reason === 'escapeKeyDown')) return
+        onClose()
+      }}
+      disableEscapeKeyDown={isDirty}
+      maxWidth="md" fullWidth
+    >
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ pb: 1 }}>
           {variant ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}

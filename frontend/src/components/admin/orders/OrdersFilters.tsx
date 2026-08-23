@@ -1,8 +1,11 @@
 // Orders Filters — lọc theo trạng thái, khoảng ngày, khoảng tiền, tìm kiếm.
 // Lọc theo loại đơn nằm ở Tabs trên AdminOrdersPage, không lặp lại ở đây.
+import { useEffect, useState } from 'react'
 import { Box, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
 import type { OrderStatus } from '../../../types/admin'
 import { ORDER_STATUS_LABEL } from '../../../config/orderLabels'
+import { useDebouncedCallback } from '../../../hooks/admin/useDebouncedCallback'
+import { ADMIN_SEARCH_FIELD_ID } from '../ui/data-table-toolbar'
 
 interface OrdersFiltersProps {
   status: OrderStatus | ''
@@ -19,6 +22,13 @@ interface OrdersFiltersProps {
   onSearchChange: (search: string) => void
 }
 
+function useDebouncedTextField(value: string, onChange: (value: string) => void) {
+  const [local, setLocal] = useState(value)
+  useEffect(() => { setLocal(value) }, [value])
+  const debouncedChange = useDebouncedCallback(onChange, 400)
+  return { value: local, onChange: (next: string) => { setLocal(next); debouncedChange(next) } }
+}
+
 export default function OrdersFilters({
   status,
   dateFrom,
@@ -33,14 +43,19 @@ export default function OrdersFilters({
   onAmountToChange,
   onSearchChange,
 }: OrdersFiltersProps) {
+  const searchField = useDebouncedTextField(search, onSearchChange)
+  const amountFromField = useDebouncedTextField(amountFrom, onAmountFromChange)
+  const amountToField = useDebouncedTextField(amountTo, onAmountToChange)
+
   return (
     <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', bgcolor: 'background.paper', p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}>
       <TextField
+        id={ADMIN_SEARCH_FIELD_ID}
         label="Tìm theo mã đơn"
         variant="outlined"
         size="small"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
+        value={searchField.value}
+        onChange={(e) => searchField.onChange(e.target.value)}
         placeholder="VD: POS-2026..."
         sx={{ flexGrow: 1, minWidth: 220 }}
       />
@@ -68,13 +83,13 @@ export default function OrdersFilters({
         sx={{ minWidth: 160 }}
       />
       <TextField
-        label="Từ số tiền" type="number" size="small" value={amountFrom}
-        onChange={(e) => onAmountFromChange(e.target.value)}
+        label="Từ số tiền" type="number" size="small" value={amountFromField.value}
+        onChange={(e) => amountFromField.onChange(e.target.value)}
         sx={{ minWidth: 140 }} inputProps={{ min: 0, step: 10000 }}
       />
       <TextField
-        label="Đến số tiền" type="number" size="small" value={amountTo}
-        onChange={(e) => onAmountToChange(e.target.value)}
+        label="Đến số tiền" type="number" size="small" value={amountToField.value}
+        onChange={(e) => amountToField.onChange(e.target.value)}
         sx={{ minWidth: 140 }} inputProps={{ min: 0, step: 10000 }}
       />
     </Box>

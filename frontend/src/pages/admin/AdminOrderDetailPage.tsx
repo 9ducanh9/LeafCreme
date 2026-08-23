@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Button, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import AdminPage from '../../components/admin/ui/admin-page'
 import OrderDetailCard from '../../components/admin/orders/OrderDetailCard'
 import { getOrderById, updateOrderStatus, cancelOrder } from '../../services/admin/adminOrderService'
 import type { Order, OrderStatus } from '../../types/admin'
@@ -55,29 +56,24 @@ export default function AdminOrderDetailPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-        <LoadingSpinner size="lg" />
-      </Box>
-    )
-  }
-
-  if (!order) {
-    return (
-      <Box>
-        <Typography variant="h6" color="text.secondary">Không tìm thấy đơn hàng</Typography>
-      </Box>
-    )
-  }
+  const title = order ? `Đơn hàng ${order.orderCode}` : 'Chi tiết đơn hàng'
+  const breadcrumb = [{ label: 'Đơn hàng', to: '/admin/orders' }, { label: order?.orderCode || '...' }]
 
   return (
-    <Box>
+    <AdminPage title={title} breadcrumb={breadcrumb}>
       <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/orders')} sx={{ mb: 3 }}>
         Quay lại danh sách đơn hàng
       </Button>
 
-      <OrderDetailCard order={order} onStatusChange={handleStatusChange} onCancel={handleCancel} />
-    </Box>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+          <LoadingSpinner size="lg" />
+        </Box>
+      ) : !order ? (
+        <Typography variant="h6" color="text.secondary">Không tìm thấy đơn hàng</Typography>
+      ) : (
+        <OrderDetailCard order={order} onStatusChange={handleStatusChange} onCancel={handleCancel} />
+      )}
+    </AdminPage>
   )
 }

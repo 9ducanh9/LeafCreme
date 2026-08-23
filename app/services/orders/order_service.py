@@ -381,7 +381,7 @@ class OrderService:
                         f"Tồn kho không đủ cho sản phẩm trong hộp quà {hopqua.ten_hop_qua}",
                         donhang_id=order.donhang_id,
                         nguoidung_id=current_user.nguoidung_id,
-                        reason=f"Gift box product deduction: {hopqua.ten_hop_qua}",
+                        reason=f"Trừ kho sản phẩm cho hộp quà: {hopqua.ten_hop_qua}",
                     )
                     bienthe = db.query(BienTheSanPham).filter(BienTheSanPham.bienthe_id == bom_item.bienthe_id).first()
                     for allocation in allocations:
@@ -412,7 +412,7 @@ class OrderService:
                         bom_id=component_bom.bom_id,
                         donhang_id=order.donhang_id,
                         nguoidung_id=current_user.nguoidung_id,
-                        reason=f"Gift box component deduction: {hopqua.ten_hop_qua}",
+                        reason=f"Trừ kho linh kiện cho hộp quà: {hopqua.ten_hop_qua}",
                     )
                     self._add_allocation(db, gift_detail.chitiet_id, allocation)
 

@@ -1,5 +1,8 @@
 // Voucher Filters component - filter by status, type, search
+import { useEffect, useState } from 'react'
 import { Box, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
+import { useDebouncedCallback } from '../../../hooks/admin/useDebouncedCallback'
+import { ADMIN_SEARCH_FIELD_ID } from '../ui/data-table-toolbar'
 
 interface VoucherFiltersProps {
   status: string
@@ -18,14 +21,19 @@ export default function VoucherFilters({
   onTypeChange,
   onSearchChange,
 }: VoucherFiltersProps) {
+  const [localSearch, setLocalSearch] = useState(search)
+  useEffect(() => { setLocalSearch(search) }, [search])
+  const debouncedSearchChange = useDebouncedCallback(onSearchChange, 400)
+
   return (
     <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', bgcolor: 'background.paper', p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}>
       <TextField
+        id={ADMIN_SEARCH_FIELD_ID}
         label="Tìm kiếm theo mã"
         variant="outlined"
         size="small"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
+        value={localSearch}
+        onChange={(e) => { setLocalSearch(e.target.value); debouncedSearchChange(e.target.value) }}
         placeholder="Nhập mã giảm giá..."
         sx={{ flexGrow: 1, minWidth: 220 }}
       />
@@ -50,4 +58,3 @@ export default function VoucherFilters({
     </Box>
   )
 }
-

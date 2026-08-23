@@ -54,6 +54,7 @@ class ChatRequest(BaseModel):
     # message.
     message: str = Field(min_length=1, max_length=4000)
     history: Optional[List[Dict[str, Any]]] = Field(default=None, max_length=40)
+    session_id: Optional[str] = Field(default=None, min_length=1, max_length=200)
 
 
 class ProposeActionRequest(BaseModel):
@@ -107,7 +108,7 @@ def post_chat(
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(require_capability("agent.chat")),
 ):
-    return agent_chat(db, payload.message, current_user, payload.history)
+    return agent_chat(db, payload.message, current_user, payload.history, payload.session_id)
 
 
 # =========================================================

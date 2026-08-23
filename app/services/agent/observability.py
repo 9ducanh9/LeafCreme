@@ -18,6 +18,7 @@ no manual parent-id plumbing.
 """
 import logging
 import os
+import sys
 from contextlib import contextmanager
 from typing import Any, Iterator, Optional
 
@@ -27,6 +28,11 @@ logger = logging.getLogger("bakeryonl.agent.observability")
 
 _client: Optional[Any] = None
 _client_checked = False
+
+
+def _tracing_environment() -> str:
+    value = (os.getenv("LANGFUSE_TRACING_ENVIRONMENT") or os.getenv("APP_ENV") or "development").lower()
+    return {"dev": "development", "local": "development", "prod": "production"}.get(value, value)
 
 
 def _get_client() -> Optional[Any]:
@@ -43,7 +49,9 @@ def _get_client() -> Optional[Any]:
         _client = Langfuse(
             public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
             secret_key=os.environ["LANGFUSE_SECRET_KEY"],
-            host=os.getenv("LANGFUSE_HOST") or None,
+            base_url=os.getenv("LANGFUSE_BASE_URL") or os.getenv("LANGFUSE_HOST") or None,
+            environment=_tracing_environment(),
+            release=os.getenv("LANGFUSE_RELEASE") or None,
         )
     except Exception:
         logger.debug("Langfuse init failed; tracing disabled for this process", exc_info=True)
@@ -51,58 +59,154 @@ def _get_client() -> Optional[Any]:
     return _client
 
 
-@contextmanager
-def trace_conversation(user_id: Optional[int], message: str) -> Iterator[Optional[Any]]:
-    """Top-level span for one full chat() tool-use loop."""
+def _get_client_safely() -> Optional[Any]:
     try:
-        client = _get_client()
-        if client is None:
-            yield None
-            return
-        with client.start_as_current_observation(
+        return _get_client()
+    except Exception:
+        logger.debug("Langfuse client lookup failed; tracing disabled for this call", exc_info=True)
+        return None
+
+
+@contextmanager
+def _best_effort_context(factory: Any) -> Iterator[Optional[Any]]:
+    """Enter an SDK context without letting SDK lifecycle failures escape.
+
+    Exceptions raised by the application body are re-raised unchanged. Only
+    Langfuse setup/teardown failures are suppressed, preserving the Agent's
+    existing fallback behavior.
+    """
+    try:
+        context = factory()
+        value = context.__enter__()
+    except Exception:
+        logger.debug("Langfuse context setup failed", exc_info=True)
+        yield None
+        return
+
+    try:
+        yield value
+    except BaseException:
+        try:
+            context.__exit__(*sys.exc_info())
+        except Exception:
+            logger.debug("Langfuse context teardown failed", exc_info=True)
+        raise
+    else:
+        try:
+            context.__exit__(None, None, None)
+        except Exception:
+            logger.debug("Langfuse context teardown failed", exc_info=True)
+
+
+@contextmanager
+def _propagate_trace_attributes(
+    *,
+    user_id: Optional[int],
+    session_id: Optional[str],
+    prompt_version: str,
+) -> Iterator[None]:
+    """Propagate stable correlation fields to every child observation."""
+    try:
+        from langfuse import propagate_attributes
+    except Exception:
+        # Import/version incompatibilities are observability-only failures.
+        logger.debug("Langfuse attribute propagation failed", exc_info=True)
+        yield
+        return
+
+    kwargs: dict[str, Any] = {
+        "user_id": str(user_id) if user_id is not None else None,
+        "version": prompt_version,
+        "environment": _tracing_environment(),
+        "trace_name": "operations-agent-chat",
+        "metadata": {"feature": "operations-agent", "promptversion": prompt_version},
+        "tags": ["operations-agent"],
+    }
+    if session_id:
+        kwargs["session_id"] = session_id
+    with _best_effort_context(lambda: propagate_attributes(**kwargs)):
+        yield
+
+
+@contextmanager
+def trace_conversation(
+    user_id: Optional[int],
+    message: str,
+    *,
+    session_id: Optional[str] = None,
+    prompt_version: str = "unknown",
+) -> Iterator[Optional[Any]]:
+    """Top-level span for one full chat() tool-use loop."""
+    client = _get_client_safely()
+    if client is None:
+        yield None
+        return
+
+    with _best_effort_context(
+        lambda: client.start_as_current_observation(
             name="operations-agent-chat",
             as_type="agent",
             input={"message": redact(message)},
-            metadata={"user_id": user_id},
-        ) as span:
-            yield span
-    except Exception:
-        logger.debug("Langfuse trace_conversation failed", exc_info=True)
-        yield None
+        )
+    ) as span:
+        if span is None:
+            yield None
+            return
+        try:
+            with _propagate_trace_attributes(
+                user_id=user_id,
+                session_id=session_id,
+                prompt_version=prompt_version,
+            ):
+                yield span
+        except Exception as exc:
+            safe_update(span, level="ERROR", status_message=type(exc).__name__)
+            flush()
+            raise
 
 
 @contextmanager
 def trace_llm_call(model: str, iteration: int) -> Iterator[Optional[Any]]:
     """One DeepSeek `chat.completions.create` call within the loop."""
-    try:
-        client = _get_client()
-        if client is None:
-            yield None
-            return
-        with client.start_as_current_observation(
-            name=f"llm-call-{iteration}", as_type="generation", model=model,
-        ) as generation:
-            yield generation
-    except Exception:
-        logger.debug("Langfuse trace_llm_call failed", exc_info=True)
+    client = _get_client_safely()
+    if client is None:
         yield None
+        return
+    with _best_effort_context(
+        lambda: client.start_as_current_observation(
+            name="agent-llm-call",
+            as_type="generation",
+            model=model,
+            metadata={"iteration": iteration},
+        )
+    ) as generation:
+        try:
+            yield generation
+        except Exception as exc:
+            safe_update(generation, level="ERROR", status_message=type(exc).__name__)
+            raise
 
 
 @contextmanager
 def trace_tool_call(tool_name: str, tool_input: dict) -> Iterator[Optional[Any]]:
     """One tool execution requested by the model."""
-    try:
-        client = _get_client()
-        if client is None:
-            yield None
-            return
-        with client.start_as_current_observation(
-            name=f"tool:{tool_name}", as_type="tool", input=redact(tool_input),
-        ) as span:
-            yield span
-    except Exception:
-        logger.debug("Langfuse trace_tool_call failed", exc_info=True)
+    client = _get_client_safely()
+    if client is None:
         yield None
+        return
+    with _best_effort_context(
+        lambda: client.start_as_current_observation(
+            name="agent-tool-call",
+            as_type="tool",
+            input=redact(tool_input),
+            metadata={"tool_name": tool_name},
+        )
+    ) as span:
+        try:
+            yield span
+        except Exception as exc:
+            safe_update(span, level="ERROR", status_message=type(exc).__name__)
+            raise
 
 
 def safe_update(observation: Optional[Any], **kwargs: Any) -> None:

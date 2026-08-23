@@ -1,114 +1,63 @@
-// Revenue by Day/Month chart component
-import { useState } from 'react'
-import { Box, Paper, Typography, ToggleButton, ToggleButtonGroup, useTheme } from '@mui/material'
+// Biểu đồ doanh thu theo ngày/tháng
+import { Paper, Typography, useTheme } from '@mui/material'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { RevenueData } from '../../../types/admin'
 
 interface RevenueByDayMonthProps {
-  dailyData: RevenueData[]
-  monthlyData: RevenueData[]
+  data: RevenueData[]
+  view: 'daily' | 'monthly'
 }
 
-export default function RevenueByDayMonth({ dailyData, monthlyData }: RevenueByDayMonthProps) {
+export default function RevenueByDayMonth({ data, view }: RevenueByDayMonthProps) {
   const theme = useTheme()
-  const [view, setView] = useState<'daily' | 'monthly'>('daily')
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      notation: 'compact',
-    }).format(value)
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', notation: 'compact' }).format(value)
+
+  const formatDate = (dateString: string) =>
+    view === 'daily' ? new Date(dateString).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' }) : dateString
+
+  if (data.length === 0) {
+    return (
+      <Paper variant="outlined" sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>Doanh thu theo {view === 'daily' ? 'ngày' : 'tháng'}</Typography>
+        <Typography color="text.secondary">Không có dữ liệu trong khoảng này.</Typography>
+      </Paper>
+    )
   }
-
-  const formatDate = (dateString: string) => {
-    if (view === 'daily') {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })
-    }
-    return dateString
-  }
-
-  const data = view === 'daily' ? dailyData : monthlyData
 
   return (
-    <Paper variant="outlined" sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h6">
-          Revenue by {view === 'daily' ? 'Day' : 'Month'}
-        </Typography>
-        <ToggleButtonGroup
-          value={view}
-          exclusive
-          onChange={(_, newView) => newView && setView(newView)}
-          size="small"
-        >
-          <ToggleButton value="daily">Daily</ToggleButton>
-          <ToggleButton value="monthly">Monthly</ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+    <Paper variant="outlined" sx={{ p: 3 }} role="img" aria-label={`Biểu đồ doanh thu theo ${view === 'daily' ? 'ngày' : 'tháng'}`}>
+      <Typography variant="h6" gutterBottom>Doanh thu theo {view === 'daily' ? 'ngày' : 'tháng'}</Typography>
 
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={300} minHeight={220}>
         {view === 'daily' ? (
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={formatDate}
-              stroke={theme.palette.text.secondary}
-              style={{ fontSize: '0.75rem' }}
-            />
-            <YAxis
-              tickFormatter={formatCurrency}
-              stroke={theme.palette.text.secondary}
-              style={{ fontSize: '0.75rem' }}
-            />
+            <XAxis dataKey="date" tickFormatter={formatDate} stroke={theme.palette.text.secondary} style={{ fontSize: '0.75rem' }} />
+            <YAxis tickFormatter={formatCurrency} stroke={theme.palette.text.secondary} style={{ fontSize: '0.75rem' }} />
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
-              labelFormatter={(label) => `Date: ${formatDate(label)}`}
-              contentStyle={{
-                backgroundColor: theme.palette.background.paper,
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: theme.shape.borderRadius,
-              }}
+              labelFormatter={(label) => `Ngày: ${formatDate(label)}`}
+              contentStyle={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}
             />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="revenue"
-              stroke={theme.palette.primary.main}
-              strokeWidth={2}
-              name="Revenue"
-              dot={{ fill: theme.palette.primary.main, r: 4 }}
-            />
+            <Legend formatter={() => 'Doanh thu'} />
+            <Line type="monotone" dataKey="revenue" stroke={theme.palette.primary.main} strokeWidth={2} name="Doanh thu" dot={{ fill: theme.palette.primary.main, r: 4 }} />
           </LineChart>
         ) : (
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
-            <XAxis
-              dataKey="date"
-              stroke={theme.palette.text.secondary}
-              style={{ fontSize: '0.75rem' }}
-            />
-            <YAxis
-              tickFormatter={formatCurrency}
-              stroke={theme.palette.text.secondary}
-              style={{ fontSize: '0.75rem' }}
-            />
+            <XAxis dataKey="date" stroke={theme.palette.text.secondary} style={{ fontSize: '0.75rem' }} />
+            <YAxis tickFormatter={formatCurrency} stroke={theme.palette.text.secondary} style={{ fontSize: '0.75rem' }} />
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
-              contentStyle={{
-                backgroundColor: theme.palette.background.paper,
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: theme.shape.borderRadius,
-              }}
+              contentStyle={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}
             />
-            <Legend />
-            <Bar dataKey="revenue" fill={theme.palette.primary.main} name="Revenue" radius={[8, 8, 0, 0]} />
+            <Legend formatter={() => 'Doanh thu'} />
+            <Bar dataKey="revenue" fill={theme.palette.primary.main} name="Doanh thu" radius={[8, 8, 0, 0]} />
           </BarChart>
         )}
       </ResponsiveContainer>
     </Paper>
   )
 }
-

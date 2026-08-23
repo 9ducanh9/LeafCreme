@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Chip, MenuItem, TextField } from '@mui/material'
+import { Button, Chip, MenuItem, TextField } from '@mui/material'
 import RefreshIcon from '@mui/icons-material/Refresh'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import AdminPage from '../../components/admin/ui/admin-page'
 import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
+import { downloadCsv } from '../../utils/admin/exportCsv'
 import {
   type BatchType,
   type MovementType,
@@ -67,6 +69,9 @@ export default function AdminStockLedgerPage() {
   const [total, setTotal] = useState(0)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string | number>>(new Set())
+  const filtersKey = JSON.stringify(table.filters)
+  useEffect(() => { setSelected(new Set()) }, [table.sortBy, table.sortDir, filtersKey])
 
   const loadLedger = useCallback(async () => {
     setStatus('loading')
@@ -96,11 +101,23 @@ export default function AdminStockLedgerPage() {
   const updateFilter = (name: string, value: string) => table.patch({ filters: { ...table.filters, [name]: value } })
   const hasFilters = Object.keys(table.filters).length > 0
 
+  const exportSelected = () => {
+    const selectedRows = rows.filter((row) => selected.has(`${row.item_type}-${row.ledger_id}`))
+    downloadCsv(
+      `nhat-ky-kho-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Thời gian', 'Loại lô', 'Lô', 'Giao dịch', 'Trước', 'Thay đổi', 'Sau', 'Đơn hàng', 'Lý do'],
+      selectedRows.map((row) => [
+        formatDateTime(row.timestamp), getBatchTypeLabel(row.item_type), row.batch_id, getMovementTypeLabel(row.movement_type),
+        row.quantity_before, row.quantity, row.quantity_after, row.order_id ?? '', row.reason || '',
+      ]),
+    )
+  }
+
   return (
     <AdminPage title="Nhật ký kho" breadcrumb={[{ label: 'Nhật ký kho' }]}>
       <DataTableToolbar
         title="Theo dõi biến động tồn kho"
-        actions={<button type="button" onClick={() => void loadLedger()} disabled={status === 'loading'}><RefreshIcon fontSize="small" /> Làm mới</button>}
+        actions={<Button size="small" startIcon={<RefreshIcon fontSize="small" />} onClick={() => void loadLedger()} disabled={status === 'loading'}>Làm mới</Button>}
       >
         <TextField select size="small" label="Loại lô" value={table.filters.item_type || ''} onChange={(event) => updateFilter('item_type', event.target.value)}>
           <MenuItem value="">Tất cả</MenuItem>
@@ -132,6 +149,10 @@ export default function AdminStockLedgerPage() {
         onRetry={() => void loadLedger()}
         hasActiveFilters={hasFilters}
         onClearFilters={() => table.patch({ filters: {} })}
+        selectedIds={selected}
+        onSelectionChange={setSelected}
+        bulkActions={<Button size="small" startIcon={<FileDownloadIcon />} onClick={exportSelected}>Xuất CSV</Button>}
+        // Sổ nhật ký là audit trail — read-only, không có rowActions sửa/xoá.
       />
     </AdminPage>
   )

@@ -21,20 +21,26 @@ interface OrdersTableProps {
   sortBy: string
   sortDir: SortDirection
   onSortChange: (sortBy: string, sortDir: SortDirection) => void
+  selectedIds?: Set<string | number>
+  onSelectionChange?: (ids: Set<string | number>) => void
+  bulkActions?: React.ReactNode
 }
 
+// Column id khớp trực tiếp với OrderSortField ở backend (app/routers/orders.py)
+// — DataTable gửi thẳng id cột đang sort làm sort_by, nên id sai tên field
+// nghĩa là bấm sort ra lỗi 422 thay vì sắp xếp.
 const columns: Column<Order>[] = [
   { id: 'orderCode', label: 'Mã đơn' },
   { id: 'orderType', label: 'Loại', render: (row) => <Chip size="small" color={ORDER_TYPE_COLOR[row.orderType]} label={ORDER_TYPE_LABEL[row.orderType]} /> },
   { id: 'customerName', label: 'Khách hàng' },
   { id: 'phone', label: 'Số điện thoại', render: (row) => row.phone || '—' },
-  { id: 'totalAmount', label: 'Tổng tiền', numeric: true, render: (row) => formatPrice(row.totalAmount) },
-  { id: 'status', label: 'Trạng thái', render: (row) => <Chip size="small" color={ORDER_STATUS_COLOR[row.status]} label={ORDER_STATUS_LABEL[row.status]} /> },
-  { id: 'expectedDate', label: 'Ngày giao/lấy', render: (row) => (row.expectedDate ? new Date(row.expectedDate).toLocaleDateString('vi-VN') : '—') },
-  { id: 'date', label: 'Ngày tạo', sortable: true, render: (row) => new Date(row.date).toLocaleDateString('vi-VN') },
+  { id: 'tien_thanh_toan', label: 'Tổng tiền', numeric: true, sortable: true, render: (row) => formatPrice(row.totalAmount) },
+  { id: 'trang_thai', label: 'Trạng thái', sortable: true, render: (row) => <Chip size="small" color={ORDER_STATUS_COLOR[row.status]} label={ORDER_STATUS_LABEL[row.status]} /> },
+  { id: 'ngay_giao_du_kien', label: 'Ngày giao/lấy', sortable: true, render: (row) => (row.expectedDate ? new Date(row.expectedDate).toLocaleDateString('vi-VN') : '—') },
+  { id: 'ngay_tao', label: 'Ngày tạo', sortable: true, render: (row) => new Date(row.date).toLocaleDateString('vi-VN') },
 ]
 
-export default function OrdersTable({ orders, status = 'idle', onDelete, canDelete = true, total, page, pageSize, onPageChange, onPageSizeChange, sortBy, sortDir, onSortChange }: OrdersTableProps) {
+export default function OrdersTable({ orders, status = 'idle', onDelete, canDelete = true, total, page, pageSize, onPageChange, onPageSizeChange, sortBy, sortDir, onSortChange, selectedIds, onSelectionChange, bulkActions }: OrdersTableProps) {
   const navigate = useNavigate()
   return (
     <DataTable
@@ -52,6 +58,9 @@ export default function OrdersTable({ orders, status = 'idle', onDelete, canDele
       sortBy={sortBy}
       sortDir={sortDir}
       onSortChange={onSortChange}
+      selectedIds={selectedIds}
+      onSelectionChange={onSelectionChange}
+      bulkActions={bulkActions}
       onRowClick={(row) => navigate(`/admin/orders/${row.id}`)}
       rowActions={(row) => (
         <>

@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import { Box, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
 import { getCategories } from '../../../services/admin/categoryService'
+import { useDebouncedCallback } from '../../../hooks/admin/useDebouncedCallback'
+import { ADMIN_SEARCH_FIELD_ID } from '../ui/data-table-toolbar'
 
 interface ProductFiltersProps {
   category: string
@@ -21,6 +23,9 @@ export default function ProductFilters({
   onSearchChange,
 }: ProductFiltersProps) {
   const [categories, setCategories] = useState<string[]>([])
+  const [localSearch, setLocalSearch] = useState(search)
+  useEffect(() => { setLocalSearch(search) }, [search])
+  const debouncedSearchChange = useDebouncedCallback(onSearchChange, 400)
 
   useEffect(() => {
     loadCategories()
@@ -56,11 +61,12 @@ export default function ProductFilters({
   return (
     <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', bgcolor: 'background.paper', p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}>
       <TextField
+        id={ADMIN_SEARCH_FIELD_ID}
         label="Tìm kiếm sản phẩm"
         variant="outlined"
         size="small"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
+        value={localSearch}
+        onChange={(e) => { setLocalSearch(e.target.value); debouncedSearchChange(e.target.value) }}
         placeholder="Nhập tên sản phẩm..."
         sx={{ flexGrow: 1, minWidth: 220 }}
       />

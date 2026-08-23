@@ -1,7 +1,9 @@
 // Admin Product Management Page
 import { useState, useEffect, useCallback } from 'react'
-import { Box, Button, Typography } from '@mui/material'
+import { Button } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import AdminPage from '../../components/admin/ui/admin-page'
 import ProductTable from '../../components/admin/products/ProductTable'
 import ProductFilters from '../../components/admin/products/ProductFilters'
 import ProductForm from '../../components/admin/products/ProductForm'
@@ -16,6 +18,8 @@ import { useToast } from '../../contexts/ToastContext'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
+import { downloadCsv } from '../../utils/admin/exportCsv'
+import { useAdminCreateAction } from '../../contexts/AdminCreateActionContext'
 
 export default function AdminProductPage() {
   const { showSuccess, showError } = useToast()
@@ -23,20 +27,22 @@ export default function AdminProductPage() {
   const canWrite = can('products.write')
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [formOpen, setFormOpen] = useState(false)
-  const table = useDataTableState({ key: 'products', defaultSortBy: 'ten', defaultSortDir: 'asc', defaultPageSize: 50, filterKeys: [] })
+  const table = useDataTableState({ key: 'products', defaultSortBy: 'ten', defaultSortDir: 'asc', defaultPageSize: 50, filterKeys: ['category', 'size', 'search'] })
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
   })
 
-  // Filters
-  const [category, setCategory] = useState('')
-  const [size, setSize] = useState('')
-  const [search, setSearch] = useState('')
+  // Filters — vào URL qua table.filters (spec 10 §5): copy link cho đồng
+  // nghiệp mở đúng bộ lọc đang xem, reload không mất filter.
+  const { category = '', size = '', search = '' } = table.filters
   const [total, setTotal] = useState(0)
   const [tableStatus, setTableStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [tableError, setTableError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string | number>>(new Set())
+  const filtersKey = JSON.stringify(table.filters)
+  useEffect(() => { setSelected(new Set()) }, [table.sortBy, table.sortDir, filtersKey])
 
   const loadVariants = useCallback(async () => {
     try {
@@ -59,6 +65,7 @@ export default function AdminProductPage() {
     setEditingVariant(null)
     setFormOpen(true)
   }
+  useAdminCreateAction(canWrite ? handleCreate : null)
 
   const handleEdit = (variant: ProductVariant) => {
     setEditingVariant(variant)
@@ -74,9 +81,7 @@ export default function AdminProductPage() {
         await createProductVariant(data)
         showSuccess('Tạo sản phẩm thành công')
         // Reset filters to show the new product
-        setCategory('')
-        setSize('')
-        setSearch('')
+        table.patch({ filters: {} })
       }
       // Force reload variants to get latest data
       await loadVariants()
@@ -93,6 +98,15 @@ export default function AdminProductPage() {
     setDeleteConfirm({ open: true, id })
   }
 
+  const exportSelected = () => {
+    const rows = variants.filter((v) => selected.has(v.id))
+    downloadCsv(
+      `san-pham-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Tên', 'Danh mục', 'Giá', 'Kích thước', 'Trạng thái', 'SKU'],
+      rows.map((v) => [v.name, v.category, v.price, v.sizeLabel || v.size, v.status === 'active' ? 'Hoạt động' : 'Ẩn', v.sku || '']),
+    )
+  }
+
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return
     try {
@@ -107,26 +121,28 @@ export default function AdminProductPage() {
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Quản lý sản phẩm</Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          {canWrite && <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
-            Thêm sản phẩm
-          </Button>}
-        </Box>
-      </Box>
-
+    <AdminPage
+      title="Sản phẩm"
+      breadcrumb={[{ label: 'Sản phẩm' }]}
+      actions={canWrite && <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>Thêm sản phẩm</Button>}
+    >
       <ProductFilters
         category={category}
         size={size}
         search={search}
-        onCategoryChange={(value) => { setCategory(value); table.patch({ page: 0 }) }}
-        onSizeChange={(value) => { setSize(value); table.patch({ page: 0 }) }}
-        onSearchChange={(value) => { setSearch(value); table.patch({ page: 0 }) }}
+        onCategoryChange={(value) => table.patch({ filters: { ...table.filters, category: value } })}
+        onSizeChange={(value) => table.patch({ filters: { ...table.filters, size: value } })}
+        onSearchChange={(value) => table.patch({ filters: { ...table.filters, search: value } })}
       />
 
-      <ProductTable variants={variants} onEdit={handleEdit} onDelete={handleDelete} total={total} page={table.page} pageSize={table.pageSize} onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })} sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })} status={tableStatus} error={tableError} onRetry={() => void loadVariants()} />
+      <ProductTable
+        variants={variants} onEdit={handleEdit} onDelete={handleDelete} total={total} page={table.page} pageSize={table.pageSize}
+        onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })}
+        sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })}
+        status={tableStatus} error={tableError} onRetry={() => void loadVariants()}
+        selectedIds={selected} onSelectionChange={setSelected}
+        bulkActions={<Button size="small" startIcon={<FileDownloadIcon />} onClick={exportSelected}>Xuất CSV</Button>}
+      />
 
       <ProductForm
         open={formOpen}
@@ -148,7 +164,7 @@ export default function AdminProductPage() {
         onCancel={() => setDeleteConfirm({ open: false, id: null })}
         variant="danger"
       />
-    </Box>
+    </AdminPage>
   )
 }
 

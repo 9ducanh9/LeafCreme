@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional, Union
+from enum import Enum
+from typing import List, Literal, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -71,6 +72,12 @@ def _raise_http(exc: DomainError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
+class VoucherSortField(str, Enum):
+    ngay_tao = "ngay_tao"
+    ma_phieu = "ma_phieu"
+    ngay_het_han = "ngay_het_han"
+
+
 @router.get("", response_model=Union[List[VoucherResponse], Page[VoucherResponse]])
 def list_vouchers(
     skip: int = Query(0, ge=0),
@@ -79,11 +86,12 @@ def list_vouchers(
     search: Optional[str] = Query(None),
     dang_hoat_dong: Optional[bool] = Query(None),
     loai_giam: Optional[str] = Query(None, pattern="^(phantram|sotien)$"),
-    sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
+    sort_by: VoucherSortField = Query(VoucherSortField.ngay_tao),
+    sort_dir: Literal["asc", "desc"] = Query("desc"),
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(require_capability("vouchers.read")),
 ):
-    result = service.list(db, skip=skip, limit=limit, search=search, dang_hoat_dong=dang_hoat_dong, loai_giam=loai_giam, sort_dir=sort_dir)
+    result = service.list(db, skip=skip, limit=limit, search=search, dang_hoat_dong=dang_hoat_dong, loai_giam=loai_giam, sort_by=sort_by.value, sort_dir=sort_dir)
     if paginated:
         return result
     return result["items"]

@@ -74,7 +74,10 @@ export default function ProductImageCropper({
       return
     }
     if (selectedFile.size > MAX_IMAGE_BYTES) {
-      setError('File ảnh không được vượt quá 5MB')
+      // Nêu số cụ thể — "quá 5MB" không cho người dùng biết phải nén
+      // xuống bao nhiêu (spec 11 §2.2).
+      const mb = (selectedFile.size / 1024 / 1024).toLocaleString('vi', { maximumFractionDigits: 1 })
+      setError(`Ảnh ${mb} MB — tối đa 5 MB.`)
       event.target.value = ''
       return
     }

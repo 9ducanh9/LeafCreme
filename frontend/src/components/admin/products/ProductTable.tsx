@@ -23,9 +23,12 @@ interface ProductTableProps {
   status?: 'idle' | 'loading' | 'error'
   error?: string | null
   onRetry?: () => void
+  selectedIds?: Set<string | number>
+  onSelectionChange?: (ids: Set<string | number>) => void
+  bulkActions?: React.ReactNode
 }
 
-export default function ProductTable({ variants, onEdit, onDelete, total, page, pageSize, onPageChange, onPageSizeChange, sortBy, sortDir, onSortChange, status = 'idle', error, onRetry }: ProductTableProps) {
+export default function ProductTable({ variants, onEdit, onDelete, total, page, pageSize, onPageChange, onPageSizeChange, sortBy, sortDir, onSortChange, status = 'idle', error, onRetry, selectedIds, onSelectionChange, bulkActions }: ProductTableProps) {
   const { can } = useAuth()
   const canWrite = can('products.write')
   const getStatusColor = (status: ProductVariant['status']) => {
@@ -59,6 +62,9 @@ export default function ProductTable({ variants, onEdit, onDelete, total, page, 
     sortBy={sortBy}
     sortDir={sortDir}
     onSortChange={onSortChange}
+    selectedIds={selectedIds}
+    onSelectionChange={onSelectionChange}
+    bulkActions={bulkActions}
     rowActions={canWrite ? (variant) => <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}><IconButton size="small" color="primary" aria-label="Sửa sản phẩm" onClick={() => onEdit(variant)}><EditIcon fontSize="small" /></IconButton><IconButton size="small" color="error" aria-label="Xóa sản phẩm" onClick={() => onDelete(variant.id)}><DeleteIcon fontSize="small" /></IconButton></Box> : undefined}
   />
 }

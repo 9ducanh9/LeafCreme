@@ -20,6 +20,7 @@ import type { Order } from '../../../types/admin'
 import type { ApiError } from '../../../services/api'
 import { formatPrice } from '../../../utils/formatPrice'
 import { useToast } from '../../../contexts/ToastContext'
+import { useUnsavedChanges } from '../../../hooks/admin/useUnsavedChanges'
 
 interface PickableItem {
   key: string
@@ -111,6 +112,11 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
 
   const total = useMemo(() => lineItems.reduce((sum, li) => sum + li.price * li.quantity, 0), [lineItems])
 
+  // Đơn thủ công có thể có nhiều dòng sản phẩm — bấm sai backdrop/Escape
+  // giữa chừng không được mất dữ liệu (spec 11 §4-§5).
+  const isDirty = Boolean(customerName || phone || address || notes || voucherCode || deposit || lineItems.length > 0)
+  useUnsavedChanges(open && isDirty && !submitting)
+
   const handleSubmit = async () => {
     setError(null)
     if (lineItems.length === 0) { setError('Thêm ít nhất 1 sản phẩm vào đơn.'); return }
@@ -148,7 +154,17 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={(_, reason) => {
+        // Escape/backdrop khi đang nhập dở không được đóng ngay — chỉ nút
+        // "Hủy" tường minh mới đóng (spec 11 §5).
+        if (isDirty && (reason === 'backdropClick' || reason === 'escapeKeyDown')) return
+        handleClose()
+      }}
+      disableEscapeKeyDown={isDirty}
+      maxWidth="sm" fullWidth
+    >
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <DialogTitle>Tạo đơn thủ công</DialogTitle>
         <DialogContent>

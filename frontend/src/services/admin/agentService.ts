@@ -89,8 +89,8 @@ export async function getTools(): Promise<ToolDescriptor[]> {
   return data.tools
 }
 
-export async function postChat(message: string, history?: Array<{ role: string; content: string }>): Promise<ChatReply> {
-  return await apiClient.post<ChatReply>('/agent/chat', { message, history })
+export async function postChat(message: string, history?: Array<{ role: string; content: string }>, sessionId?: string): Promise<ChatReply> {
+  return await apiClient.post<ChatReply>('/agent/chat', { message, history, session_id: sessionId })
 }
 
 export async function proposeAction(
@@ -123,6 +123,11 @@ export function getSeverityColor(severity: Insight['severity']): 'error' | 'warn
   if (severity === 'cao') return 'error'
   if (severity === 'binh_thuong') return 'warning'
   return 'success'
+}
+
+export function getSeverityLabel(severity: Insight['severity']): string {
+  const labels: Record<Insight['severity'], string> = { cao: 'Cao', binh_thuong: 'Bình thường', thap: 'Thấp' }
+  return labels[severity] ?? severity
 }
 
 export function getActionStatusLabel(status: AgentAction['trang_thai']): string {

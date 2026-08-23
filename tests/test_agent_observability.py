@@ -1,6 +1,8 @@
 """Behavioral guarantees for optional Operations Agent observability."""
 from contextlib import contextmanager
 
+import pytest
+
 from app.services.agent import observability
 from app.services.agent.redaction import REDACTED
 
@@ -71,3 +73,64 @@ def test_observability_failures_never_escape_context_managers_or_flush(monkeypat
     with observability.trace_tool_call("get_alert_summary", {}) as tool:
         assert tool is None
     observability.flush()
+
+
+def test_observation_names_are_stable_and_errors_are_recorded(monkeypatch):
+    client = _Client()
+    monkeypatch.setattr(observability, "_get_client", lambda: client)
+
+    with pytest.raises(RuntimeError, match="provider unavailable"):
+        with observability.trace_llm_call("deepseek-chat", 2) as _generation:
+            assert client.started[-1]["name"] == "agent-llm-call"
+            assert client.started[-1]["metadata"] == {"iteration": 2}
+            raise RuntimeError("provider unavailable")
+
+    assert client.observations[-1].updates[-1] == {
+        "level": "ERROR",
+        "status_message": "RuntimeError",
+    }
+
+
+def test_trace_body_exceptions_are_not_suppressed(monkeypatch):
+    client = _Client()
+    monkeypatch.setattr(observability, "_get_client", lambda: client)
+
+    with pytest.raises(RuntimeError, match="provider unavailable"):
+        with observability.trace_llm_call("deepseek-chat", 0):
+            raise RuntimeError("provider unavailable")
+
+
+def test_conversation_propagates_session_user_and_prompt_version(monkeypatch):
+    client = _Client()
+    monkeypatch.setattr(observability, "_get_client", lambda: client)
+    monkeypatch.delenv("LANGFUSE_TRACING_ENVIRONMENT", raising=False)
+    monkeypatch.delenv("APP_ENV", raising=False)
+
+    import langfuse
+
+    propagated = []
+
+    @contextmanager
+    def fake_propagate_attributes(**kwargs):
+        propagated.append(kwargs)
+        yield
+
+    monkeypatch.setattr(langfuse, "propagate_attributes", fake_propagate_attributes)
+
+    with observability.trace_conversation(
+        7,
+        "status?",
+        session_id="admin-agent-test-session",
+        prompt_version="operations-agent-system-v1",
+    ) as span:
+        assert span is not None
+
+    assert propagated == [{
+        "user_id": "7",
+        "session_id": "admin-agent-test-session",
+        "version": "operations-agent-system-v1",
+        "environment": "development",
+        "trace_name": "operations-agent-chat",
+        "metadata": {"feature": "operations-agent", "promptversion": "operations-agent-system-v1"},
+        "tags": ["operations-agent"],
+    }]

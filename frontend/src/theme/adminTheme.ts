@@ -63,12 +63,29 @@ export const adminTheme = createTheme({
     MuiTableCell: { styleOverrides: { head: { fontWeight: 600, color: sand[600], backgroundColor: sand[50] } } },
     MuiTableRow: { styleOverrides: { root: { '&:hover': { backgroundColor: sand[50] } } } },
     MuiOutlinedInput: { styleOverrides: { root: { borderRadius: 10 } } },
+    // `<TextField select>` không có minWidth riêng thì co lại vừa khít nhãn
+    // đã floated — với nhãn tiếng Việt có dấu (vd. "Trạng thái"), nó co tới
+    // mức nhãn bị cắt còn "Tr." Đặt một chỗ ở đây thay vì tự thêm sx={{minWidth}}
+    // vào từng bộ lọc rải rác khắp các trang.
+    MuiSelect: { styleOverrides: { select: { minWidth: 96 } } },
     MuiListItemButton: {
       styleOverrides: {
         root: {
           '&.Mui-selected': { backgroundColor: terra[50], color: terra[700] },
           '&.Mui-selected:hover': { backgroundColor: terra[100] },
           '&.Mui-selected .MuiListItemIcon-root': { color: terra[600] },
+        },
+      },
+    },
+    // Focus ring rõ ràng trên MỌI thứ dựng từ ButtonBase (Button, IconButton,
+    // Tab, MenuItem, ListItemButton, Checkbox, Radio, Switch...) — một chỗ
+    // duy nhất thay vì tự thêm outline ở từng component. terra-600 đạt
+    // 5.02:1 / 3.32:1 với canvas (verify: docs/contrast-check.py) nên đủ rõ
+    // trên cả hai màu nền hay dùng nhất trong admin.
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focusVisible': { outline: `2px solid ${terra[600]}`, outlineOffset: 2 },
         },
       },
     },

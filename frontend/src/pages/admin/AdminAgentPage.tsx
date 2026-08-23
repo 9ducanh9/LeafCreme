@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Alert as MuiAlert, Box, Button, Card, CardContent, Chip, IconButton, Paper, Stack, TextField, Typography,
 } from '@mui/material'
@@ -12,7 +12,7 @@ import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import {
-  approveAction, getActionStatusLabel, getClassificationColor, getClassificationLabel, getInsights, getSeverityColor,
+  approveAction, getActionStatusLabel, getClassificationColor, getClassificationLabel, getInsights, getSeverityColor, getSeverityLabel,
   listActions, postChat, proposeAction, rejectAction, resetAction, type AgentAction, type ChatReply, type Insight, type ToolCallTrace,
 } from '../../services/admin/agentService'
 import { useAuth } from '../../contexts/AuthContext'
@@ -53,10 +53,19 @@ export default function AdminAgentPage() {
   const [error, setError] = useState<string | null>(null)
   const [busyInsightId, setBusyInsightId] = useState<string | null>(null)
   const [busyActionId, setBusyActionId] = useState<number | null>(null)
+  const [selected, setSelected] = useState<Set<string | number>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const filtersKey = JSON.stringify(table.filters)
+  useEffect(() => { setSelected(new Set()) }, [table.sortBy, table.sortDir, filtersKey])
 
   const [chatMessage, setChatMessage] = useState('')
   const [chatLog, setChatLog] = useState<ChatEntry[]>([])
   const [chatBusy, setChatBusy] = useState(false)
+  const [chatSessionId] = useState(() => `admin-agent-${crypto.randomUUID()}`)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+  // Cuộn xuống cuối mỗi khi có tin nhắn mới — không thì tin nhắn mới nằm
+  // dưới vùng nhìn thấy của khung chat 280px, người dùng phải tự cuộn.
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [chatLog])
 
   const load = useCallback(async () => {
     setStatus('loading'); setError(null)
@@ -94,6 +103,26 @@ export default function AdminAgentPage() {
     try { await resetAction(row.action_id); await load() } catch { setError('Không thể reset hành động') } finally { setBusyActionId(null) }
   }
 
+  // Bulk approve/reject dùng lại đúng endpoint từng-dòng (approveAction/rejectAction) —
+  // không có endpoint bulk riêng, chỉ gọi tuần tự thay cho việc bấm từng dòng.
+  const bulkDecide = async (decide: (id: number) => Promise<unknown>, label: string) => {
+    const targets = actionRows.filter((row) => selected.has(row.action_id) && row.trang_thai === 'de_xuat')
+    if (targets.length === 0) return
+    setBulkBusy(true)
+    try {
+      const results = await Promise.allSettled(targets.map((row) => decide(row.action_id)))
+      const failed = results.filter((r) => r.status === 'rejected').length
+      if (failed > 0) setError(`${label}: ${failed}/${targets.length} hành động thất bại`)
+      setSelected(new Set())
+      await load()
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+  const bulkApprove = () => bulkDecide(approveAction, 'Duyệt hàng loạt')
+  const bulkReject = () => bulkDecide(rejectAction, 'Từ chối hàng loạt')
+  const hasApprovableSelection = actionRows.some((row) => selected.has(row.action_id) && row.trang_thai === 'de_xuat')
+
   const sendChat = async () => {
     const message = chatMessage.trim()
     if (!message || chatBusy) return
@@ -102,7 +131,7 @@ export default function AdminAgentPage() {
     setChatLog((log) => [...log, { role: 'user', content: message }])
     setChatMessage('')
     try {
-      const reply: ChatReply = await postChat(message, history)
+      const reply: ChatReply = await postChat(message, history, chatSessionId)
       setChatLog((log) => [...log, { role: 'assistant', content: reply.reply, toolCalls: reply.tool_calls, usedLlm: reply.used_llm }])
       if ((reply.proposed_actions ?? []).length > 0) await load()
     } catch {
@@ -123,10 +152,10 @@ export default function AdminAgentPage() {
       <Stack spacing={1.5} sx={{ mb: 3 }}>
         {insights.map((insight) => (
           <Card key={insight.id} variant="outlined">
-            <CardContent sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, '&:last-child': { pb: 2 } }}>
-              <Box>
+            <CardContent sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, '&:last-child': { pb: 2 } }}>
+              <Box sx={{ minWidth: 0, flex: '1 1 240px' }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                  <Chip size="small" label={insight.severity} color={getSeverityColor(insight.severity)} />
+                  <Chip size="small" label={getSeverityLabel(insight.severity)} color={getSeverityColor(insight.severity)} />
                   <Typography variant="subtitle1" fontWeight={600}>{insight.title}</Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">{insight.description}</Typography>
@@ -173,7 +202,13 @@ export default function AdminAgentPage() {
         onRetry={() => void load()}
         hasActiveFilters={Object.keys(table.filters).length > 0}
         onClearFilters={() => table.patch({ filters: {} })}
-        rowActions={(row) => row.is_stale && can('agent.action.execute') ? <IconButton aria-label="Reset hành động kẹt" disabled={busyActionId === row.action_id} onClick={() => void reset(row)}><RefreshIcon fontSize="small" color="error" /></IconButton> : row.trang_thai === 'de_xuat' ? (
+        selectedIds={can('agent.action.execute') ? selected : undefined}
+        onSelectionChange={can('agent.action.execute') ? setSelected : undefined}
+        bulkActions={<>
+          <Button size="small" color="success" disabled={bulkBusy || !hasApprovableSelection} onClick={() => void bulkApprove()}>Duyệt đã chọn</Button>
+          <Button size="small" color="error" disabled={bulkBusy || !hasApprovableSelection} onClick={() => void bulkReject()}>Từ chối đã chọn</Button>
+        </>}
+        rowActions={(row) => row.is_stale && can('agent.action.execute') ? <IconButton aria-label="Reset hành động kẹt" disabled={busyActionId === row.action_id} onClick={() => void reset(row)}><RefreshIcon fontSize="small" color="error" /></IconButton> : row.trang_thai === 'de_xuat' && can('agent.action.execute') ? (
           <>
             <IconButton aria-label="Duyệt" disabled={busyActionId === row.action_id} onClick={() => void approve(row)}><CheckCircleIcon fontSize="small" color="success" /></IconButton>
             <IconButton aria-label="Từ chối" disabled={busyActionId === row.action_id} onClick={() => void reject(row)}><CancelIcon fontSize="small" color="error" /></IconButton>
@@ -209,6 +244,7 @@ export default function AdminAgentPage() {
               </Box>
             </Box>
           ))}
+          <div ref={chatEndRef} />
         </Stack>
         <Stack direction="row" spacing={1}>
           <TextField

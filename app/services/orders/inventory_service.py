@@ -40,7 +40,7 @@ class InventoryService:
         *,
         donhang_id: Optional[int] = None,
         nguoidung_id: Optional[int] = None,
-        reason: str = "Order product deduction",
+        reason: str = "Trừ kho theo đơn hàng",
     ) -> list[InventoryAllocation]:
         today = date.today()
         rows = db.execute(
@@ -98,7 +98,7 @@ class InventoryService:
         *,
         donhang_id: Optional[int] = None,
         nguoidung_id: Optional[int] = None,
-        reason: str = "Order gift box deduction",
+        reason: str = "Trừ kho hộp quà theo đơn hàng",
     ) -> list[InventoryAllocation]:
         today = date.today()
         rows = db.execute(
@@ -157,7 +157,7 @@ class InventoryService:
         bom_id: Optional[int] = None,
         donhang_id: Optional[int] = None,
         nguoidung_id: Optional[int] = None,
-        reason: str = "Order component deduction",
+        reason: str = "Trừ kho linh kiện theo đơn hàng",
     ) -> InventoryAllocation:
         row = db.execute(
             select(LoHangLinhKien, TonKhoLinhKien)

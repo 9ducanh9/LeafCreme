@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Mapping
 from typing import Any
@@ -31,6 +32,15 @@ def _is_sensitive_key(key: object) -> bool:
 
 
 def _redact_text(value: str) -> str:
+    # Tool messages are often JSON-encoded strings. Decode them when possible
+    # so sensitive field names such as ``dia_chi_giao_hang`` are still masked
+    # after a tool result has been serialized for the model.
+    try:
+        parsed = json.loads(value)
+    except (TypeError, ValueError):
+        parsed = None
+    if isinstance(parsed, (Mapping, list, tuple)):
+        return json.dumps(redact(parsed), ensure_ascii=False, default=str)
     return _EMAIL.sub(REDACTED, _PHONE.sub(REDACTED, value))
 
 

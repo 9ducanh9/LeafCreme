@@ -98,7 +98,7 @@ class BatchService:
                 search_includes_qr=True,
                 ledger_log=self.ledger.log_product_movement,
                 ledger_fk_kwarg="lohang_sanpham_id",
-                ledger_ly_do="Product batch import",
+                ledger_ly_do="Nhập lô sản phẩm",
             ),
             "components": _BatchKind(
                 label="Lô hàng",
@@ -113,7 +113,7 @@ class BatchService:
                 search_includes_qr=False,
                 ledger_log=self.ledger.log_component_movement,
                 ledger_fk_kwarg="lohang_linhkien_id",
-                ledger_ly_do="Component batch import",
+                ledger_ly_do="Nhập lô linh kiện",
             ),
             "gift_boxes": _BatchKind(
                 label="Lô hàng",
@@ -128,7 +128,7 @@ class BatchService:
                 search_includes_qr=False,
                 ledger_log=self.ledger.log_gift_box_movement,
                 ledger_fk_kwarg="lohang_hopqua_id",
-                ledger_ly_do="Gift box batch import",
+                ledger_ly_do="Nhập lô hộp quà",
             ),
         }
 

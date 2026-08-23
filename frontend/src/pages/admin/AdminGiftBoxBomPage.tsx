@@ -1,11 +1,12 @@
 // Admin Gift Box BOM Editor Page
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Box, Typography, Paper, TextField, MenuItem, CircularProgress, Chip, Button as MuiButton } from '@mui/material'
+import { Alert, Box, Typography, Paper, TextField, MenuItem, CircularProgress, Chip, Button, IconButton } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
+import AdminPage from '../../components/admin/ui/admin-page'
 import {
   getGiftBoxById,
   getGiftBoxBom,
@@ -14,11 +15,11 @@ import {
   deleteBomItem,
 } from '../../services/admin/giftBoxService'
 import { getProductVariants } from '../../services/admin/productService'
+import { getProductInventory } from '../../services/admin/inventoryService'
 import { BomItem } from '../../types/giftBox'
 import type { BackendGiftBox } from '../../types/giftBox'
 import { parseAdminEntityId, ProductVariant } from '../../types/admin'
 import { useToast } from '../../contexts/ToastContext'
-import Button from '../../components/ui/Button'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 export default function AdminGiftBoxBomPage() {
@@ -30,6 +31,9 @@ export default function AdminGiftBoxBomPage() {
   const [giftBox, setGiftBox] = useState<BackendGiftBox | null>(null)
   const [bomItems, setBomItems] = useState<BomItem[]>([])
   const [variants, setVariants] = useState<ProductVariant[]>([])
+  // Tồn kho hiện tại theo biến thể — dùng để tính "làm được bao nhiêu hộp"
+  // (spec 13 §3.3). Cộng dồn từ các lô đang hoạt động của từng biến thể.
+  const [stockByVariant, setStockByVariant] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(true)
   const [selectedVariantId, setSelectedVariantId] = useState('')
   const [quantity, setQuantity] = useState(1)
@@ -46,17 +50,21 @@ export default function AdminGiftBoxBomPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [box, bom, allVariants] = await Promise.all([
+      const [box, bom, allVariants, productInventory] = await Promise.all([
         getGiftBoxById(giftBoxId),
         getGiftBoxBom(giftBoxId),
         // This is a picker rather than a paginated table. Load the full
         // server-side selection window so a valid variant beyond page 1 is
         // still available for a BOM.
         getProductVariants({ category: categoryFilter, size: sizeFilter, search: searchFilter, limit: 200 }),
+        getProductInventory(),
       ])
       setGiftBox(box)
       setBomItems(bom)
       setVariants(allVariants.items)
+      const stock: Record<number, number> = {}
+      for (const batch of productInventory) stock[batch.bienthe_id] = (stock[batch.bienthe_id] ?? 0) + batch.so_luong_hien_tai
+      setStockByVariant(stock)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : ''
       showError(message || 'Không thể tải dữ liệu')
@@ -137,31 +145,42 @@ export default function AdminGiftBoxBomPage() {
     return sum + (Number(item.variant_price || 0) * item.so_luong)
   }, 0)
 
+  // Với tồn kho hiện tại, làm được bao nhiêu hộp — và thành phần nào là nút
+  // cổ chai (spec 13 §3.3). min(floor(tồn_kho_i / số_lượng_cần_i)) trên mọi
+  // thành phần trong BOM.
+  const buildability = bomItems.map((item) => ({
+    item,
+    available: stockByVariant[item.bienthe_id] ?? 0,
+    possible: Math.floor((stockByVariant[item.bienthe_id] ?? 0) / item.so_luong),
+  }))
+  const maxBoxes = buildability.length > 0 ? Math.min(...buildability.map((b) => b.possible)) : 0
+  const bottleneck = buildability.find((b) => b.possible === maxBoxes)
+  const missing = buildability.filter((b) => b.possible === 0)
+
   // Filter variants that are not already in BOM
   const availableVariants = variants.filter((v) => {
     const entity = parseAdminEntityId(v.id)
     return entity.kind === 'variant' && !bomItems.some((bom) => bom.bienthe_id === entity.id)
   })
 
+  const title = `BOM: ${giftBox?.ten_hop_qua || 'Hộp quà'}`
+  const breadcrumb = [{ label: 'Hộp quà', to: '/admin/gift-boxes' }, { label: 'BOM' }]
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress />
-      </Box>
+      <AdminPage title={title} breadcrumb={breadcrumb}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      </AdminPage>
     )
   }
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-        <MuiButton onClick={() => navigate('/admin/gift-boxes')} color="inherit">
-          <ArrowBackIcon />
-        </MuiButton>
-        <Typography variant="h4">
-          Quản lý BOM: {giftBox?.ten_hop_qua || 'Hộp quà'}
-        </Typography>
-      </Box>
+    <AdminPage title={title} breadcrumb={breadcrumb}>
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/gift-boxes')} sx={{ mb: 3 }}>
+        Quay lại danh sách hộp quà
+      </Button>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
         {/* Left: Variant Selection */}
@@ -207,7 +226,7 @@ export default function AdminGiftBoxBomPage() {
               size="small"
               placeholder="Tên sản phẩm..."
             />
-            <Button variant="outline" onClick={loadData} className="w-full">
+            <Button variant="outlined" onClick={loadData} fullWidth>
               Áp dụng bộ lọc
             </Button>
           </Box>
@@ -259,8 +278,8 @@ export default function AdminGiftBoxBomPage() {
               inputProps={{ min: 1 }}
               sx={{ width: 120 }}
             />
-            <Button variant="primary" onClick={handleAddBomItem} className="flex-1">
-              <AddIcon /> Thêm vào BOM
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddBomItem} sx={{ flex: 1 }}>
+              Thêm vào BOM
             </Button>
           </Box>
         </Paper>
@@ -277,6 +296,15 @@ export default function AdminGiftBoxBomPage() {
             </Typography>
           ) : (
             <>
+              <Alert severity={maxBoxes > 0 ? 'info' : 'warning'} sx={{ mb: 2 }}>
+                {maxBoxes > 0 ? (
+                  <>Với tồn kho hiện tại, có thể làm <strong>{maxBoxes}</strong> hộp.
+                    {bottleneck && <> Giới hạn bởi <strong>{bottleneck.item.variant_name || `biến thể #${bottleneck.item.bienthe_id}`}</strong> (còn {bottleneck.available}).</>}
+                  </>
+                ) : (
+                  <>Không đủ nguyên liệu để làm hộp này. Thiếu: {missing.map((m) => m.item.variant_name || `biến thể #${m.item.bienthe_id}`).join(', ')}.</>
+                )}
+              </Alert>
               <Box sx={{ mb: 2 }}>
                 {bomItems.map((item) => (
                   <Paper
@@ -309,13 +337,13 @@ export default function AdminGiftBoxBomPage() {
                         inputProps={{ min: 1 }}
                         sx={{ width: 80 }}
                       />
-                      <Button
-                        variant="ghost"
+                      <IconButton
+                        aria-label={`Xoá ${item.variant_name || `biến thể #${item.bienthe_id}`} khỏi BOM`}
+                        color="error"
                         onClick={() => handleDelete(item.bom_id)}
-                        className="text-red-600 hover:text-red-700 min-w-0 p-1"
                       >
                         <DeleteIcon fontSize="small" />
-                      </Button>
+                      </IconButton>
                     </Box>
                   </Paper>
                 ))}
@@ -347,7 +375,7 @@ export default function AdminGiftBoxBomPage() {
         onCancel={() => setDeleteConfirm({ open: false, bomId: null })}
         variant="danger"
       />
-    </Box>
+    </AdminPage>
   )
 }
 

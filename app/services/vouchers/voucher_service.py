@@ -38,7 +38,15 @@ class VoucherService:
         if loai_giam == "phantram" and gia_tri_giam > 100:
             raise DomainError(status_code=400, detail="Giảm phần trăm không được vượt quá 100")
 
-    def list(self, db: Session, *, skip: int = 0, limit: int = 50, search: Optional[str] = None, dang_hoat_dong: Optional[bool] = None, loai_giam: Optional[str] = None, sort_dir: str = "desc") -> dict:
+    # Allowlist — không nhận cột tự do từ client (SQL injection nếu truyền
+    # thẳng vào order_by). Khớp với VoucherSortField ở router.
+    SORT_COLUMNS = {
+        "ngay_tao": PhieuGiamGia.ngay_tao,
+        "ma_phieu": PhieuGiamGia.ma_phieu,
+        "ngay_het_han": PhieuGiamGia.ngay_het_han,
+    }
+
+    def list(self, db: Session, *, skip: int = 0, limit: int = 50, search: Optional[str] = None, dang_hoat_dong: Optional[bool] = None, loai_giam: Optional[str] = None, sort_by: str = "ngay_tao", sort_dir: str = "desc") -> dict:
         query = db.query(PhieuGiamGia)
         if search:
             needle = f"%{search.strip()}%"
@@ -48,7 +56,10 @@ class VoucherService:
         if loai_giam:
             query = query.filter(PhieuGiamGia.loai_giam == loai_giam)
         total = query.count()
-        ordering = PhieuGiamGia.ngay_tao.asc() if sort_dir == "asc" else PhieuGiamGia.ngay_tao.desc()
+        sort_col = self.SORT_COLUMNS.get(sort_by, PhieuGiamGia.ngay_tao)
+        ordering = sort_col.asc() if sort_dir == "asc" else sort_col.desc()
+        # Tie-breaker bắt buộc — nhiều dòng cùng giá trị sort thì offset
+        # pagination sẽ trùng/mất dòng giữa các trang nếu không có nó.
         items = query.order_by(ordering, PhieuGiamGia.phieugiam_id.desc()).offset(skip).limit(limit).all()
         return {"items": items, "total": total, "skip": skip, "limit": limit}
 

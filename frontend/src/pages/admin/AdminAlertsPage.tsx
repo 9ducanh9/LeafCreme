@@ -32,6 +32,10 @@ export default function AdminAlertsPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [clearConfirm, setClearConfirm] = useState(false)
+  const [selected, setSelected] = useState<Set<string | number>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const filtersKey = JSON.stringify(table.filters)
+  useEffect(() => { setSelected(new Set()) }, [table.sortBy, table.sortDir, filtersKey])
 
   const load = useCallback(async () => {
     setStatus('loading'); setError(null)
@@ -49,6 +53,24 @@ export default function AdminAlertsPage() {
   const resolve = async (row: AlertRow) => { try { await updateAlert(row.canhbao_id, { trang_thai: 'da_xu_ly' }); await load() } catch { setError('Không thể cập nhật cảnh báo') } }
   const clearResolved = async () => { try { await clearResolvedAlerts(); setClearConfirm(false); await load() } catch { setError('Không thể dọn cảnh báo đã xử lý') } }
 
+  // Đánh dấu đã xử lý hàng loạt — gọi lại đúng endpoint từng-dòng, không có
+  // endpoint bulk riêng (giống bulk approve/reject ở AdminAgentPage).
+  const bulkResolve = async () => {
+    const targets = rows.filter((row) => selected.has(row.canhbao_id) && row.trang_thai !== 'da_xu_ly')
+    if (targets.length === 0) return
+    setBulkBusy(true)
+    try {
+      const results = await Promise.allSettled(targets.map((row) => updateAlert(row.canhbao_id, { trang_thai: 'da_xu_ly' })))
+      const failed = results.filter((r) => r.status === 'rejected').length
+      if (failed > 0) setError(`Đánh dấu hàng loạt: ${failed}/${targets.length} cảnh báo thất bại`)
+      setSelected(new Set())
+      await load()
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+  const hasResolvableSelection = rows.some((row) => selected.has(row.canhbao_id) && row.trang_thai !== 'da_xu_ly')
+
   return (
     <AdminPage title="Cảnh báo tồn kho" breadcrumb={[{ label: 'Cảnh báo' }]}>
       {summary && <MuiAlert severity={summary.pending ? 'warning' : 'success'} sx={{ mb: 2 }}>Đang chờ xử lý: {summary.pending} · Đã xử lý: {summary.resolved}</MuiAlert>}
@@ -57,7 +79,18 @@ export default function AdminAlertsPage() {
         <TextField select size="small" label="Mức độ" value={table.filters.muc_do || ''} onChange={(event) => setFilter('muc_do', event.target.value)}><MenuItem value="">Tất cả</MenuItem><MenuItem value="cao">Cao</MenuItem><MenuItem value="binh_thuong">Bình thường</MenuItem><MenuItem value="thap">Thấp</MenuItem></TextField>
         <TextField select size="small" label="Trạng thái" value={table.filters.trang_thai || ''} onChange={(event) => setFilter('trang_thai', event.target.value)}><MenuItem value="">Tất cả</MenuItem><MenuItem value="chua_xu_ly">Chưa xử lý</MenuItem><MenuItem value="dang_xu_ly">Đang xử lý</MenuItem><MenuItem value="da_xu_ly">Đã xử lý</MenuItem></TextField>
       </DataTableToolbar>
-      <DataTable caption="Danh sách cảnh báo tồn kho" columns={columns} rows={rows} getRowId={(row) => row.canhbao_id} getRowLabel={(row) => row.ten_san_pham || `Cảnh báo #${row.canhbao_id}`} total={total} page={table.page} pageSize={table.pageSize} onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })} sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })} status={status} error={error} onRetry={() => void load()} hasActiveFilters={Object.keys(table.filters).length > 0} onClearFilters={() => table.patch({ filters: {} })} rowActions={(row) => can('alerts.update') && row.trang_thai !== 'da_xu_ly' ? <IconButton aria-label="Đánh dấu đã xử lý" onClick={() => void resolve(row)}><CheckCircleIcon fontSize="small" /></IconButton> : null} />
+      <DataTable
+        caption="Danh sách cảnh báo tồn kho" columns={columns} rows={rows} getRowId={(row) => row.canhbao_id}
+        getRowLabel={(row) => row.ten_san_pham || `Cảnh báo #${row.canhbao_id}`} total={total} page={table.page} pageSize={table.pageSize}
+        onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })}
+        sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })}
+        status={status} error={error} onRetry={() => void load()} hasActiveFilters={Object.keys(table.filters).length > 0}
+        onClearFilters={() => table.patch({ filters: {} })}
+        selectedIds={can('alerts.update') ? selected : undefined}
+        onSelectionChange={can('alerts.update') ? setSelected : undefined}
+        bulkActions={<Button size="small" startIcon={<CheckCircleIcon />} disabled={bulkBusy || !hasResolvableSelection} onClick={() => void bulkResolve()}>Đánh dấu đã xử lý</Button>}
+        rowActions={(row) => can('alerts.update') && row.trang_thai !== 'da_xu_ly' ? <IconButton aria-label="Đánh dấu đã xử lý" onClick={() => void resolve(row)}><CheckCircleIcon fontSize="small" /></IconButton> : null}
+      />
       <ConfirmDialog isOpen={clearConfirm} message="Dọn toàn bộ cảnh báo đã xử lý?" confirmLabel="Dọn" cancelLabel="Huỷ" onConfirm={() => void clearResolved()} onCancel={() => setClearConfirm(false)} variant="danger" />
     </AdminPage>
   )

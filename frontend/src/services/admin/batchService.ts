@@ -72,3 +72,21 @@ export async function createComponentBatch(payload: ComponentBatchCreate) {
 export async function createGiftBoxBatch(payload: GiftBoxBatchCreate) {
   return await apiClient.post('/batches/gift-boxes', payload)
 }
+
+export interface ExpiringBatchItem {
+  lohang_id: number
+  ma_lo: string
+  ngay_het_han: string
+  so_luong_hien_tai: number
+  ten: string
+}
+
+export interface ExpiringBatches {
+  products: ExpiringBatchItem[]
+  components: ExpiringBatchItem[]
+  gift_boxes: ExpiringBatchItem[]
+}
+
+export async function getExpiringBatches(days: number = 2) {
+  return apiClient.get<ExpiringBatches>('/batches/expiring', { days })
+}
