@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert as MuiAlert, Button, Chip, IconButton, MenuItem, Paper, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
@@ -9,6 +9,7 @@ import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import { useAuth } from '../../contexts/AuthContext'
+import { groupAlertsByLot, type AlertGroupMeta } from '../../utils/admin/groupAlertsByLot'
 import {
   clearResolvedAlerts, getAlerts, getAlertsSummary, getAlertTypeLabel, getSeverityLabel, getStatusLabel, updateAlert,
   type Alert as AlertRow, type AlertSummary,
@@ -47,7 +48,7 @@ function daysUntilExpiry(iso?: string): number | null {
   return Math.ceil((value - Date.now()) / 86_400_000)
 }
 
-const columns: Column<AlertRow>[] = [
+const buildColumns = (meta: Map<number, AlertGroupMeta>): Column<AlertRow>[] => [
   {
     id: 'ngay_canh_bao', label: 'Thời gian', sortable: true,
     // Thời gian tương đối để triage nhanh; mốc tuyệt đối giữ ở tooltip.
@@ -79,12 +80,33 @@ const columns: Column<AlertRow>[] = [
     // Tên sản phẩm và mã lô là hai định danh khác nhau; `a || b` làm mất mã
     // lô mỗi khi có tên, trong khi truy vết lô cần cả hai.
     id: 'ten_san_pham', label: 'Đối tượng',
-    render: (row) => (
-      <Stack spacing={0.25}>
-        <Typography variant="body2" fontWeight={500}>{row.ten_san_pham || '—'}</Typography>
-        {row.ma_lo && <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>{row.ma_lo}</Typography>}
-      </Stack>
-    ),
+    render: (row) => {
+      const group = meta.get(row.canhbao_id)
+      // Dòng thứ hai trở đi của cùng một lô không lặp lại tên và mã lô —
+      // đó chính là thứ khiến hai vấn đề khác nhau của một lô trông như
+      // dòng trùng. Thụt vào để thấy rõ chúng thuộc cùng một cụm.
+      if (group && !group.isGroupLead) {
+        return (
+          <Typography variant="caption" color="text.disabled" sx={{ pl: 2, display: 'block' }}>
+            ↳ cùng lô
+          </Typography>
+        )
+      }
+      return (
+        <Stack spacing={0.25}>
+          {/* Cột này hẹp: bất cứ thứ gì đặt cạnh tên hay cạnh mã lô đều bóp
+              chúng thành mỗi dòng một mảnh. Số cảnh báo của cụm đã được nói
+              bằng các dòng "↳ cùng lô" ngay bên dưới, nên không cần chip
+              đếm ở đây nữa. */}
+          <Typography variant="body2" fontWeight={500}>{row.ten_san_pham || '—'}</Typography>
+          {row.ma_lo && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+              {row.ma_lo}
+            </Typography>
+          )}
+        </Stack>
+      )
+    },
   },
   {
     // `ngay_het_han` vẫn luôn có trong payload nhưng trước đây không hiển
@@ -193,6 +215,12 @@ export default function AdminAlertsPage() {
   }
   const hasResolvableSelection = rows.some((row) => selected.has(row.canhbao_id) && row.trang_thai !== 'da_xu_ly')
 
+  // Chỉ sắp xếp lại để hiển thị. `rows` gốc vẫn là nguồn cho chọn nhiều
+  // dòng và thao tác hàng loạt, nên ngữ nghĩa "xử lý từng cảnh báo" không
+  // đổi.
+  const grouped = useMemo(() => groupAlertsByLot(rows), [rows])
+  const columns = useMemo(() => buildColumns(grouped.meta), [grouped.meta])
+
   return (
     <AdminPage title="Cảnh báo tồn kho" breadcrumb={[{ label: 'Cảnh báo' }]}>
       {summary && <SummaryTiles summary={summary} />}
@@ -205,7 +233,7 @@ export default function AdminAlertsPage() {
         <TextField select size="small" label="Trạng thái" value={table.filters.trang_thai || ''} onChange={(event) => setFilter('trang_thai', event.target.value)}><MenuItem value="">Tất cả</MenuItem><MenuItem value="chua_xu_ly">Chưa xử lý</MenuItem><MenuItem value="dang_xu_ly">Đang xử lý</MenuItem><MenuItem value="da_xu_ly">Đã xử lý</MenuItem></TextField>
       </DataTableToolbar>
       <DataTable
-        caption="Danh sách cảnh báo tồn kho" columns={columns} rows={rows} getRowId={(row) => row.canhbao_id}
+        caption="Danh sách cảnh báo tồn kho" columns={columns} rows={grouped.rows} getRowId={(row) => row.canhbao_id}
         getRowLabel={(row) => row.ten_san_pham || `Cảnh báo #${row.canhbao_id}`} total={total} page={table.page} pageSize={table.pageSize}
         onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })}
         sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })}
