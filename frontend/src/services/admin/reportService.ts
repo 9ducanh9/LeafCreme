@@ -1,6 +1,7 @@
 // Admin Report Service - all dashboard data comes from backend aggregates.
 import { RevenueData, ProductRevenue, BestSeller, DashboardStats } from '../../types/admin'
 import { apiClient } from '../api'
+import { fillMissingDays } from '../../utils/admin/fillMissingDays'
 
 export interface CategoryRevenue {
   category: string
@@ -42,10 +43,15 @@ async function getSalesReport(fromDate: string, toDate: string): Promise<SalesRe
 export async function getDailyRevenue(): Promise<RevenueData[]> {
   const { fromDate, toDate } = getDateRange(14)
   const rows = await getSalesReport(fromDate, toDate)
-  return rows.map((row) => ({
-    date: row.ngay,
-    revenue: Number(row.tong_doanh_thu),
-  }))
+  // /reports/sales chỉ trả về ngày CÓ phát sinh, nên một ngày không bán
+  // được gì sẽ biến mất khỏi chuỗi và biểu đồ nối thẳng qua nó — nhìn
+  // giống như ngày đó không tồn tại. Bơm lại thành 0 để đường biểu diễn
+  // đúng số ngày của khoảng.
+  return fillMissingDays(
+    rows.map((row) => ({ date: row.ngay, revenue: Number(row.tong_doanh_thu) })),
+    fromDate,
+    toDate,
+  )
 }
 
 export async function getMonthlyRevenue(): Promise<RevenueData[]> {

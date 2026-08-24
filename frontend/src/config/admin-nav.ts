@@ -16,6 +16,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: 'Tổng quan',
     items: [
       { key: 'overview', label: 'Tổng quan', path: '/admin/dashboard', icon: 'overview', capability: 'dashboard.read' },
+      { key: 'orders', label: 'Đơn hàng', path: '/admin/orders', icon: 'sales', capability: 'orders.read.own_created' },
       { key: 'agent', label: 'Operations Agent', path: '/admin/agent', icon: 'agent', capability: 'agent.chat' },
     ],
   },
@@ -35,12 +36,6 @@ export const adminNavGroups: AdminNavGroup[] = [
       { key: 'batch-trace', label: 'Truy vết lô', path: '/admin/batch-trace', icon: 'operations', capability: 'inventory.read' },
       { key: 'batches', label: 'Nhập lô', path: '/admin/batches', icon: 'operations', capability: 'batches.write' },
       { key: 'alerts', label: 'Cảnh báo', path: '/admin/alerts', icon: 'operations', capability: 'alerts.read' },
-    ],
-  },
-  {
-    label: 'Bán hàng',
-    items: [
-      { key: 'orders', label: 'Đơn hàng', path: '/admin/orders', icon: 'sales', capability: 'orders.read.own_created' },
     ],
   },
 ]
