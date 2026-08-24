@@ -1,6 +1,6 @@
 // Biểu đồ doanh thu theo ngày/tháng
 import { Paper, Typography, useTheme } from '@mui/material'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { RevenueData } from '../../../types/admin'
 
 interface RevenueByDayMonthProps {
@@ -33,7 +33,7 @@ export default function RevenueByDayMonth({ data, view }: RevenueByDayMonthProps
       <ResponsiveContainer width="100%" height={300} minHeight={220}>
         {view === 'daily' ? (
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+            <CartesianGrid stroke={theme.palette.divider} strokeOpacity={0.6} vertical={false} />
             <XAxis dataKey="date" tickFormatter={formatDate} stroke={theme.palette.text.secondary} style={{ fontSize: '0.75rem' }} />
             <YAxis tickFormatter={formatCurrency} stroke={theme.palette.text.secondary} style={{ fontSize: '0.75rem' }} />
             <Tooltip
@@ -41,19 +41,17 @@ export default function RevenueByDayMonth({ data, view }: RevenueByDayMonthProps
               labelFormatter={(label) => `Ngày: ${formatDate(label)}`}
               contentStyle={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}
             />
-            <Legend formatter={() => 'Doanh thu'} />
             <Line type="monotone" dataKey="revenue" stroke={theme.palette.primary.main} strokeWidth={2} name="Doanh thu" dot={{ fill: theme.palette.primary.main, r: 4 }} />
           </LineChart>
         ) : (
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+            <CartesianGrid stroke={theme.palette.divider} strokeOpacity={0.6} vertical={false} />
             <XAxis dataKey="date" stroke={theme.palette.text.secondary} style={{ fontSize: '0.75rem' }} />
             <YAxis tickFormatter={formatCurrency} stroke={theme.palette.text.secondary} style={{ fontSize: '0.75rem' }} />
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
               contentStyle={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}
             />
-            <Legend formatter={() => 'Doanh thu'} />
             <Bar dataKey="revenue" fill={theme.palette.primary.main} name="Doanh thu" radius={[8, 8, 0, 0]} />
           </BarChart>
         )}

@@ -4,6 +4,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import StarIcon from '@mui/icons-material/Star'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import { useNavigate } from 'react-router-dom'
 import AdminPage from '../../components/admin/ui/admin-page'
 import StatCard from '../../components/admin/ui/stat-card'
@@ -34,9 +35,9 @@ export default function AdminDashboardPage() {
       {loading && <LinearProgress sx={{ mb: 2 }} />}
       {alertsSummary && alertsSummary.pending > 0 && <Alert severity="warning" action={<Button color="inherit" onClick={() => navigate('/admin/alerts')}>Mở cảnh báo</Button>} sx={{ mb: 2 }}>Có {alertsSummary.pending} cảnh báo tồn kho đang chờ xử lý.</Alert>}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
-        <StatCard label="Doanh thu" value={stats ? money(stats.totalRevenue) : errors.stats ? 'Lỗi' : '—'} icon={<AttachMoneyIcon />} />
+        <StatCard label="Doanh thu" value={stats ? money(stats.totalRevenue) : errors.stats ? 'Lỗi' : '—'} icon={<AttachMoneyIcon />} href="/admin/orders" />
         <StatCard label="Đơn hàng" value={stats?.totalOrders ?? (errors.stats ? 'Lỗi' : '—')} icon={<ShoppingCartIcon />} href="/admin/orders" />
-        <StatCard label="Giá trị trung bình" value={average === undefined ? (errors.stats ? 'Lỗi' : '—') : money(average)} icon={<StarIcon />} />
+        <StatCard label="Giá trị trung bình mỗi đơn" value={average === undefined ? (errors.stats ? 'Lỗi' : '—') : money(average)} icon={<ReceiptLongIcon />} />
         <StatCard label="Sản phẩm bán chạy" value={stats?.bestSeller || (errors.stats ? 'Lỗi' : 'Chưa có dữ liệu')} icon={<StarIcon />} />
       </Box>
       <TodayActionsWidget />
