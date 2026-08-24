@@ -3,15 +3,17 @@
 The inventory domain remains responsible for deciding *whether* a condition
 exists.  This service only receives an already-created high-severity expiry
 alert, gathers further context through an explicit code-level allowlist of
-read tools, and stores a recommendation for a human to review.
+read tools, and asks the code-governed action executor to create the internal
+recommendation notification.
 
 No mutating AgentTool is available to this runner.  This is enforced twice
 in code: only ``read_tool_schemas`` are sent to the LLM and every requested
-tool is checked against ``PROACTIVE_READ_TOOL_NAMES`` before execution.
+tool is checked against ``PROACTIVE_READ_TOOL_NAMES`` before execution. The
+only write is a fixed internal tool selected by orchestration code after the
+LLM returns, never by the LLM itself.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import os
@@ -24,7 +26,12 @@ from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from app.models import CanhBaoTonKho, ProactiveInsight
-from app.services.agent import observability
+from app.services.agent import agent_service, observability
+from app.services.agent.proactive_actions import (
+    automation_idempotency_key,
+    build_alert_condition,
+    insight_fingerprint,
+)
 from app.services.agent import tools as tool_registry
 from app.services.alerts import AlertService
 from app.services.alerts.alert_service import is_current_high_expiry_alert
@@ -87,33 +94,6 @@ def _execute_read_tool(db: Session, name: str, params: dict[str, Any]) -> dict[s
     return jsonable_encoder(tool.execute(db, params, None))  # type: ignore[arg-type]
 
 
-def _alert_condition(alert: dict[str, Any]) -> dict[str, Any]:
-    expiry = alert.get("ngay_het_han")
-    if isinstance(expiry, datetime):
-        expiry = expiry.isoformat()
-    return {
-        "alert_id": alert["canhbao_id"],
-        "alert_type": alert["loai_canh_bao"],
-        "severity": alert["muc_do_nghiem_trong"],
-        "batch_id": alert.get("lohang_id"),
-        "batch_kind": alert.get("loai_lohang"),
-        "batch_code": alert.get("ma_lo"),
-        "product": alert.get("ten_san_pham"),
-        "expires_at": expiry,
-        "units_on_hand": alert.get("so_luong_hien_tai"),
-    }
-
-
-def _fingerprint(condition: dict[str, Any]) -> str:
-    """Stable for one alert condition; changes when expiry/severity changes."""
-    payload = {
-        key: condition.get(key)
-        for key in ("alert_id", "alert_type", "severity", "expires_at", "batch_id", "batch_kind")
-    }
-    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
-
-
 def _deterministic_recommendation(condition: dict[str, Any]) -> str:
     product = condition.get("product") or f"lô #{condition.get('batch_id')}"
     batch = condition.get("batch_code")
@@ -129,28 +109,35 @@ def _deterministic_recommendation(condition: dict[str, Any]) -> str:
     return " ".join(parts) + ". Xác nhận tình trạng lô trước khi quyết định tạm dừng bán, xử lý hủy hoặc cập nhật cảnh báo."
 
 
-def _run_llm_evaluation(db: Session, condition: dict[str, Any]) -> tuple[str, list[dict[str, Any]], bool]:
+def _run_llm_evaluation(
+    db: Session,
+    condition: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]], bool, Optional[str]]:
     """Run a bounded tool-use loop. Failure deliberately returns fallback."""
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    if not api_key:
-        return _deterministic_recommendation(condition), [], False
+    with observability.trace_proactive_evaluation(
+        int(condition["alert_id"]), condition, prompt_version=PROACTIVE_PROMPT_VERSION
+    ) as span:
+        trace_id = observability.get_trace_id(span)
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            fallback = _deterministic_recommendation(condition)
+            observability.safe_update(span, output=fallback, metadata={"mode": "deterministic_fallback"})
+            observability.flush()
+            return fallback, [], False, trace_id
 
-    try:
-        import openai
+        try:
+            import openai
 
-        client = openai.OpenAI(
-            api_key=api_key,
-            base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com",
-        )
-        messages: list[dict[str, Any]] = [
-            {"role": "system", "content": _PROMPT},
-            {"role": "user", "content": json.dumps({"condition": condition}, ensure_ascii=False, default=str)},
-        ]
-        trace: list[dict[str, Any]] = []
+            client = openai.OpenAI(
+                api_key=api_key,
+                base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com",
+            )
+            messages: list[dict[str, Any]] = [
+                {"role": "system", "content": _PROMPT},
+                {"role": "user", "content": json.dumps({"condition": condition}, ensure_ascii=False, default=str)},
+            ]
+            trace: list[dict[str, Any]] = []
 
-        with observability.trace_proactive_evaluation(
-            int(condition["alert_id"]), condition, prompt_version=PROACTIVE_PROMPT_VERSION
-        ) as span:
             for iteration in range(PROACTIVE_MAX_TOOL_ITERATIONS):
                 started = time.monotonic()
                 with observability.trace_llm_call(PROACTIVE_MODEL, iteration) as generation:
@@ -186,7 +173,7 @@ def _run_llm_evaluation(db: Session, condition: dict[str, Any]) -> tuple[str, li
                     recommendation = (choice.message.content or "").strip() or _deterministic_recommendation(condition)
                     observability.safe_update(span, output=recommendation)
                     observability.flush()
-                    return recommendation, trace, True
+                    return recommendation, trace, True, trace_id
 
                 messages.append({
                     "role": "assistant",
@@ -216,10 +203,13 @@ def _run_llm_evaluation(db: Session, condition: dict[str, Any]) -> tuple[str, li
             fallback = _deterministic_recommendation(condition)
             observability.safe_update(span, output=fallback, level="WARNING", status_message="tool_call_limit")
             observability.flush()
-            return fallback, trace, True
-    except Exception:
-        logger.exception("Proactive LLM evaluation failed; using deterministic recommendation")
-        return _deterministic_recommendation(condition), [], False
+            return fallback, trace, True, trace_id
+        except Exception:
+            logger.exception("Proactive LLM evaluation failed; using deterministic recommendation")
+            fallback = _deterministic_recommendation(condition)
+            observability.safe_update(span, output=fallback, level="ERROR", status_message="llm_fallback")
+            observability.flush()
+            return fallback, [], False, trace_id
 
 
 def _supersede_noncurrent_insights(db: Session, current_alert_ids: set[int]) -> int:
@@ -256,21 +246,20 @@ def refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
     created = 0
     reopened = 0
     skipped = 0
+    failed = 0
+    proposed = 0
     superseded = _supersede_noncurrent_insights(db, {int(alert["canhbao_id"]) for alert in candidates})
     for alert in candidates:
-        condition = _alert_condition(alert)
-        fingerprint = _fingerprint(condition)
+        condition = build_alert_condition(alert)
+        fingerprint = insight_fingerprint(condition)
         existing = db.query(ProactiveInsight).filter(ProactiveInsight.fingerprint == fingerprint).first()
+        reopen_token = None
         if existing:
             if existing.trang_thai == "superseded":
-                existing.trang_thai = "unread"
-                existing.ngay_doc = None
-                existing.ngay_xu_ly = None
-                existing.ngay_thay_the = None
-                reopened += 1
+                reopen_token = existing.ngay_thay_the.isoformat() if existing.ngay_thay_the else "superseded"
             else:
                 skipped += 1
-            continue
+                continue
 
         # A materially changed condition for the same alert supersedes only
         # open notifications; a human-resolved insight stays an audit record.
@@ -278,30 +267,65 @@ def refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
             ProactiveInsight.source_alert_id == condition["alert_id"],
             ProactiveInsight.trang_thai.in_(_OPEN_INSIGHT_STATUSES),
         ).all()
-        for row in old_open:
-            row.trang_thai = "superseded"
-            row.ngay_thay_the = datetime.now()
-            superseded += 1
 
-        recommendation, trace, used_llm = _run_llm_evaluation(db, condition)
-        db.add(ProactiveInsight(
-            source_alert_id=condition["alert_id"],
-            fingerprint=fingerprint,
-            scenario=PROACTIVE_SCENARIO,
-            muc_do_nghiem_trong=condition["severity"],
-            tieu_de=f"Hạn dùng cần xử lý: {condition.get('product') or condition.get('batch_code') or condition['alert_id']}",
-            khuyen_nghi=recommendation,
-            bang_chung=condition,
-            tool_trace=trace,
-            prompt_version=PROACTIVE_PROMPT_VERSION,
-            model=PROACTIVE_MODEL if used_llm else None,
-            used_llm=used_llm,
-            trang_thai="unread",
-        ))
-        created += 1
+        recommendation, trace, used_llm, trace_id = _run_llm_evaluation(db, condition)
+        title = f"Hạn dùng cần xử lý: {condition.get('product') or condition.get('batch_code') or condition['alert_id']}"
+        automation = agent_service.execute_automated_action(
+            db,
+            "create_proactive_notification",
+            {
+                "source_alert_id": condition["alert_id"],
+                "fingerprint": fingerprint,
+                "scenario": PROACTIVE_SCENARIO,
+                "severity": condition["severity"],
+                "title": title,
+                "recommendation": recommendation,
+                "evidence": condition,
+                "tool_trace": trace,
+                "prompt_version": PROACTIVE_PROMPT_VERSION,
+                "model": PROACTIVE_MODEL if used_llm else None,
+                "used_llm": used_llm,
+                "reopen_existing": reopen_token is not None,
+            },
+            idempotency_key=automation_idempotency_key(condition, occurrence=reopen_token),
+            trigger_context={
+                "source": "inventory_alert",
+                "scenario": PROACTIVE_SCENARIO,
+                "source_alert_id": condition["alert_id"],
+            },
+            reasoning_reference=f"prompt={PROACTIVE_PROMPT_VERSION};fingerprint={fingerprint}",
+            ly_do=recommendation,
+            langfuse_trace_id=trace_id,
+            preconditions=condition,
+        )
+        if automation["pending"]:
+            proposed += 1
+            continue
+        if not automation["executed"]:
+            failed += 1
+            continue
+
+        action_result = automation.get("result") or {}
+        if action_result.get("reopened"):
+            reopened += 1
+        elif action_result.get("created"):
+            created += 1
+            for row in old_open:
+                row.trang_thai = "superseded"
+                row.ngay_thay_the = datetime.now()
+                superseded += 1
+        else:
+            skipped += 1
 
     db.commit()
-    return {"created": created, "reopened": reopened, "skipped": skipped, "superseded": superseded}
+    return {
+        "created": created,
+        "reopened": reopened,
+        "skipped": skipped,
+        "superseded": superseded,
+        "proposed": proposed,
+        "failed": failed,
+    }
 
 
 def safe_refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
@@ -311,7 +335,15 @@ def safe_refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
     except Exception as exc:
         db.rollback()
         logger.exception("Proactive expiry insight refresh failed")
-        return {"created": 0, "reopened": 0, "skipped": 0, "superseded": 0, "error": type(exc).__name__}
+        return {
+            "created": 0,
+            "reopened": 0,
+            "skipped": 0,
+            "superseded": 0,
+            "proposed": 0,
+            "failed": 1,
+            "error": type(exc).__name__,
+        }
 
 
 def list_proactive_insights(

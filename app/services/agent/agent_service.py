@@ -16,13 +16,13 @@ Two reasoning paths:
     template built from `get_insights`, clearly labeled as reduced
     capability, so the endpoint always works.
 
-Nothing in here mutates data on its own — including inside the chat loop.
-`get_insights` only *recommends* a tool call, and when the chat loop's
-model calls a "draft" or "execute" tool, that call is routed through
-`propose_action` rather than `AgentTool.execute` (see
-`_execute_tool_call` below) — it becomes a pending AgentAction, not an
-executed one. A recommendation or a chat-proposed action only takes
-effect once a human calls `approve_action`, which:
+The interactive chat path never mutates data on its own. `get_insights`
+only *recommends* a tool call, and when the chat loop's model calls a
+"draft" or "execute" tool, that call is routed through `propose_action`
+rather than `AgentTool.execute` (see `_execute_tool_call` below) — it
+becomes a pending AgentAction, not an executed one. A recommendation or a
+chat-proposed action only takes effect once a human calls
+`approve_action`, which:
   1. checks the caller's role against the tool's classification
      (`_require_role_for_classification`),
   2. atomically claims the action so two concurrent approvals can't both
@@ -31,7 +31,13 @@ effect once a human calls `approve_action`, which:
      it declared any, so an approval can't fire against a target that
      changed since the proposal was made (stale-approval guard), and only
      then
-  4. runs `AgentTool.execute` — the one place a mutation actually happens.
+  4. runs `AgentTool.execute`.
+
+The separate Phase 5 unattended path is `execute_automated_action`. It
+does not accept a model-selected permission: a code-owned Action Policy
+either blocks the tool, creates the same human-approval proposal, or lets
+one low-risk/internal/idempotent action revalidate live state and run.
+Every attempt is persisted in AgentAction before execution.
 """
 import json
 import logging
@@ -41,10 +47,17 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import AgentAction, NguoiDung
 from app.services.agent import observability, state_service, tools as tool_registry
+from app.services.agent.action_policy import (
+    OUTCOME_APPROVAL,
+    OUTCOME_AUTOMATIC,
+    OUTCOME_BLOCKED,
+    evaluate_automated_action,
+)
 from app.services.errors import DomainError
 from app.core.time import utc_now
 
@@ -204,6 +217,16 @@ def _serialize_action(action: AgentAction) -> dict:
         "nguon": action.nguon,
         "phan_loai": action.phan_loai,
         "muc_do_uu_tien": action.muc_do_uu_tien,
+        "execution_policy": action.execution_policy,
+        "execution_mode": action.execution_mode,
+        "policy_reason": action.policy_reason,
+        "trigger_context": action.trigger_context,
+        "reasoning_reference": action.reasoning_reference,
+        "idempotency_key": action.idempotency_key,
+        "is_idempotent": action.is_idempotent,
+        "execution_attempts": action.execution_attempts,
+        "langfuse_trace_id": action.langfuse_trace_id,
+        "proactive_insight_id": action.proactive_insight_id,
         "trang_thai": action.trang_thai,
         "dieu_kien_tien_quyet": action.dieu_kien_tien_quyet,
         "ket_qua": action.ket_qua,
@@ -247,6 +270,8 @@ def propose_action(
     require `approve_action` before `execute` ever runs.
     """
     tool = tool_registry.get_tool(loai_hanh_dong)
+    if tool.internal_only:
+        raise DomainError(status_code=404, detail=f"Không tìm thấy công cụ agent: {loai_hanh_dong}")
     tool_registry.validate_params(tool, tham_so)
 
     if tool.classification == "read":
@@ -264,6 +289,10 @@ def propose_action(
         nguon=nguon,
         phan_loai=tool.classification,
         muc_do_uu_tien=tool.risk_level,
+        execution_policy=tool.execution_policy,
+        execution_mode="human_approval",
+        policy_reason="Interactive actions require the existing human approval lifecycle",
+        is_idempotent=tool.idempotent,
         trang_thai="de_xuat",
         nguoidung_de_xuat_id=current_user.nguoidung_id,
         dieu_kien_tien_quyet=preconditions,
@@ -272,6 +301,169 @@ def propose_action(
     db.commit()
     db.refresh(action)
     return {"executed": False, "pending": True, "action": _serialize_action(action)}
+
+
+def execute_automated_action(
+    db: Session,
+    loai_hanh_dong: str,
+    tham_so: dict,
+    *,
+    idempotency_key: str,
+    trigger_context: dict,
+    reasoning_reference: str,
+    ly_do: Optional[str] = None,
+    langfuse_trace_id: Optional[str] = None,
+    preconditions: Optional[dict] = None,
+) -> dict:
+    """Run one code-authorized unattended action with a durable audit row.
+
+    The decision comes only from ``AgentTool.execution_policy``. An
+    APPROVAL_REQUIRED tool becomes a normal pending proposal, while a
+    NEVER_AUTOMATE tool is recorded as blocked. Only an AUTO_ALLOWED tool
+    satisfying the additional low-risk/idempotency/revalidation guards can
+    reach ``execute``.
+    """
+    if not idempotency_key or len(idempotency_key) > 128:
+        raise DomainError(status_code=400, detail="Idempotency key phải dài từ 1 đến 128 ký tự")
+
+    tool = tool_registry.get_tool(loai_hanh_dong)
+    tool_registry.validate_params(tool, tham_so)
+    decision = evaluate_automated_action(tool)
+    trace_id = langfuse_trace_id if langfuse_trace_id and len(langfuse_trace_id) == 32 else None
+    encoded_params = jsonable_encoder(tham_so)
+
+    existing = db.query(AgentAction).filter(AgentAction.idempotency_key == idempotency_key).first()
+    if existing:
+        if existing.loai_hanh_dong != loai_hanh_dong or existing.tham_so != encoded_params:
+            raise DomainError(status_code=409, detail="Idempotency key đã được dùng cho action hoặc tham số khác")
+        can_retry = (
+            existing.trang_thai == "that_bai"
+            and tool.idempotent
+            and decision.outcome == OUTCOME_AUTOMATIC
+            and (existing.execution_attempts or 0) < 2
+            and (existing.ket_qua or {}).get("outcome") == "failed"
+        )
+        if not can_retry:
+            return {
+                "executed": existing.trang_thai == "hoan_thanh",
+                "pending": existing.trang_thai == "de_xuat",
+                "deduplicated": True,
+                "action": _serialize_action(existing),
+                "result": existing.ket_qua,
+            }
+        action = existing
+        action.trang_thai = "dang_xu_ly"
+        action.loi = None
+        action.ngay_bat_dau_xu_ly = utc_now()
+        action.ngay_xu_ly = None
+        action.execution_attempts = (action.execution_attempts or 0) + 1
+        db.commit()
+    else:
+        encoded_preconditions = jsonable_encoder(preconditions)
+        if encoded_preconditions is None and tool.capture_state and decision.outcome != OUTCOME_BLOCKED:
+            encoded_preconditions = jsonable_encoder(tool.capture_state(db, tham_so, None))
+
+        if decision.outcome == OUTCOME_APPROVAL:
+            status = "de_xuat"
+            mode = "human_approval"
+            started_at = None
+            attempts = 0
+            error = None
+        elif decision.outcome == OUTCOME_BLOCKED:
+            status = "that_bai"
+            mode = "automatic"
+            started_at = None
+            attempts = 0
+            error = f"POLICY_BLOCKED: {decision.reason}"
+        else:
+            status = "dang_xu_ly"
+            mode = "automatic"
+            started_at = utc_now()
+            attempts = 1
+            error = None
+
+        action = AgentAction(
+            loai_hanh_dong=loai_hanh_dong,
+            tham_so=encoded_params,
+            ly_do=ly_do,
+            nguon="agent",
+            phan_loai=tool.classification,
+            muc_do_uu_tien=tool.risk_level,
+            execution_policy=tool.execution_policy,
+            execution_mode=mode,
+            policy_reason=decision.reason,
+            trigger_context=jsonable_encoder(trigger_context),
+            reasoning_reference=reasoning_reference,
+            idempotency_key=idempotency_key,
+            is_idempotent=tool.idempotent,
+            execution_attempts=attempts,
+            langfuse_trace_id=trace_id,
+            trang_thai=status,
+            dieu_kien_tien_quyet=encoded_preconditions,
+            loi=error,
+            ngay_bat_dau_xu_ly=started_at,
+            ngay_xu_ly=utc_now() if status == "that_bai" else None,
+        )
+        db.add(action)
+        try:
+            db.commit()
+            db.refresh(action)
+        except IntegrityError:
+            db.rollback()
+            duplicate = db.query(AgentAction).filter(AgentAction.idempotency_key == idempotency_key).one()
+            return {
+                "executed": duplicate.trang_thai == "hoan_thanh",
+                "pending": duplicate.trang_thai == "de_xuat",
+                "deduplicated": True,
+                "action": _serialize_action(duplicate),
+                "result": duplicate.ket_qua,
+            }
+
+        if decision.outcome == OUTCOME_APPROVAL:
+            return {"executed": False, "pending": True, "deduplicated": False, "action": _serialize_action(action)}
+        if decision.outcome == OUTCOME_BLOCKED:
+            return {"executed": False, "pending": False, "deduplicated": False, "action": _serialize_action(action)}
+
+    try:
+        if tool.revalidate_state and action.dieu_kien_tien_quyet is not None:
+            tool.revalidate_state(db, action.tham_so, action.dieu_kien_tien_quyet, None)
+        result = tool.execute(db, action.tham_so, None)
+    except DomainError as exc:
+        action_id = action.action_id
+        db.rollback()
+        action = db.query(AgentAction).filter(AgentAction.action_id == action_id).one()
+        action.trang_thai = "that_bai"
+        action.loi = str(exc.detail)
+        action.ket_qua = {"outcome": "rejected", "reason": str(exc.detail)}
+        action.ngay_xu_ly = utc_now()
+        db.commit()
+        return {"executed": False, "pending": False, "deduplicated": False, "action": _serialize_action(action)}
+    except Exception as exc:
+        logger.exception("Automated Operations Agent action %s failed", action.action_id)
+        action_id = action.action_id
+        db.rollback()
+        action = db.query(AgentAction).filter(AgentAction.action_id == action_id).one()
+        action.trang_thai = "that_bai"
+        action.loi = f"Unexpected automated-action failure: {type(exc).__name__}"
+        action.ket_qua = {"outcome": "failed", "error_type": type(exc).__name__}
+        action.ngay_xu_ly = utc_now()
+        db.commit()
+        return {"executed": False, "pending": False, "deduplicated": False, "action": _serialize_action(action)}
+
+    encoded_result = jsonable_encoder(result)
+    action.trang_thai = "hoan_thanh"
+    action.ket_qua = encoded_result
+    action.proactive_insight_id = encoded_result.get("insight_id") if isinstance(encoded_result, dict) else None
+    action.ngay_xu_ly = utc_now()
+    db.commit()
+    db.refresh(action)
+    return {
+        "executed": True,
+        "pending": False,
+        "deduplicated": False,
+        "action": _serialize_action(action),
+        "result": encoded_result,
+    }
 
 
 def _claim_action_or_404(db: Session, action_id: int, claimed_trang_thai: str, current_user: NguoiDung) -> AgentAction:

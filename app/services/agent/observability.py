@@ -67,6 +67,21 @@ def _get_client_safely() -> Optional[Any]:
         return None
 
 
+def get_trace_id(observation: Optional[Any] = None) -> Optional[str]:
+    """Return the current 32-character trace id without risking app flow."""
+    try:
+        direct = getattr(observation, "trace_id", None) if observation is not None else None
+        if isinstance(direct, str) and len(direct) == 32:
+            return direct
+        client = _get_client_safely()
+        getter = getattr(client, "get_current_trace_id", None) if client is not None else None
+        current = getter() if callable(getter) else None
+        return current if isinstance(current, str) and len(current) == 32 else None
+    except Exception:
+        logger.debug("Langfuse trace-id lookup failed", exc_info=True)
+        return None
+
+
 @contextmanager
 def _best_effort_context(factory: Any) -> Iterator[Optional[Any]]:
     """Enter an SDK context without letting SDK lifecycle failures escape.

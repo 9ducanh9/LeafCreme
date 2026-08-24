@@ -162,6 +162,13 @@ class AlertService:
         return data
 
     # ------------------------------------------------------------------
+    def get_alert(self, db: Session, alert_id: int) -> dict:
+        alert = db.query(CanhBaoTonKho).filter(CanhBaoTonKho.canhbao_id == alert_id).first()
+        if not alert:
+            raise DomainError(status_code=404, detail="Không tìm thấy cảnh báo")
+        return self._enrich_with_batch_info(db, alert)
+
+    # ------------------------------------------------------------------
     def list_alerts(
         self,
         db: Session,

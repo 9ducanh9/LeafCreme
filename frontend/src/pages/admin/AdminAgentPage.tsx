@@ -12,7 +12,7 @@ import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import {
-  approveAction, getActionStatusLabel, getClassificationColor, getClassificationLabel, getInsights, getSeverityColor, getSeverityLabel,
+  approveAction, getActionStatusLabel, getClassificationColor, getClassificationLabel, getExecutionPolicyLabel, getInsights, getSeverityColor, getSeverityLabel,
   listActions, listProactiveInsights, postChat, proposeAction, rejectAction, resetAction, updateProactiveInsightStatus,
   type AgentAction, type ChatReply, type Insight, type ProactiveInsight, type ToolCallTrace,
 } from '../../services/admin/agentService'
@@ -37,6 +37,8 @@ const actionColumns: Column<AgentAction>[] = [
   { id: 'tham_so', label: 'Tham số', render: (row) => <Typography variant="body2" sx={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{JSON.stringify(row.tham_so)}</Typography> },
   { id: 'nguon', label: 'Nguồn', render: (row) => row.nguon === 'agent' ? 'Agent' : 'Nhân viên' },
   { id: 'phan_loai', label: 'Loại', render: (row) => <Chip size="small" variant="outlined" label={getClassificationLabel(row.phan_loai)} color={getClassificationColor(row.phan_loai)} /> },
+  { id: 'execution_policy', label: 'Policy', render: (row) => <Chip size="small" variant="outlined" label={getExecutionPolicyLabel(row.execution_policy)} color={row.execution_policy === 'AUTO_ALLOWED' ? 'success' : row.execution_policy === 'NEVER_AUTOMATE' ? 'error' : 'warning'} /> },
+  { id: 'execution_mode', label: 'Chế độ', render: (row) => row.execution_mode === 'automatic' ? 'Tự động' : 'Phê duyệt' },
   { id: 'nguoidung_de_xuat_id', label: 'Đề xuất bởi', render: (row) => row.nguoidung_de_xuat_id ?? '-' },
   { id: 'nguoidung_duyet_id', label: 'Duyệt/từ chối bởi', render: (row) => row.nguoidung_duyet_id ?? '-' },
   { id: 'trang_thai', label: 'Trạng thái', render: (row) => <Chip size="small" label={getActionStatusLabel(row.trang_thai)} color={row.trang_thai === 'hoan_thanh' ? 'success' : row.trang_thai === 'that_bai' ? 'error' : row.trang_thai === 'tu_choi' ? 'default' : 'warning'} /> },

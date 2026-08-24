@@ -42,6 +42,7 @@ export interface ProactiveInsight {
 }
 
 export type AgentActionClassification = 'read' | 'draft' | 'execute'
+export type AgentExecutionPolicy = 'AUTO_ALLOWED' | 'APPROVAL_REQUIRED' | 'NEVER_AUTOMATE'
 
 export interface AgentAction {
   action_id: number
@@ -51,6 +52,16 @@ export interface AgentAction {
   nguon: 'agent' | 'nhan_vien'
   phan_loai: AgentActionClassification
   muc_do_uu_tien: 'low' | 'medium' | 'high' | null
+  execution_policy: AgentExecutionPolicy
+  execution_mode: 'automatic' | 'human_approval'
+  policy_reason: string | null
+  trigger_context: Record<string, unknown> | null
+  reasoning_reference: string | null
+  idempotency_key: string | null
+  is_idempotent: boolean
+  execution_attempts: number
+  langfuse_trace_id: string | null
+  proactive_insight_id: number | null
   trang_thai: 'de_xuat' | 'dang_xu_ly' | 'hoan_thanh' | 'tu_choi' | 'that_bai'
   dieu_kien_tien_quyet: Record<string, unknown> | null
   ket_qua: Record<string, unknown> | null
@@ -84,6 +95,9 @@ export interface ToolDescriptor {
   description: string
   classification: AgentActionClassification
   risk_level: 'low' | 'medium' | 'high'
+  execution_policy: AgentExecutionPolicy
+  idempotent: boolean
+  internal_only: boolean
   required_params: string[]
   optional_params: string[]
 }
@@ -192,4 +206,13 @@ export function getClassificationColor(classification: AgentActionClassification
   if (classification === 'execute') return 'error'
   if (classification === 'draft') return 'info'
   return 'default'
+}
+
+export function getExecutionPolicyLabel(policy: AgentExecutionPolicy): string {
+  const labels: Record<AgentExecutionPolicy, string> = {
+    AUTO_ALLOWED: 'Tự động an toàn',
+    APPROVAL_REQUIRED: 'Cần phê duyệt',
+    NEVER_AUTOMATE: 'Không tự động',
+  }
+  return labels[policy] || policy
 }

@@ -142,7 +142,7 @@ def patch_proactive_insight(
 def get_tools(
     current_user: NguoiDung = Depends(require_capability("agent.chat")),
 ):
-    return {"tools": describe_tools()}
+    return {"tools": describe_tools(include_internal=False)}
 
 
 # =========================================================

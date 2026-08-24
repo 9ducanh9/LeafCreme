@@ -25,6 +25,12 @@ Classification (replaces the earlier ambiguous doc/thay_doi split):
 shown in the audit UI — independent of classification (an "execute" can
 still be low-risk, e.g. pausing a batch).
 
+`execution_policy` is the code-owned unattended execution boundary:
+AUTO_ALLOWED, APPROVAL_REQUIRED, or NEVER_AUTOMATE. The LLM never sets or
+overrides it. AUTO_ALLOWED alone is not sufficient for mutation: the
+automated executor also requires low risk, idempotency, explicit enablement,
+and live-state revalidation.
+
 Stale-approval guard: an "execute" tool may declare `capture_state` (run
 at propose time, snapshots whatever live fields matter — e.g. an order's
 status) and `revalidate_state` (run at approve time, re-fetches the same
@@ -43,6 +49,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.models import NguoiDung
+from app.services.agent.action_policy import (
+    APPROVAL_REQUIRED,
+    AUTO_ALLOWED,
+    NEVER_AUTOMATE,
+    VALID_EXECUTION_POLICIES,
+)
 from app.services.agent import state_service
 from app.services.alerts import AlertService
 from app.services.batches.batch_service import BatchService
@@ -250,15 +262,57 @@ def _draft_replenishment_note(db: Session, params: dict, current_user: NguoiDung
     return _alert_service.update_alert(db, alert_id, payload, current_user)
 
 
+# ---------------------------------------------------------------------------
+# Internal proactive actions. These are not exposed to the LLM or action
+# picker; the code-governed proactive orchestrator is their only caller.
+# Lazy imports avoid coupling the general registry to the proactive module's
+# startup lifecycle.
+# ---------------------------------------------------------------------------
+def _create_proactive_notification(
+    db: Session,
+    params: dict,
+    current_user: Optional[NguoiDung],
+) -> dict:
+    from app.services.agent.proactive_actions import create_proactive_notification
+
+    return create_proactive_notification(db, params, current_user)
+
+
+def _capture_proactive_notification_state(
+    db: Session,
+    params: dict,
+    current_user: Optional[NguoiDung],
+) -> dict:
+    from app.services.agent.proactive_actions import capture_notification_state
+
+    return capture_notification_state(db, params, current_user)
+
+
+def _revalidate_proactive_notification_state(
+    db: Session,
+    params: dict,
+    preconditions: dict,
+    current_user: Optional[NguoiDung],
+) -> None:
+    from app.services.agent.proactive_actions import revalidate_notification_state
+
+    revalidate_notification_state(db, params, preconditions, current_user)
+
+
 @dataclass(frozen=True)
 class AgentTool:
     name: str
     description: str
     classification: str  # "read" | "draft" | "execute"
     required_params: frozenset[str]
-    execute: Callable[[Session, dict, NguoiDung], dict]
+    execute: Callable[[Session, dict, Optional[NguoiDung]], dict]
+    execution_policy: str
     optional_params: frozenset[str] = field(default_factory=frozenset)
     risk_level: str = "low"  # "low" | "medium" | "high" — independent of classification
+    idempotent: bool = False
+    auto_execute: bool = False
+    self_revalidating: bool = False
+    internal_only: bool = False
     # JSON-schema fragment per param — {"type": "integer"}, {"type": "string",
     # "enum": [...]}, etc. Used to build the OpenAI-compatible function-
     # calling schema (see chat_tool_schemas) as well as /agent/tools.
@@ -266,8 +320,14 @@ class AgentTool:
     param_schema: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Stale-approval guard — see module docstring. Only meaningful for
     # "execute" tools with a single identifiable target.
-    capture_state: Optional[Callable[[Session, dict, NguoiDung], dict]] = None
-    revalidate_state: Optional[Callable[[Session, dict, dict, NguoiDung], None]] = None
+    capture_state: Optional[Callable[[Session, dict, Optional[NguoiDung]], dict]] = None
+    revalidate_state: Optional[Callable[[Session, dict, dict, Optional[NguoiDung]], None]] = None
+
+    def __post_init__(self) -> None:
+        if self.execution_policy not in VALID_EXECUTION_POLICIES:
+            raise ValueError(f"Invalid execution policy for {self.name}: {self.execution_policy}")
+        if self.execution_policy == NEVER_AUTOMATE and self.auto_execute:
+            raise ValueError(f"NEVER_AUTOMATE tool {self.name} cannot enable auto execution")
 
 
 TOOL_REGISTRY: dict[str, AgentTool] = {
@@ -278,6 +338,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         classification="read",
         required_params=frozenset(),
         execute=_get_alert_summary,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
     ),
     "list_pending_alerts": AgentTool(
         name="list_pending_alerts",
@@ -286,6 +348,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset(),
         optional_params=frozenset({"limit"}),
         execute=_list_pending_alerts,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
         param_schema={"limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Max alerts to return. Default 10."}},
     ),
     "list_stale_orders": AgentTool(
@@ -295,6 +359,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset(),
         optional_params=frozenset({"hours", "limit"}),
         execute=_list_stale_orders,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
         param_schema={
             "hours": {"type": "integer", "minimum": 1, "maximum": 720, "description": "Age threshold in hours (max 30 days). Default 24."},
             "limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Max orders to return. Default 10."},
@@ -307,6 +373,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset(),
         optional_params=frozenset({"days"}),
         execute=_get_expiring_batches,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
         param_schema={"days": {"type": "integer", "minimum": 1, "maximum": 90, "description": "Look-ahead window in days. Default 7."}},
     ),
     # -- Alerts (execute) -------------------------------------------------
@@ -318,6 +386,10 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset(),
         optional_params=frozenset({"low_stock_threshold", "expiring_days"}),
         execute=_generate_alerts,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
+        auto_execute=True,
+        self_revalidating=True,
         param_schema={
             "low_stock_threshold": {"type": "integer", "minimum": 1, "maximum": 100000, "description": "Units at or below this count are flagged. Default 10."},
             "expiring_days": {"type": "integer", "minimum": 1, "maximum": 365, "description": "Days out to flag as expiring soon. Default 7."},
@@ -331,6 +403,7 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset({"alert_id"}),
         optional_params=frozenset({"note"}),
         execute=_resolve_alert,
+        execution_policy=APPROVAL_REQUIRED,
         param_schema={
             "alert_id": {"type": "integer", "minimum": 1, "description": "canhbao_id of the alert to resolve."},
             "note": {"type": "string", "maxLength": 1000, "description": "Optional note explaining the resolution."},
@@ -344,6 +417,7 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset({"alert_id"}),
         optional_params=frozenset({"note"}),
         execute=_dismiss_alert,
+        execution_policy=APPROVAL_REQUIRED,
         param_schema={
             "alert_id": {"type": "integer", "minimum": 1, "description": "canhbao_id of the alert to dismiss."},
             "note": {"type": "string", "maxLength": 1000, "description": "Optional note explaining why it was dismissed."},
@@ -356,6 +430,7 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         risk_level="medium",
         required_params=frozenset({"kind", "batch_id", "trang_thai"}),
         execute=_set_batch_status,
+        execution_policy=APPROVAL_REQUIRED,
         param_schema={
             "kind": {"type": "string", "enum": list(_BATCH_KINDS), "description": "Which batch table the batch belongs to."},
             "batch_id": {"type": "integer", "minimum": 1, "description": "lohang_id of the batch."},
@@ -371,6 +446,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         classification="read",
         required_params=frozenset({"order_id"}),
         execute=_get_order_details,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
         param_schema={"order_id": {"type": "integer", "minimum": 1, "description": "donhang_id of the order."}},
     ),
     "cancel_order": AgentTool(
@@ -384,6 +461,7 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset({"order_id"}),
         optional_params=frozenset({"reason"}),
         execute=_cancel_order,
+        execution_policy=NEVER_AUTOMATE,
         param_schema={
             "order_id": {"type": "integer", "minimum": 1, "description": "donhang_id of the order to cancel."},
             "reason": {"type": "string", "maxLength": 500, "description": "Why the order is being cancelled."},
@@ -398,6 +476,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         classification="read",
         required_params=frozenset({"hop_qua_id"}),
         execute=_get_gift_box_bom,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
         param_schema={"hop_qua_id": {"type": "integer", "minimum": 1, "description": "hop_qua_id of the gift box."}},
     ),
     "check_production_feasibility": AgentTool(
@@ -411,6 +491,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         classification="read",
         required_params=frozenset({"target_type", "target_id", "quantity"}),
         execute=_check_production_feasibility,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
         param_schema={
             "target_type": {"type": "string", "enum": ["hopqua", "bienthe"], "description": "'hopqua' for a gift box (has a BOM), 'bienthe' for a plain product variant (no recipe)."},
             "target_id": {"type": "integer", "minimum": 1, "description": "hop_qua_id or bienthe_id depending on target_type."},
@@ -425,6 +507,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset(),
         optional_params=frozenset({"limit"}),
         execute=_get_replenishment_signals,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
         param_schema={"limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Max signals to return. Default 20."}},
     ),
     "draft_replenishment_note": AgentTool(
@@ -439,11 +523,40 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         required_params=frozenset({"alert_id", "so_luong_de_nghi"}),
         optional_params=frozenset({"ly_do"}),
         execute=_draft_replenishment_note,
+        execution_policy=APPROVAL_REQUIRED,
         param_schema={
             "alert_id": {"type": "integer", "minimum": 1, "description": "canhbao_id of the related low-stock alert."},
             "so_luong_de_nghi": {"type": "integer", "minimum": 1, "maximum": 1000000, "description": "Recommended reorder quantity."},
             "ly_do": {"type": "string", "maxLength": 500, "description": "Reasoning behind the recommended quantity."},
         },
+    ),
+    "create_proactive_notification": AgentTool(
+        name="create_proactive_notification",
+        description="Create a deduplicated internal notification for a revalidated proactive expiry condition.",
+        classification="draft",
+        risk_level="low",
+        required_params=frozenset({
+            "source_alert_id", "fingerprint", "scenario", "severity", "title",
+            "recommendation", "evidence", "tool_trace", "prompt_version", "used_llm",
+        }),
+        optional_params=frozenset({"model", "reopen_existing"}),
+        execute=_create_proactive_notification,
+        execution_policy=AUTO_ALLOWED,
+        idempotent=True,
+        auto_execute=True,
+        internal_only=True,
+        param_schema={
+            "source_alert_id": {"type": "integer", "minimum": 1},
+            "fingerprint": {"type": "string", "maxLength": 64},
+            "scenario": {"type": "string", "enum": ["expiring_batch"]},
+            "severity": {"type": "string", "enum": ["cao"]},
+            "title": {"type": "string", "maxLength": 300},
+            "recommendation": {"type": "string", "maxLength": 4000},
+            "prompt_version": {"type": "string", "maxLength": 100},
+            "model": {"type": "string", "maxLength": 100},
+        },
+        capture_state=_capture_proactive_notification_state,
+        revalidate_state=_revalidate_proactive_notification_state,
     ),
 }
 
@@ -507,7 +620,7 @@ def validate_params(tool: AgentTool, params: dict) -> None:
             raise DomainError(status_code=400, detail=f"Tham số '{name}' của '{tool.name}' dài tối đa {max_length} ký tự")
 
 
-def describe_tools() -> list[dict[str, Any]]:
+def describe_tools(*, include_internal: bool = True) -> list[dict[str, Any]]:
     """Serializable catalogue of available tools — used by the admin UI to
     render an action picker."""
     return [
@@ -516,11 +629,15 @@ def describe_tools() -> list[dict[str, Any]]:
             "description": tool.description,
             "classification": tool.classification,
             "risk_level": tool.risk_level,
+            "execution_policy": tool.execution_policy,
+            "idempotent": tool.idempotent,
+            "internal_only": tool.internal_only,
             "required_params": sorted(tool.required_params),
             "optional_params": sorted(tool.optional_params),
             "param_schema": tool.param_schema,
         }
         for tool in TOOL_REGISTRY.values()
+        if include_internal or not tool.internal_only
     ]
 
 
@@ -532,6 +649,8 @@ def chat_tool_schemas() -> list[dict[str, Any]]:
     agent_service._execute_tool_call)."""
     schemas = []
     for tool in TOOL_REGISTRY.values():
+        if tool.internal_only:
+            continue
         properties = {
             name: tool.param_schema.get(name, {"type": "string"})
             for name in sorted(tool.required_params | tool.optional_params)

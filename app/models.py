@@ -618,6 +618,20 @@ class AgentAction(Base):
     # "execute" can be low-risk, e.g. pausing a batch; a "draft" is always
     # low-risk by definition but this lets a future tool say otherwise).
     muc_do_uu_tien: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Phase 5 policy snapshot. The model never chooses these values; they
+    # come from the code-owned AgentTool registry at proposal/execution time.
+    execution_policy: Mapped[str] = mapped_column(String(30), nullable=False, server_default="APPROVAL_REQUIRED")
+    execution_mode: Mapped[str] = mapped_column(String(20), nullable=False, server_default="human_approval")
+    policy_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trigger_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    reasoning_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    is_idempotent: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    execution_attempts: Mapped[int] = mapped_column(nullable=False, server_default="0")
+    langfuse_trace_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    proactive_insight_id: Mapped[int | None] = mapped_column(
+        ForeignKey("proactive_insights.insight_id", ondelete="SET NULL"), nullable=True
+    )
     trang_thai: Mapped[str] = mapped_column(String(20), server_default="de_xuat")
     # Snapshot of the live state a mutating tool's target was in when this
     # action was proposed (AgentTool.capture_state). Re-checked against
@@ -642,7 +656,16 @@ class AgentAction(Base):
         CheckConstraint("nguon IN ('agent', 'nhan_vien')", name="ck_agent_actions_nguon"),
         CheckConstraint("phan_loai IN ('read', 'draft', 'execute')", name="ck_agent_actions_phan_loai"),
         CheckConstraint("muc_do_uu_tien IN ('low', 'medium', 'high')", name="ck_agent_actions_muc_do_uu_tien"),
+        CheckConstraint(
+            "execution_policy IN ('AUTO_ALLOWED', 'APPROVAL_REQUIRED', 'NEVER_AUTOMATE')",
+            name="ck_agent_actions_execution_policy",
+        ),
+        CheckConstraint(
+            "execution_mode IN ('automatic', 'human_approval')",
+            name="ck_agent_actions_execution_mode",
+        ),
         CheckConstraint("trang_thai IN ('de_xuat', 'dang_xu_ly', 'hoan_thanh', 'tu_choi', 'that_bai')", name="ck_agent_actions_trang_thai"),
+        UniqueConstraint("idempotency_key", name="uq_agent_actions_idempotency_key"),
     )
 
 
