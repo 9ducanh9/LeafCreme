@@ -164,12 +164,12 @@ export default function DataTable<T>({
               {columns.map((column) => {
                 const active = sortBy === column.id
                 return (
-                  <TableCell key={column.id} align={column.numeric ? 'right' : 'left'} sx={cellSx(column)} aria-sort={active ? sortDir === 'asc' ? 'ascending' : 'descending' : undefined}>
+                  <TableCell key={column.id} align={column.numeric ? 'right' : 'left'} sx={{ ...cellSx(column), whiteSpace: 'nowrap' }} aria-sort={active ? sortDir === 'asc' ? 'ascending' : 'descending' : undefined}>
                     {column.sortable && onSortChange ? <TableSortLabel active={active} direction={active ? sortDir : 'asc'} onClick={() => changeSort(column)}>{column.label}</TableSortLabel> : column.label}
                   </TableCell>
                 )
               })}
-              {rowActions && <TableCell align="right">Thao tác</TableCell>}
+              {rowActions && <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>Thao tác</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>

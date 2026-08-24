@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Alert as MuiAlert, Button, Chip, IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material'
+import { Alert as MuiAlert, Button, Chip, IconButton, MenuItem, Paper, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
 import RefreshIcon from '@mui/icons-material/Refresh'
@@ -53,11 +53,16 @@ const columns: Column<AlertRow>[] = [
     // Thời gian tương đối để triage nhanh; mốc tuyệt đối giữ ở tooltip.
     render: (row) => (
       <Tooltip title={new Date(row.ngay_canh_bao).toLocaleString('vi-VN')}>
-        <span>{relativeTime(row.ngay_canh_bao)}</span>
+        <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>{relativeTime(row.ngay_canh_bao)}</Typography>
       </Tooltip>
     ),
   },
-  { id: 'loai_canh_bao', label: 'Loại', render: (row) => getAlertTypeLabel(row.loai_canh_bao) },
+  {
+    id: 'loai_canh_bao', label: 'Loại',
+    render: (row) => (
+      <Typography variant="body2" fontWeight={500} sx={{ whiteSpace: 'nowrap' }}>{getAlertTypeLabel(row.loai_canh_bao)}</Typography>
+    ),
+  },
   {
     // `id` phải là 'muc_do' — đó là key duy nhất backend nhận cho cột này
     // (alert_service.list_alerts sort_map). Trước đây để
@@ -97,9 +102,45 @@ const columns: Column<AlertRow>[] = [
   { id: 'so_luong_hien_tai', label: 'Tồn hiện tại', numeric: true, render: (row) => row.so_luong_hien_tai ?? '—' },
   {
     id: 'trang_thai', label: 'Trạng thái',
-    render: (row) => <Chip size="small" variant="outlined" color={STATUS_STYLE[row.trang_thai] ?? 'default'} label={getStatusLabel(row.trang_thai)} />,
+    // 'chua_xu_ly' đúng với gần như mọi dòng, nên tô nó thành chip là dành
+    // trọng số thị giác lớn nhất cho thông tin ít nhất. Chỉ nhấn khi trạng
+    // thái KHÁC mặc định; còn lại để chữ mờ.
+    render: (row) => (
+      row.trang_thai === 'chua_xu_ly'
+        ? <Typography variant="caption" color="text.disabled">{getStatusLabel(row.trang_thai)}</Typography>
+        : <Chip size="small" variant="outlined" color={STATUS_STYLE[row.trang_thai] ?? 'default'} label={getStatusLabel(row.trang_thai)} />
+    ),
   },
 ]
+
+function SummaryTiles({ summary }: { summary: AlertSummary }) {
+  const high = summary.by_severity?.cao ?? 0
+  const tiles: { label: string; value: number; tone: 'danger' | 'warn' | 'muted' }[] = [
+    { label: 'Chờ xử lý', value: summary.pending, tone: summary.pending > 0 ? 'warn' : 'muted' },
+    { label: 'Mức cao', value: high, tone: high > 0 ? 'danger' : 'muted' },
+    { label: 'Đang xử lý', value: summary.processing, tone: 'muted' },
+    { label: 'Đã xử lý', value: summary.resolved, tone: 'muted' },
+  ]
+  const toneColor = { danger: 'error.main', warn: 'warning.main', muted: 'text.primary' } as const
+  return (
+    <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: 'wrap' }}>
+      {tiles.map((tile) => (
+        <Paper
+          key={tile.label}
+          variant="outlined"
+          sx={{ px: 2.5, py: 1.25, minWidth: 116, borderRadius: 2 }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '.04em', textTransform: 'uppercase' }}>
+            {tile.label}
+          </Typography>
+          <Typography variant="h5" sx={{ mt: 0.25, fontWeight: 700, lineHeight: 1.1, color: toneColor[tile.tone] }}>
+            {tile.value}
+          </Typography>
+        </Paper>
+      ))}
+    </Stack>
+  )
+}
 
 export default function AdminAlertsPage() {
   const { can } = useAuth()
@@ -154,7 +195,7 @@ export default function AdminAlertsPage() {
 
   return (
     <AdminPage title="Cảnh báo tồn kho" breadcrumb={[{ label: 'Cảnh báo' }]}>
-      {summary && <MuiAlert severity={summary.pending ? 'warning' : 'success'} sx={{ mb: 2 }}>Đang chờ xử lý: {summary.pending} · Đã xử lý: {summary.resolved}</MuiAlert>}
+      {summary && <SummaryTiles summary={summary} />}
       {/* Lỗi tải bảng đã được DataTable hiển thị kèm nút thử lại; chỉ hiện ở
           đây những lỗi thao tác (cập nhật, dọn, đánh dấu hàng loạt) mà bảng
           không biết tới — trước đây cả hai cùng hiện nên lỗi tải bị lặp. */}
