@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert as MuiAlert, Button, Chip, IconButton, MenuItem, Paper, Stack, TextField, Tooltip, Typography } from '@mui/material'
+import { Alert as MuiAlert, Box, Button, Chip, IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material'
+import HourglassBottomIcon from '@mui/icons-material/HourglassBottom'
+import PendingActionsIcon from '@mui/icons-material/PendingActions'
+import PriorityHighIcon from '@mui/icons-material/PriorityHigh'
+import TaskAltIcon from '@mui/icons-material/TaskAlt'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
 import RefreshIcon from '@mui/icons-material/Refresh'
@@ -7,6 +11,8 @@ import AdminPage from '../../components/admin/ui/admin-page'
 import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import ExpiryCell from '../../components/admin/ui/expiry-cell'
+import StatCard from '../../components/admin/dashboard/stat-card'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import { useAuth } from '../../contexts/AuthContext'
 import { groupAlertsByLot, type AlertGroupMeta } from '../../utils/admin/groupAlertsByLot'
@@ -38,14 +44,6 @@ function relativeTime(iso: string): string {
   const hours = Math.round(minutes / 60)
   if (hours < 24) return `${hours} giờ trước`
   return `${Math.round(hours / 24)} ngày trước`
-}
-
-/** Số ngày còn lại tới hạn dùng. Âm nghĩa là đã quá hạn. */
-function daysUntilExpiry(iso?: string): number | null {
-  if (!iso) return null
-  const value = new Date(iso).getTime()
-  if (Number.isNaN(value)) return null
-  return Math.ceil((value - Date.now()) / 86_400_000)
 }
 
 const buildColumns = (meta: Map<number, AlertGroupMeta>): Column<AlertRow>[] => [
@@ -110,18 +108,14 @@ const buildColumns = (meta: Map<number, AlertGroupMeta>): Column<AlertRow>[] => 
   },
   {
     // `ngay_het_han` vẫn luôn có trong payload nhưng trước đây không hiển
-    // thị — với tiệm bánh đây là con số quyết định nhất.
+    // thị — với tiệm bánh đây là con số quyết định nhất. Dùng ExpiryCell
+    // dùng chung (đã có sẵn ở AdminInventoryPage) thay vì tự tính lại: nó
+    // so theo mốc nửa đêm nên số ngày không đổi theo giờ xem, và hiện cả
+    // ngày tuyệt đối để đối chiếu giấy tờ.
     id: 'ngay_het_han', label: 'Hạn dùng',
-    render: (row) => {
-      const days = daysUntilExpiry(row.ngay_het_han)
-      if (days === null) return <Typography variant="body2" color="text.disabled">—</Typography>
-      const label = days < 0 ? `Quá hạn ${Math.abs(days)} ngày` : days === 0 ? 'Hết hạn hôm nay' : `Còn ${days} ngày`
-      if (days <= 0) return <Chip size="small" color="error" label={label} />
-      if (days <= 3) return <Chip size="small" color="warning" variant="outlined" label={label} />
-      return <Typography variant="body2">{label}</Typography>
-    },
+    render: (row) => <ExpiryCell date={row.ngay_het_han} />,
   },
-  { id: 'so_luong_hien_tai', label: 'Tồn hiện tại', numeric: true, render: (row) => row.so_luong_hien_tai ?? '—' },
+  { id: 'so_luong_hien_tai', label: 'Tồn', numeric: true, render: (row) => row.so_luong_hien_tai ?? '—' },
   {
     id: 'trang_thai', label: 'Trạng thái',
     // 'chua_xu_ly' đúng với gần như mọi dòng, nên tô nó thành chip là dành
@@ -135,32 +129,18 @@ const buildColumns = (meta: Map<number, AlertGroupMeta>): Column<AlertRow>[] => 
   },
 ]
 
-function SummaryTiles({ summary }: { summary: AlertSummary }) {
+function SummaryTiles({ summary, onPick }: { summary: AlertSummary; onPick: (trang_thai: string) => void }) {
+  // Dùng StatCard dùng chung (đang chạy ở AdminDashboardPage) thay vì tự
+  // dựng ô số riêng — và tận dụng đúng ý đồ của nó: bấm vào con số thì lọc
+  // bảng theo đúng nhóm đó, thay vì để số nằm chết.
   const high = summary.by_severity?.cao ?? 0
-  const tiles: { label: string; value: number; tone: 'danger' | 'warn' | 'muted' }[] = [
-    { label: 'Chờ xử lý', value: summary.pending, tone: summary.pending > 0 ? 'warn' : 'muted' },
-    { label: 'Mức cao', value: high, tone: high > 0 ? 'danger' : 'muted' },
-    { label: 'Đang xử lý', value: summary.processing, tone: 'muted' },
-    { label: 'Đã xử lý', value: summary.resolved, tone: 'muted' },
-  ]
-  const toneColor = { danger: 'error.main', warn: 'warning.main', muted: 'text.primary' } as const
   return (
-    <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: 'wrap' }}>
-      {tiles.map((tile) => (
-        <Paper
-          key={tile.label}
-          variant="outlined"
-          sx={{ px: 2.5, py: 1.25, minWidth: 116, borderRadius: 2 }}
-        >
-          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '.04em', textTransform: 'uppercase' }}>
-            {tile.label}
-          </Typography>
-          <Typography variant="h5" sx={{ mt: 0.25, fontWeight: 700, lineHeight: 1.1, color: toneColor[tile.tone] }}>
-            {tile.value}
-          </Typography>
-        </Paper>
-      ))}
-    </Stack>
+    <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', mb: 2 }}>
+      <StatCard label="Chờ xử lý" value={summary.pending} icon={<PendingActionsIcon color={summary.pending ? 'warning' : 'disabled'} />} onClick={() => onPick('chua_xu_ly')} />
+      <StatCard label="Mức cao" value={high} icon={<PriorityHighIcon color={high ? 'error' : 'disabled'} />} onClick={() => onPick('')} />
+      <StatCard label="Đang xử lý" value={summary.processing} icon={<HourglassBottomIcon color="disabled" />} onClick={() => onPick('dang_xu_ly')} />
+      <StatCard label="Đã xử lý" value={summary.resolved} icon={<TaskAltIcon color="disabled" />} onClick={() => onPick('da_xu_ly')} />
+    </Box>
   )
 }
 
@@ -223,7 +203,7 @@ export default function AdminAlertsPage() {
 
   return (
     <AdminPage title="Cảnh báo tồn kho" breadcrumb={[{ label: 'Cảnh báo' }]}>
-      {summary && <SummaryTiles summary={summary} />}
+      {summary && <SummaryTiles summary={summary} onPick={(v) => setFilter('trang_thai', v)} />}
       {/* Lỗi tải bảng đã được DataTable hiển thị kèm nút thử lại; chỉ hiện ở
           đây những lỗi thao tác (cập nhật, dọn, đánh dấu hàng loạt) mà bảng
           không biết tới — trước đây cả hai cùng hiện nên lỗi tải bị lặp. */}
