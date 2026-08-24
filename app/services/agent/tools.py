@@ -311,7 +311,24 @@ class AgentTool:
     risk_level: str = "low"  # "low" | "medium" | "high" — independent of classification
     idempotent: bool = False
     auto_execute: bool = False
+    # Asserts that `execute` re-reads whatever live state it depends on and
+    # bails out itself if that state moved, WITHOUT needing a captured
+    # precondition snapshot. It is an alternative to the
+    # capture_state/revalidate_state pair, not a shortcut past it — the
+    # unattended gate accepts either. Nothing in the framework can verify
+    # this claim, so only set it when the tool genuinely re-derives its own
+    # inputs on every run (e.g. rescans current inventory) and is safe
+    # against state that changed since it was scheduled. If in doubt leave
+    # it False and declare capture_state/revalidate_state instead.
     self_revalidating: bool = False
+    # True means `execute` — or a domain service it calls — dereferences
+    # current_user. The unattended executor has no authenticated user and
+    # passes None, so such a tool must never run unattended; see
+    # action_policy.evaluate_automated_action. Defaults to True so a newly
+    # added tool is excluded from automation until someone has checked.
+    # Set False only after confirming the whole call path tolerates
+    # current_user=None.
+    requires_user_context: bool = True
     internal_only: bool = False
     # JSON-schema fragment per param — {"type": "integer"}, {"type": "string",
     # "enum": [...]}, etc. Used to build the OpenAI-compatible function-
@@ -328,6 +345,11 @@ class AgentTool:
             raise ValueError(f"Invalid execution policy for {self.name}: {self.execution_policy}")
         if self.execution_policy == NEVER_AUTOMATE and self.auto_execute:
             raise ValueError(f"NEVER_AUTOMATE tool {self.name} cannot enable auto execution")
+        if self.auto_execute and self.requires_user_context:
+            raise ValueError(
+                f"Tool {self.name} cannot enable auto execution while it requires user context: "
+                "the unattended executor passes current_user=None"
+            )
 
 
 TOOL_REGISTRY: dict[str, AgentTool] = {
@@ -390,6 +412,9 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         idempotent=True,
         auto_execute=True,
         self_revalidating=True,
+        # _generate_alerts ignores current_user; AlertService.generate_alerts
+        # takes only thresholds.
+        requires_user_context=False,
         param_schema={
             "low_stock_threshold": {"type": "integer", "minimum": 1, "maximum": 100000, "description": "Units at or below this count are flagged. Default 10."},
             "expiring_days": {"type": "integer", "minimum": 1, "maximum": 365, "description": "Days out to flag as expiring soon. Default 7."},
@@ -544,6 +569,9 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         execution_policy=AUTO_ALLOWED,
         idempotent=True,
         auto_execute=True,
+        # proactive_actions.create_proactive_notification and its
+        # capture/revalidate pair all take Optional[NguoiDung].
+        requires_user_context=False,
         internal_only=True,
         param_schema={
             "source_alert_id": {"type": "integer", "minimum": 1},

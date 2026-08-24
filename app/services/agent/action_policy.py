@@ -35,6 +35,18 @@ def evaluate_automated_action(tool: Any) -> ActionPolicyDecision:
     if policy == APPROVAL_REQUIRED:
         return ActionPolicyDecision(policy, OUTCOME_APPROVAL, "Human approval is required by code policy")
 
+    # Checked before the read-only shortcut on purpose: the unattended
+    # executor has no authenticated user and passes current_user=None, and
+    # plenty of *read* tools dereference it for scoping (get_order_details
+    # -> OrderService.get_order does a role check). Letting those through
+    # as "read-only, therefore safe" would hand the domain layer a None and
+    # fail at runtime instead of here.
+    if getattr(tool, "requires_user_context", True):
+        return ActionPolicyDecision(
+            policy,
+            OUTCOME_BLOCKED,
+            "Tool requires an authenticated user; unattended execution has none",
+        )
     if tool.classification == "read":
         return ActionPolicyDecision(policy, OUTCOME_AUTOMATIC, "Read-only tool")
     if not tool.auto_execute:

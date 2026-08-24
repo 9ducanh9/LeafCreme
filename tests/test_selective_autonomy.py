@@ -13,6 +13,7 @@ from app.services.agent.action_policy import (
     AUTO_ALLOWED,
     NEVER_AUTOMATE,
     OUTCOME_AUTOMATIC,
+    OUTCOME_BLOCKED,
     evaluate_automated_action,
 )
 from app.services.agent.proactive_actions import (
@@ -99,6 +100,36 @@ class TestActionPolicy:
         assert get_tool("set_batch_status").execution_policy == APPROVAL_REQUIRED
         assert get_tool("create_proactive_notification").execution_policy == AUTO_ALLOWED
         assert evaluate_automated_action(get_tool("create_proactive_notification")).outcome == OUTCOME_AUTOMATIC
+
+    def test_user_context_tools_cannot_run_unattended(self):
+        """The unattended executor passes current_user=None, so any tool whose
+        call path dereferences it must be stopped by the gate rather than
+        failing inside the domain layer at runtime.
+
+        Ordered before the read-only shortcut on purpose: get_order_details is
+        classified "read" yet OrderService.get_order does a role check on
+        current_user, so "read-only therefore safe" is not sound.
+        """
+        decision = evaluate_automated_action(get_tool("get_order_details"))
+        assert decision.outcome == OUTCOME_BLOCKED
+        assert "authenticated user" in decision.reason
+
+        for name in ("generate_alerts", "create_proactive_notification"):
+            tool = get_tool(name)
+            assert tool.requires_user_context is False, f"{name} is auto-executable"
+            assert evaluate_automated_action(tool).outcome == OUTCOME_AUTOMATIC
+
+    def test_auto_execute_with_user_context_is_rejected_at_construction(self):
+        """Defence in depth: the contradiction cannot even be declared."""
+        with pytest.raises(ValueError, match="requires user context"):
+            replace(get_tool("generate_alerts"), requires_user_context=True)
+
+    def test_unreviewed_tools_are_excluded_from_automation_by_default(self):
+        """requires_user_context defaults to True, so promoting a tool to
+        AUTO_ALLOWED is not by itself enough to get it automated."""
+        assert get_tool("resolve_alert").requires_user_context is True
+        promoted = replace(get_tool("resolve_alert"), execution_policy=AUTO_ALLOWED)
+        assert evaluate_automated_action(promoted).outcome == OUTCOME_BLOCKED
 
     def test_internal_auto_tool_is_not_exposed_to_the_llm_or_action_picker(self):
         chat_names = {row["function"]["name"] for row in chat_tool_schemas()}
