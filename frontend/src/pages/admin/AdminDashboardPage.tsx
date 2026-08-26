@@ -5,10 +5,10 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import StarIcon from '@mui/icons-material/Star'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
-import { useNavigate } from 'react-router-dom'
 import AdminPage from '../../components/admin/ui/admin-page'
 import StatCard from '../../components/admin/ui/stat-card'
 import TodayActionsWidget from '../../components/admin/dashboard/today-actions-widget'
+import OperationsAttentionWidget from '../../components/admin/dashboard/operations-attention-widget'
 import RevenueByDayMonth from '../../components/admin/dashboard/RevenueByDayMonth'
 import RevenueByProduct from '../../components/admin/dashboard/RevenueByProduct'
 import { useDashboardData } from '../../hooks/admin/useDashboardData'
@@ -17,7 +17,6 @@ type TimeRange = 'daily' | 'monthly'
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
 
 export default function AdminDashboardPage() {
-  const navigate = useNavigate()
   const [timeRange, setTimeRange] = useState<TimeRange>('daily')
   const { revenueData, productRevenue, bestSellers, categoryRevenue, stats, alertsSummary, loading, errors, reload } = useDashboardData(timeRange)
   const average = stats && stats.totalOrders ? stats.totalRevenue / stats.totalOrders : undefined
@@ -33,7 +32,7 @@ export default function AdminDashboardPage() {
         </TextField>
       </Box>
       {loading && <LinearProgress sx={{ mb: 2 }} />}
-      {alertsSummary && alertsSummary.pending > 0 && <Alert severity="warning" action={<Button color="inherit" onClick={() => navigate('/admin/alerts')}>Mở cảnh báo</Button>} sx={{ mb: 2 }}>Có {alertsSummary.pending} cảnh báo tồn kho đang chờ xử lý.</Alert>}
+      <OperationsAttentionWidget />
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
         <StatCard label="Doanh thu" value={stats ? money(stats.totalRevenue) : errors.stats ? 'Lỗi' : '—'} icon={<AttachMoneyIcon />} href="/admin/orders" />
         <StatCard label="Đơn hàng" value={stats?.totalOrders ?? (errors.stats ? 'Lỗi' : '—')} icon={<ShoppingCartIcon />} href="/admin/orders" />

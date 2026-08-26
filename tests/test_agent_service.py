@@ -213,7 +213,7 @@ class TestGetInsights:
         assert len(insights) == 1
         assert insights[0]["id"] == "all_clear"
 
-    def test_high_severity_alert_gets_recommended_action(self, db_session):
+    def test_active_high_severity_alert_is_not_prematurely_resolved(self, db_session):
         alert = _make_low_stock_alert(db_session, so_luong=3)  # <=5 -> severity "cao"
 
         insights = agent_service.get_insights(db_session)
@@ -221,8 +221,9 @@ class TestGetInsights:
         matching = [i for i in insights if i["id"] == f"alert:{alert.canhbao_id}"]
         assert len(matching) == 1
         assert matching[0]["severity"] == "cao"
-        assert matching[0]["recommended_action"]["tool"] == "resolve_alert"
-        assert matching[0]["recommended_action"]["params"] == {"alert_id": alert.canhbao_id}
+        assert matching[0]["recommended_action"] is None
+        assert matching[0]["title"].startswith("Sắp hết hàng")
+        assert "Còn 3 sản phẩm trong kho" in matching[0]["evidence"]
 
     def test_stale_orders_surface_as_insight_without_a_tool(self, db_session):
         _make_stale_order(db_session, hours_old=48)

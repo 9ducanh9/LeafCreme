@@ -44,7 +44,6 @@ const AdminBatchCreatePage = lazy(() => import('./pages/admin/AdminBatchCreatePa
 const AdminAlertsPage = lazy(() => import('./pages/admin/AdminAlertsPage'))
 const AdminStockLedgerPage = lazy(() => import('./pages/admin/AdminStockLedgerPage'))
 const AdminBatchTracePage = lazy(() => import('./pages/admin/AdminBatchTracePage'))
-const AdminAgentPage = lazy(() => import('./pages/admin/AdminAgentPage'))
 
 // useBlocker (see hooks/admin/useUnsavedChanges) only works within a data
 // router, so routes are declared via createBrowserRouter/RouterProvider
@@ -169,7 +168,7 @@ const router = createBrowserRouter(
             { path: 'batch-trace/:batchType/:batchId', element: <AdminCapabilityRoute capability="inventory.read"><AdminBatchTracePage /></AdminCapabilityRoute> },
             { path: 'batches', element: <AdminCapabilityRoute capability="batches.write"><AdminBatchCreatePage /></AdminCapabilityRoute> },
             { path: 'alerts', element: <AdminCapabilityRoute capability="alerts.read"><AdminAlertsPage /></AdminCapabilityRoute> },
-            { path: 'agent', element: <AdminCapabilityRoute capability="agent.chat"><AdminAgentPage /></AdminCapabilityRoute> },
+            { path: 'agent', element: <Navigate to="/admin/dashboard" replace /> },
           ],
         },
       ],

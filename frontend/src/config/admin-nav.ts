@@ -3,7 +3,7 @@ export interface AdminNavItem {
   label: string
   path: string
   capability: string
-  icon: 'overview' | 'catalog' | 'warehouse' | 'operations' | 'sales' | 'settings' | 'agent'
+  icon: 'overview' | 'catalog' | 'warehouse' | 'operations' | 'sales' | 'settings'
 }
 
 export interface AdminNavGroup {
@@ -17,7 +17,6 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { key: 'overview', label: 'Tổng quan', path: '/admin/dashboard', icon: 'overview', capability: 'dashboard.read' },
       { key: 'orders', label: 'Đơn hàng', path: '/admin/orders', icon: 'sales', capability: 'orders.read.own_created' },
-      { key: 'agent', label: 'Operations Agent', path: '/admin/agent', icon: 'agent', capability: 'agent.chat' },
     ],
   },
   {

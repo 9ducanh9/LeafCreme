@@ -42,6 +42,7 @@ Every attempt is persisted in AgentAction before execution.
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -123,27 +124,40 @@ class Insight:
 
 
 _ALERT_TYPE_LABELS = {
-    "ton_kho_thap": "Low stock",
-    "sap_het_han": "Expiring soon",
-    "het_han": "Expired",
-    "qua_han": "Past due",
+    "ton_kho_thap": "Sắp hết hàng",
+    "sap_het_han": "Sắp hết hạn",
+    "het_han": "Đã hết hạn",
+    "qua_han": "Đã quá hạn",
 }
+
+_FIXTURE_PREFIX = re.compile(r"^LC_VERIFY_\d{8}_\d{6}_\d+[\s_-]*", re.IGNORECASE)
+_COMMON_SUBJECT_LABELS = {
+    "gift box": "Hộp quà",
+    "ribbon": "Ruy băng",
+}
+
+
+def _display_subject(value: str) -> str:
+    """Keep verification identifiers out of staff-facing copy."""
+    cleaned = _FIXTURE_PREFIX.sub("", value).strip(" _-") or value
+    return _COMMON_SUBJECT_LABELS.get(cleaned.casefold(), cleaned)
 
 
 def _insights_from_alerts(urgent_alerts: list[dict]) -> list[Insight]:
     insights = []
     for alert in urgent_alerts:
         label = _ALERT_TYPE_LABELS.get(alert["loai_canh_bao"], alert["loai_canh_bao"])
-        product = alert.get("ten_san_pham") or f"batch #{alert.get('lohang_id')}"
+        raw_product = alert.get("ten_san_pham") or f"lô #{alert.get('lohang_id')}"
+        product = _display_subject(raw_product)
         severity = alert["muc_do_nghiem_trong"]
 
         evidence = []
         if alert.get("so_luong_hien_tai") is not None:
-            evidence.append(f"{alert['so_luong_hien_tai']} units on hand")
+            evidence.append(f"Còn {alert['so_luong_hien_tai']} sản phẩm trong kho")
         if alert.get("ma_lo"):
-            evidence.append(f"lot {alert['ma_lo']}")
+            evidence.append(f"Mã lô {alert['ma_lo']}")
         if alert.get("ngay_het_han"):
-            evidence.append(f"expiry date {alert['ngay_het_han']}")
+            evidence.append(f"Hạn dùng {alert['ngay_het_han']}")
 
         insights.append(
             Insight(
@@ -151,11 +165,8 @@ def _insights_from_alerts(urgent_alerts: list[dict]) -> list[Insight]:
                 title=f"{label}: {product}",
                 severity=severity,
                 category="inventory",
-                description=f"{label} on '{product}'.",
+                description=f"{product} đang cần được kiểm tra và xử lý.",
                 evidence=evidence,
-                recommended_tool="resolve_alert" if severity == "cao" else None,
-                recommended_params={"alert_id": alert["canhbao_id"]} if severity == "cao" else None,
-                rationale="High-severity alert — resolve once restocked or the batch is discarded." if severity == "cao" else None,
             )
         )
     return insights
@@ -165,13 +176,13 @@ def _insight_from_stale_orders(stale_orders: list[dict], stale_order_count: int)
     if stale_order_count == 0:
         return None
     severity = "cao" if stale_order_count >= 5 else "binh_thuong"
-    evidence = [f"{o['ma_don_hang']} — {o['hours_open']}h open" for o in stale_orders[:5]]
+    evidence = [f"{o['ma_don_hang']} — chưa cập nhật trong {o['hours_open']} giờ" for o in stale_orders[:5]]
     return Insight(
         id="stale_orders",
-        title=f"{stale_order_count} order(s) stuck for 24h+",
+        title=f"{stale_order_count} đơn hàng chưa được xử lý sau 24 giờ",
         severity=severity,
         category="orders",
-        description="Orders have been sitting without moving forward — review for fulfillment or payment issues.",
+        description="Kiểm tra trạng thái thanh toán và tiến độ chuẩn bị của các đơn này.",
         evidence=evidence,
     )
 
@@ -187,10 +198,10 @@ def get_insights(db: Session) -> list[dict]:
         insights.append(
             Insight(
                 id="all_clear",
-                title="No open issues detected",
+                title="Chưa phát hiện vấn đề cần xử lý",
                 severity="thap",
                 category="general",
-                description="No unresolved high-severity alerts and no orders stuck past the 24h threshold.",
+                description="Không có cảnh báo nghiêm trọng hoặc đơn hàng bị kẹt quá 24 giờ.",
             )
         )
 
