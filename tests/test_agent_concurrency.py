@@ -93,7 +93,10 @@ def test_concurrent_approve_executes_the_underlying_tool_exactly_once():
         setup.flush()
 
         AlertService().generate_alerts(setup, low_stock_threshold=10, expiring_days=7)
-        alert = setup.query(CanhBaoTonKho).filter(CanhBaoTonKho.lohang_sanpham_id == batch.lohang_id).first()
+        alert = setup.query(CanhBaoTonKho).filter(
+            CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap",
+            CanhBaoTonKho.trang_thai == "chua_xu_ly",
+        ).one()
 
         proposal = agent_service.propose_action(setup, "resolve_alert", {"alert_id": alert.canhbao_id}, user)
         setup.commit()

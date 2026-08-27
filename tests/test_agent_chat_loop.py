@@ -73,7 +73,10 @@ def _make_low_stock_alert(db_session, so_luong: int = 3) -> CanhBaoTonKho:
     db_session.add(inventory)
     db_session.flush()
     AlertService().generate_alerts(db_session, low_stock_threshold=10, expiring_days=7)
-    return db_session.query(CanhBaoTonKho).filter(CanhBaoTonKho.lohang_sanpham_id == batch.lohang_id).first()
+    return db_session.query(CanhBaoTonKho).filter(
+        CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap",
+        CanhBaoTonKho.trang_thai == "chua_xu_ly",
+    ).one()
 
 
 # ---------------------------------------------------------------------------

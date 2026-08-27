@@ -77,17 +77,19 @@ def _make_product_batch(db_session, so_luong_hien_tai: int, ngay_het_han: dateti
 
 class TestGenerateAlerts:
     def test_creates_low_stock_alert(self, db_session, service):
-        batch = _make_product_batch(db_session, so_luong_hien_tai=3, ngay_het_han=datetime.now() + timedelta(days=90))
+        _make_product_batch(db_session, so_luong_hien_tai=3, ngay_het_han=datetime.now() + timedelta(days=90))
 
         result = service.generate_alerts(db_session, low_stock_threshold=10, expiring_days=7)
 
-        assert result["low_stock_created"] == 1
+        assert result["low_stock_created"] == 0
+        assert result["product_stock_created"] == 1
         alert = db_session.query(CanhBaoTonKho).filter(
-            CanhBaoTonKho.lohang_sanpham_id == batch.lohang_id,
-            CanhBaoTonKho.loai_canh_bao == "ton_kho_thap",
+            CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap",
         ).first()
         assert alert is not None
-        assert alert.muc_do_nghiem_trong == "cao"  # so_luong <= 5
+        assert alert.muc_do_nghiem_trong == "binh_thuong"
+        enriched = service.get_alert(db_session, alert.canhbao_id)
+        assert enriched["chi_tiet_ton_kho_san_pham"]["low_stock_count"] == 1
 
     def test_creates_expiring_alert(self, db_session, service):
         batch = _make_product_batch(db_session, so_luong_hien_tai=50, ngay_het_han=datetime.now() + timedelta(days=3))
@@ -119,14 +121,70 @@ class TestGenerateAlerts:
         first = service.generate_alerts(db_session, low_stock_threshold=10, expiring_days=7)
         second = service.generate_alerts(db_session, low_stock_threshold=10, expiring_days=7)
 
-        assert first["low_stock_created"] == 1
-        assert second["low_stock_created"] == 0
+        assert first["product_stock_created"] == 1
+        assert second["product_stock_created"] == 0
+        assert db_session.query(CanhBaoTonKho).filter(
+            CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap",
+            CanhBaoTonKho.trang_thai == "chua_xu_ly",
+        ).count() == 1
 
-    def test_skips_batch_with_zero_stock(self, db_session, service):
+    def test_zero_stock_creates_product_digest(self, db_session, service):
         _make_product_batch(db_session, so_luong_hien_tai=0, ngay_het_han=datetime.now() + timedelta(days=90))
 
         result = service.generate_alerts(db_session, low_stock_threshold=10, expiring_days=7)
-        assert result["total_created"] == 0
+        assert result["product_stock_created"] == 1
+        alert = db_session.query(CanhBaoTonKho).filter(
+            CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap"
+        ).one()
+        enriched = service.get_alert(db_session, alert.canhbao_id)
+        digest = enriched["chi_tiet_ton_kho_san_pham"]
+        assert digest["out_of_stock_count"] == 1
+        assert digest["unavailable_product_count"] == 1
+
+    def test_never_stocked_product_is_visible_and_grouped_once(self, db_session, service):
+        product = SanPham(ten="Bánh chưa nhập", sku="SP-NEVER-STOCKED", gia_co_ban=Decimal("50000"))
+        db_session.add(product)
+        db_session.flush()
+        db_session.add_all([
+            BienTheSanPham(
+                sanpham_id=product.sanpham_id,
+                huong_vi="Bánh chưa nhập",
+                kich_thuoc=size,
+                gia_bienthe=Decimal("50000"),
+            )
+            for size in ("18cm", "20cm")
+        ])
+        db_session.flush()
+
+        result = service.generate_alerts(db_session)
+
+        assert result["product_stock_condition_count"] == 1
+        alert = db_session.query(CanhBaoTonKho).filter(
+            CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap"
+        ).one()
+        digest = service.get_alert(db_session, alert.canhbao_id)["chi_tiet_ton_kho_san_pham"]
+        assert digest["never_stocked_count"] == 1
+        assert digest["affected_size_count"] == 2
+        assert digest["products"][0]["missing_sizes"] == ["18cm", "20cm"]
+
+    def test_restocking_every_size_resolves_digest(self, db_session, service):
+        batch = _make_product_batch(db_session, so_luong_hien_tai=0, ngay_het_han=datetime.now() + timedelta(days=90))
+        first = service.generate_alerts(db_session)
+        assert first["product_stock_created"] == 1
+
+        inventory = db_session.query(TonKhoSanPham).filter(
+            TonKhoSanPham.lohang_sanpham_id == batch.lohang_id
+        ).one()
+        inventory.so_luong_hien_tai = 25
+        db_session.commit()
+
+        second = service.generate_alerts(db_session)
+
+        assert second["product_stock_resolved"] == 1
+        alert = db_session.query(CanhBaoTonKho).filter(
+            CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap"
+        ).one()
+        assert alert.trang_thai == "da_xu_ly"
 
 
 class TestUpdateAlert:
@@ -140,10 +198,11 @@ class TestUpdateAlert:
         assert exc_info.value.status_code == 404
 
     def test_resolving_records_who_and_when(self, db_session, service, admin_user):
-        batch = _make_product_batch(db_session, so_luong_hien_tai=3, ngay_het_han=datetime.now() + timedelta(days=90))
+        batch = _make_product_batch(db_session, so_luong_hien_tai=3, ngay_het_han=datetime.now() + timedelta(days=3))
         service.generate_alerts(db_session, low_stock_threshold=10, expiring_days=7)
         alert = db_session.query(CanhBaoTonKho).filter(
-            CanhBaoTonKho.lohang_sanpham_id == batch.lohang_id
+            CanhBaoTonKho.lohang_sanpham_id == batch.lohang_id,
+            CanhBaoTonKho.loai_canh_bao == "sap_het_han",
         ).first()
 
         class Payload:

@@ -29,7 +29,7 @@ logger = logging.getLogger("bakeryonl.scheduler")
 
 _STALE_PAYMENT_SWEEP_INTERVAL_MINUTES = 15
 _STALE_PAYMENT_THRESHOLD_MINUTES = 30
-_ALERT_SCAN_HOUR_UTC = 23  # ~6am Asia/Ho_Chi_Minh (UTC+7)
+_ALERT_SCAN_INTERVAL_MINUTES = 15
 
 _maintenance_service = MaintenanceService()
 _scheduler: BackgroundScheduler | None = None
@@ -49,13 +49,13 @@ def _sweep_stale_payments_job() -> None:
         db.close()
 
 
-def _daily_alert_scan_job() -> None:
+def _inventory_alert_scan_job() -> None:
     db = SessionLocal()
     try:
         result = _maintenance_service.run_daily_alert_scan(db)
-        logger.info("Daily alert scan: %s", result)
+        logger.info("Inventory alert scan: %s", result)
     except Exception:
-        logger.exception("Daily alert scan job crashed")
+        logger.exception("Inventory alert scan job crashed")
     finally:
         db.close()
 
@@ -83,19 +83,18 @@ def start_scheduler() -> None:
         max_instances=1,
     )
     _scheduler.add_job(
-        _daily_alert_scan_job,
-        "cron",
-        hour=_ALERT_SCAN_HOUR_UTC,
-        minute=0,
-        id="daily_alert_scan",
+        _inventory_alert_scan_job,
+        "interval",
+        minutes=_ALERT_SCAN_INTERVAL_MINUTES,
+        id="inventory_alert_scan",
         coalesce=True,
         max_instances=1,
     )
     _scheduler.start()
     logger.info(
-        "Scheduler started: stale-payment sweep every %sm, alert scan daily at %s:00 UTC",
+        "Scheduler started: stale-payment sweep every %sm, inventory alert scan every %sm",
         _STALE_PAYMENT_SWEEP_INTERVAL_MINUTES,
-        _ALERT_SCAN_HOUR_UTC,
+        _ALERT_SCAN_INTERVAL_MINUTES,
     )
 
 

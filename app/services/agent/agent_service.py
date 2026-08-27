@@ -128,6 +128,7 @@ _ALERT_TYPE_LABELS = {
     "sap_het_han": "Sắp hết hạn",
     "het_han": "Đã hết hạn",
     "qua_han": "Đã quá hạn",
+    "san_pham_can_nhap": "Sản phẩm cần nhập hàng",
 }
 
 _FIXTURE_PREFIX = re.compile(r"^LC_VERIFY_\d{8}_\d{6}_\d+[\s_-]*", re.IGNORECASE)
@@ -152,6 +153,13 @@ def _insights_from_alerts(urgent_alerts: list[dict]) -> list[Insight]:
         severity = alert["muc_do_nghiem_trong"]
 
         evidence = []
+        stock_digest = alert.get("chi_tiet_ton_kho_san_pham") or {}
+        if stock_digest.get("product_count"):
+            evidence.append(f"{stock_digest['product_count']} sản phẩm cần bổ sung")
+        if stock_digest.get("affected_size_count"):
+            evidence.append(f"{stock_digest['affected_size_count']} kích thước bị ảnh hưởng")
+        if stock_digest.get("unavailable_product_count"):
+            evidence.append(f"{stock_digest['unavailable_product_count']} sản phẩm hết toàn bộ size")
         if alert.get("so_luong_hien_tai") is not None:
             evidence.append(f"Còn {alert['so_luong_hien_tai']} sản phẩm trong kho")
         if alert.get("ma_lo"):

@@ -109,3 +109,40 @@ class TestProactiveExpiryInsights:
 
         with pytest.raises(ValueError, match="read tools"):
             tool_registry.read_tool_schemas({"resolve_alert"})
+
+
+class TestProactiveProductStockDigest:
+    def test_creates_one_digest_for_multiple_missing_sizes_and_dedupes(self, db_session):
+        product = SanPham(
+            ten="Bánh chưa nhập proactive",
+            sku="SP-PROACTIVE-STOCK",
+            gia_co_ban=Decimal("50000"),
+        )
+        db_session.add(product)
+        db_session.flush()
+        db_session.add_all([
+            BienTheSanPham(
+                sanpham_id=product.sanpham_id,
+                huong_vi=product.ten,
+                kich_thuoc=size,
+                gia_bienthe=Decimal("50000"),
+            )
+            for size in ("18cm", "20cm")
+        ])
+        db_session.commit()
+
+        generated = AlertService().generate_alerts(db_session)
+        first = proactive_service.refresh_proactive_insights(db_session)
+        second = proactive_service.refresh_proactive_insights(db_session)
+
+        assert generated["product_stock_created"] == 1
+        assert first["created"] == 1
+        assert second["created"] == 0
+        assert second["skipped"] == 1
+        insight = db_session.query(ProactiveInsight).one()
+        assert insight.scenario == proactive_service.PRODUCT_STOCK_SCENARIO
+        assert insight.prompt_version == proactive_service.PRODUCT_STOCK_PROMPT_VERSION
+        assert insight.bang_chung["product_count"] == 1
+        assert insight.bang_chung["affected_size_count"] == 2
+        assert insight.bang_chung["products"][0]["missing_sizes"] == ["18cm", "20cm"]
+        assert "Chưa đủ dữ liệu" in insight.khuyen_nghi

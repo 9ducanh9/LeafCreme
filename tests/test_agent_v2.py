@@ -80,7 +80,10 @@ def _make_low_stock_alert(db_session, so_luong: int = 3) -> CanhBaoTonKho:
     db_session.add(inventory)
     db_session.flush()
     AlertService().generate_alerts(db_session, low_stock_threshold=10, expiring_days=7)
-    return db_session.query(CanhBaoTonKho).filter(CanhBaoTonKho.lohang_sanpham_id == batch.lohang_id).first()
+    return db_session.query(CanhBaoTonKho).filter(
+        CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap",
+        CanhBaoTonKho.trang_thai == "chua_xu_ly",
+    ).one()
 
 
 def _make_order(db_session, trang_thai: str = "cho") -> DonHang:
@@ -314,7 +317,8 @@ class TestReplenishment:
 
         result = tool.execute(db_session, {}, admin_user)
 
-        assert len(result["low_stock_alerts"]) == 1
+        assert result["low_stock_alerts"] == []
+        assert len(result["product_stock_digest"]) == 1
 
     def test_draft_note_writes_recommendation_onto_alert_without_resolving_it(self, db_session, admin_user):
         alert = _make_low_stock_alert(db_session, so_luong=2)

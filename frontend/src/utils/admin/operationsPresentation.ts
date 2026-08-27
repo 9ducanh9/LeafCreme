@@ -27,6 +27,17 @@ function formatDate(value: unknown): string | null {
 export function formatProactiveEvidence(insight: Pick<ProactiveInsight, 'evidence'>): string[] {
   const evidence = insight.evidence
   const result: string[] = []
+  const productCount = Number(evidence.product_count ?? 0)
+  const affectedSizeCount = Number(evidence.affected_size_count ?? 0)
+  const unavailableCount = Number(evidence.unavailable_product_count ?? 0)
+  if (productCount > 0) result.push(`${productCount} sản phẩm cần bổ sung`)
+  if (affectedSizeCount > 0) result.push(`${affectedSizeCount} kích thước bị ảnh hưởng`)
+  if (unavailableCount > 0) result.push(`${unavailableCount} sản phẩm hết toàn bộ size`)
+  if (evidence.categories && typeof evidence.categories === 'object') {
+    const categories = Object.entries(evidence.categories as Record<string, unknown>)
+      .map(([name, count]) => `${name}: ${String(count)}`)
+    if (categories.length > 0) result.push(categories.join(', '))
+  }
   const batch = evidence.batch_code ? cleanOperationalText(String(evidence.batch_code)) : null
   const expiry = formatDate(evidence.expires_at)
   if (evidence.units_on_hand !== undefined && evidence.units_on_hand !== null) {

@@ -4,7 +4,7 @@ import type { Page } from '../../types/page'
 
 export interface Alert {
   canhbao_id: number
-  loai_canh_bao: 'ton_kho_thap' | 'sap_het_han' | 'het_han' | 'qua_han'
+  loai_canh_bao: 'ton_kho_thap' | 'sap_het_han' | 'het_han' | 'qua_han' | 'san_pham_can_nhap'
   muc_do_nghiem_trong: 'thap' | 'binh_thuong' | 'cao'
   ngay_canh_bao: string
   trang_thai: 'chua_xu_ly' | 'dang_xu_ly' | 'da_xu_ly' | 'bo_qua'
@@ -17,6 +17,7 @@ export interface Alert {
   ma_lo?: string
   ngay_het_han?: string
   so_luong_hien_tai?: number
+  chi_tiet_ton_kho_san_pham?: Record<string, unknown>
 }
 
 export interface AlertSummary {
@@ -32,6 +33,10 @@ export interface GenerateAlertsResult {
   low_stock_created: number
   expiring_created: number
   expired_created: number
+  product_stock_created: number
+  product_stock_resolved: number
+  product_stock_condition_count: number
+  legacy_product_low_stock_resolved: number
   total_created: number
 }
 
@@ -98,7 +103,8 @@ export function getAlertTypeLabel(type: string): string {
     ton_kho_thap: 'Tồn kho thấp',
     sap_het_han: 'Sắp hết hạn',
     het_han: 'Đã hết hạn',
-    qua_han: 'Quá hạn'
+    qua_han: 'Quá hạn',
+    san_pham_can_nhap: 'Sản phẩm cần nhập hàng',
   }
   return labels[type] || type
 }
@@ -130,4 +136,3 @@ export function getBatchTypeLabel(type: string): string {
   }
   return labels[type] || type
 }
-

@@ -66,7 +66,10 @@ def _make_low_stock_alert(db_session, so_luong: int = 3) -> CanhBaoTonKho:
     db_session.flush()
 
     AlertService().generate_alerts(db_session, low_stock_threshold=10, expiring_days=7)
-    return db_session.query(CanhBaoTonKho).filter(CanhBaoTonKho.lohang_sanpham_id == batch.lohang_id).first()
+    return db_session.query(CanhBaoTonKho).filter(
+        CanhBaoTonKho.loai_canh_bao == "san_pham_can_nhap",
+        CanhBaoTonKho.trang_thai == "chua_xu_ly",
+    ).one()
 
 
 def _make_stale_order(db_session, hours_old: int, trang_thai: str = "cho") -> DonHang:
@@ -214,7 +217,7 @@ class TestGetInsights:
         assert insights[0]["id"] == "all_clear"
 
     def test_active_high_severity_alert_is_not_prematurely_resolved(self, db_session):
-        alert = _make_low_stock_alert(db_session, so_luong=3)  # <=5 -> severity "cao"
+        alert = _make_low_stock_alert(db_session, so_luong=0)  # unavailable -> severity "cao"
 
         insights = agent_service.get_insights(db_session)
 
@@ -222,8 +225,8 @@ class TestGetInsights:
         assert len(matching) == 1
         assert matching[0]["severity"] == "cao"
         assert matching[0]["recommended_action"] is None
-        assert matching[0]["title"].startswith("Sắp hết hàng")
-        assert "Còn 3 sản phẩm trong kho" in matching[0]["evidence"]
+        assert matching[0]["title"].startswith("Sản phẩm cần nhập hàng")
+        assert "Còn 0 sản phẩm trong kho" in matching[0]["evidence"]
 
     def test_stale_orders_surface_as_insight_without_a_tool(self, db_session):
         _make_stale_order(db_session, hours_old=48)

@@ -12,16 +12,36 @@ from sqlalchemy.orm import Session
 from app.models import NguoiDung, ProactiveInsight
 from app.services.alerts import AlertService
 from app.services.alerts.alert_service import is_current_high_expiry_alert
+from app.services.alerts.product_stock import PRODUCT_STOCK_ALERT_TYPE
 from app.services.errors import DomainError
 
 
 def build_alert_condition(alert: dict[str, Any]) -> dict[str, Any]:
+    if alert.get("loai_canh_bao") == PRODUCT_STOCK_ALERT_TYPE:
+        digest = alert.get("chi_tiet_ton_kho_san_pham") or {}
+        return {
+            "alert_id": alert["canhbao_id"],
+            "alert_type": alert["loai_canh_bao"],
+            "scenario": "product_stock",
+            "severity": alert["muc_do_nghiem_trong"],
+            "product_count": digest.get("product_count", 0),
+            "affected_size_count": digest.get("affected_size_count", 0),
+            "unavailable_product_count": digest.get("unavailable_product_count", 0),
+            "never_stocked_count": digest.get("never_stocked_count", 0),
+            "out_of_stock_count": digest.get("out_of_stock_count", 0),
+            "partial_out_of_stock_count": digest.get("partial_out_of_stock_count", 0),
+            "low_stock_count": digest.get("low_stock_count", 0),
+            "categories": digest.get("categories", {}),
+            "products": digest.get("products", []),
+        }
+
     expiry = alert.get("ngay_het_han")
     if isinstance(expiry, datetime):
         expiry = expiry.isoformat()
     return {
         "alert_id": alert["canhbao_id"],
         "alert_type": alert["loai_canh_bao"],
+        "scenario": "expiring_batch",
         "severity": alert["muc_do_nghiem_trong"],
         "batch_id": alert.get("lohang_id"),
         "batch_kind": alert.get("loai_lohang"),
@@ -34,10 +54,23 @@ def build_alert_condition(alert: dict[str, Any]) -> dict[str, Any]:
 
 def insight_fingerprint(condition: dict[str, Any]) -> str:
     """Keep the Phase 4 dedupe identity stable across the P5 upgrade."""
-    payload = {
-        key: condition.get(key)
-        for key in ("alert_id", "alert_type", "severity", "expires_at", "batch_id", "batch_kind")
-    }
+    if condition.get("scenario") == "product_stock":
+        payload = {
+            key: condition.get(key)
+            for key in (
+                "alert_id",
+                "alert_type",
+                "severity",
+                "product_count",
+                "affected_size_count",
+                "products",
+            )
+        }
+    else:
+        payload = {
+            key: condition.get(key)
+            for key in ("alert_id", "alert_type", "severity", "expires_at", "batch_id", "batch_kind")
+        }
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
@@ -55,7 +88,11 @@ def capture_notification_state(
     current_user: Optional[NguoiDung],
 ) -> dict[str, Any]:
     alert = AlertService().get_alert(db, int(params["source_alert_id"]))
-    if not is_current_high_expiry_alert(alert):
+    if alert.get("loai_canh_bao") == PRODUCT_STOCK_ALERT_TYPE:
+        digest = alert.get("chi_tiet_ton_kho_san_pham") or {}
+        if not digest.get("products"):
+            raise DomainError(status_code=409, detail="ACTION_STALE: Tồn kho sản phẩm không còn cần bổ sung")
+    elif not is_current_high_expiry_alert(alert):
         raise DomainError(status_code=409, detail="ACTION_STALE: Cảnh báo hạn dùng không còn hiện hành")
     return build_alert_condition(alert)
 

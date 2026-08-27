@@ -188,6 +188,7 @@ def trace_proactive_evaluation(
     condition: dict[str, Any],
     *,
     prompt_version: str,
+    scenario: str = "expiring_batch",
 ) -> Iterator[Optional[Any]]:
     """Trace one unattended, read-only proactive evaluation.
 
@@ -204,7 +205,7 @@ def trace_proactive_evaluation(
             name="operations-agent-proactive",
             as_type="agent",
             input=redact(condition),
-            metadata={"source_alert_id": source_alert_id, "scenario": "expiring_batch"},
+            metadata={"source_alert_id": source_alert_id, "scenario": scenario},
         )
     ) as span:
         if span is None:

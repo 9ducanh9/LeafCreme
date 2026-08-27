@@ -36,6 +36,10 @@ from app.models import (
     TonKhoSanPham,
 )
 from app.services.errors import DomainError
+from app.services.alerts.product_stock import (
+    PRODUCT_STOCK_ALERT_TYPE,
+    build_product_stock_digest,
+)
 
 _ACTIVE_ALERT_STATUSES = ("chua_xu_ly", "dang_xu_ly")
 DEFAULT_LOW_STOCK_THRESHOLD = 10
@@ -107,7 +111,17 @@ class AlertService:
             "ma_lo": None,
             "ngay_het_han": None,
             "so_luong_hien_tai": None,
+            "chi_tiet_ton_kho_san_pham": None,
         }
+
+        if alert.loai_canh_bao == PRODUCT_STOCK_ALERT_TYPE:
+            digest = build_product_stock_digest(db)
+            data["ten_san_pham"] = f"{digest['product_count']} sản phẩm cần bổ sung hàng"
+            data["so_luong_hien_tai"] = sum(
+                int(product["total_available"]) for product in digest["products"]
+            )
+            data["chi_tiet_ton_kho_san_pham"] = digest
+            return data
 
         if alert.lohang_sanpham_id:
             row = db.query(LoHangSanPham, TonKhoSanPham, BienTheSanPham, SanPham).join(
@@ -252,7 +266,10 @@ class AlertService:
         expiring_created = 0
         expired_created = 0
 
-        for cfg in self._kinds.values():
+        product_stock = self._sync_product_stock_digest_alert(db)
+        legacy_product_low_stock_resolved = self._resolve_legacy_product_low_stock_alerts(db)
+
+        for kind, cfg in self._kinds.items():
             batches = db.query(cfg.batch_model, cfg.inventory_model).join(
                 cfg.inventory_model,
                 getattr(cfg.inventory_model, cfg.inventory_fk_field) == cfg.batch_model.lohang_id,
@@ -271,7 +288,12 @@ class AlertService:
                     CanhBaoTonKho.trang_thai.in_(_ACTIVE_ALERT_STATUSES),
                 ).first()
 
-                if tonkho.so_luong_hien_tai > 0 and tonkho.so_luong_hien_tai <= low_stock_threshold and not existing_low_stock:
+                if (
+                    kind != "products"
+                    and tonkho.so_luong_hien_tai > 0
+                    and tonkho.so_luong_hien_tai <= low_stock_threshold
+                    and not existing_low_stock
+                ):
                     severity = "cao" if tonkho.so_luong_hien_tai <= 5 else "binh_thuong"
                     db.add(CanhBaoTonKho(
                         **{cfg.alert_fk_field: lo.lohang_id},
@@ -307,8 +329,56 @@ class AlertService:
             "low_stock_created": low_stock_created,
             "expiring_created": expiring_created,
             "expired_created": expired_created,
-            "total_created": low_stock_created + expiring_created + expired_created,
+            "product_stock_created": product_stock["created"],
+            "product_stock_resolved": product_stock["resolved"],
+            "product_stock_condition_count": product_stock["condition_count"],
+            "legacy_product_low_stock_resolved": legacy_product_low_stock_resolved,
+            "total_created": low_stock_created + expiring_created + expired_created + product_stock["created"],
         }
+
+    def _resolve_legacy_product_low_stock_alerts(self, db: Session) -> int:
+        """Product availability is now represented by one catalog digest."""
+        rows = db.query(CanhBaoTonKho).filter(
+            CanhBaoTonKho.lohang_sanpham_id.isnot(None),
+            CanhBaoTonKho.loai_canh_bao == "ton_kho_thap",
+            CanhBaoTonKho.trang_thai.in_(_ACTIVE_ALERT_STATUSES),
+        ).all()
+        for alert in rows:
+            alert.trang_thai = "da_xu_ly"
+            alert.ngay_xu_ly = datetime.now()
+            alert.ghi_chu = "Tự động thay thế bằng cảnh báo tồn kho tổng hợp theo sản phẩm."
+        return len(rows)
+
+    def _sync_product_stock_digest_alert(self, db: Session) -> dict[str, int]:
+        digest = build_product_stock_digest(db)
+        active = db.query(CanhBaoTonKho).filter(
+            CanhBaoTonKho.loai_canh_bao == PRODUCT_STOCK_ALERT_TYPE,
+            CanhBaoTonKho.trang_thai.in_(_ACTIVE_ALERT_STATUSES),
+        ).all()
+
+        if not digest["products"]:
+            for alert in active:
+                alert.trang_thai = "da_xu_ly"
+                alert.ngay_xu_ly = datetime.now()
+                alert.ghi_chu = "Tự động đóng vì tất cả sản phẩm đang có tồn kho phù hợp."
+            return {"created": 0, "resolved": len(active), "condition_count": 0}
+
+        severity = "cao" if digest["unavailable_product_count"] else "binh_thuong"
+        if active:
+            primary = active[0]
+            primary.muc_do_nghiem_trong = severity
+            for duplicate in active[1:]:
+                duplicate.trang_thai = "da_xu_ly"
+                duplicate.ngay_xu_ly = datetime.now()
+                duplicate.ghi_chu = "Tự động gộp vào cảnh báo tồn kho tổng hợp hiện hành."
+            return {"created": 0, "resolved": max(len(active) - 1, 0), "condition_count": len(digest["products"])}
+
+        db.add(CanhBaoTonKho(
+            loai_canh_bao=PRODUCT_STOCK_ALERT_TYPE,
+            muc_do_nghiem_trong=severity,
+            trang_thai="chua_xu_ly",
+        ))
+        return {"created": 1, "resolved": 0, "condition_count": len(digest["products"])}
 
     def update_alert(self, db: Session, alert_id: int, payload: Any, current_user: NguoiDung) -> dict:
         alert = db.query(CanhBaoTonKho).filter(CanhBaoTonKho.canhbao_id == alert_id).first()
@@ -328,9 +398,9 @@ class AlertService:
         db.refresh(alert)
         # A resolved/dismissed source alert makes any open proactive
         # recommendation obsolete immediately instead of waiting for 06:00.
-        from app.services.agent.proactive_service import safe_refresh_expiring_batch_insights
+        from app.services.agent.proactive_service import safe_refresh_proactive_insights
 
-        safe_refresh_expiring_batch_insights(db)
+        safe_refresh_proactive_insights(db)
         return self._enrich_with_batch_info(db, alert)
 
     def delete_alert(self, db: Session, alert_id: int) -> dict:

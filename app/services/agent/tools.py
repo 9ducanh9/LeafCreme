@@ -250,7 +250,10 @@ def _check_production_feasibility(db: Session, params: dict, current_user: Nguoi
 def _get_replenishment_signals(db: Session, params: dict, current_user: NguoiDung) -> dict:
     limit = int(params.get("limit", 20))
     low_stock = _alert_service.list_alerts(db, loai_canh_bao="ton_kho_thap", trang_thai="chua_xu_ly", limit=limit)
-    return {"low_stock_alerts": low_stock}
+    product_stock = _alert_service.list_alerts(
+        db, loai_canh_bao="san_pham_can_nhap", trang_thai="chua_xu_ly", limit=1
+    )
+    return {"low_stock_alerts": low_stock, "product_stock_digest": product_stock}
 
 
 def _draft_replenishment_note(db: Session, params: dict, current_user: NguoiDung) -> dict:
@@ -527,7 +530,7 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
     # -- Replenishment (V2) ------------------------------------------------
     "get_replenishment_signals": AgentTool(
         name="get_replenishment_signals",
-        description="List current low-stock signals (unresolved ton_kho_thap alerts) that may need reordering.",
+        description="List current low-stock signals and the catalog-wide product/size replenishment digest.",
         classification="read",
         required_params=frozenset(),
         optional_params=frozenset({"limit"}),
@@ -557,7 +560,7 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
     ),
     "create_proactive_notification": AgentTool(
         name="create_proactive_notification",
-        description="Create a deduplicated internal notification for a revalidated proactive expiry condition.",
+        description="Create a deduplicated internal notification for a revalidated proactive operational condition.",
         classification="draft",
         risk_level="low",
         required_params=frozenset({
@@ -576,8 +579,8 @@ TOOL_REGISTRY: dict[str, AgentTool] = {
         param_schema={
             "source_alert_id": {"type": "integer", "minimum": 1},
             "fingerprint": {"type": "string", "maxLength": 64},
-            "scenario": {"type": "string", "enum": ["expiring_batch"]},
-            "severity": {"type": "string", "enum": ["cao"]},
+            "scenario": {"type": "string", "enum": ["expiring_batch", "product_stock"]},
+            "severity": {"type": "string", "enum": ["binh_thuong", "cao"]},
             "title": {"type": "string", "maxLength": 300},
             "recommendation": {"type": "string", "maxLength": 4000},
             "prompt_version": {"type": "string", "maxLength": 100},

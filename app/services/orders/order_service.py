@@ -459,6 +459,9 @@ class OrderService:
 
             db.commit()
             db.refresh(order)
+            from app.services.alerts.runtime import safe_refresh_inventory_attention
+
+            safe_refresh_inventory_attention(db)
             return self.get_order(db=db, order_id=order.donhang_id, current_user=current_user)
         except DomainError:
             db.rollback()
@@ -681,6 +684,9 @@ class OrderService:
             order.ghi_chu = (order.ghi_chu or "") + f"\n[HỦY ĐƠN - {utc_now().strftime('%Y-%m-%d %H:%M')}] {ly_do}"
             db.commit()
             db.refresh(order)
+            from app.services.alerts.runtime import safe_refresh_inventory_attention
+
+            safe_refresh_inventory_attention(db)
         except Exception as e:
             db.rollback()
             raise DomainError(status_code=500, detail=f"Lỗi khi hủy đơn hàng: {str(e)}")

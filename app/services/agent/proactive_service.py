@@ -35,12 +35,15 @@ from app.services.agent.proactive_actions import (
 from app.services.agent import tools as tool_registry
 from app.services.alerts import AlertService
 from app.services.alerts.alert_service import is_current_high_expiry_alert
+from app.services.alerts.product_stock import PRODUCT_STOCK_ALERT_TYPE
 from app.services.errors import DomainError
 
 logger = logging.getLogger("bakeryonl.agent.proactive")
 
 PROACTIVE_SCENARIO = "expiring_batch"
+PRODUCT_STOCK_SCENARIO = "product_stock"
 PROACTIVE_PROMPT_VERSION = "operations-agent-proactive-v1"
+PRODUCT_STOCK_PROMPT_VERSION = "operations-agent-product-stock-v1"
 PROACTIVE_MODEL = "deepseek-chat"
 PROACTIVE_MAX_TOOL_ITERATIONS = 3
 
@@ -50,8 +53,9 @@ PROACTIVE_READ_TOOL_NAMES = frozenset({
     "get_alert_summary",
     "list_pending_alerts",
     "get_expiring_batches",
+    "get_replenishment_signals",
 })
-_TARGET_ALERT_TYPES = frozenset({"sap_het_han", "qua_han"})
+_EXPIRY_ALERT_TYPES = frozenset({"sap_het_han", "qua_han"})
 _ACTIVE_ALERT_STATUSES = ("chua_xu_ly", "dang_xu_ly")
 _OPEN_INSIGHT_STATUSES = ("unread", "read")
 
@@ -61,7 +65,9 @@ severity or invent data. You may call only the provided read tools for context.
 Return a concise Vietnamese recommendation for an admin: what to review first
 and why, grounded only in the alert and tool results. Do not claim that any
 inventory, order, or batch change has happened and do not recommend a numeric
-sales, waste, or revenue metric that was not returned by a tool."""
+sales, waste, revenue, or replenishment quantity that was not returned by a tool.
+For product-stock digests, summarize categories and affected sizes without
+repeating one notification per size."""
 
 
 def _assert_read_allowlist() -> None:
@@ -95,6 +101,22 @@ def _execute_read_tool(db: Session, name: str, params: dict[str, Any]) -> dict[s
 
 
 def _deterministic_recommendation(condition: dict[str, Any]) -> str:
+    if condition.get("scenario") == PRODUCT_STOCK_SCENARIO:
+        count = int(condition.get("product_count") or 0)
+        sizes = int(condition.get("affected_size_count") or 0)
+        unavailable = int(condition.get("unavailable_product_count") or 0)
+        products = [str(row.get("product")) for row in condition.get("products", []) if row.get("product")]
+        preview = ", ".join(products[:5])
+        suffix = f"; gồm {preview}" if preview else ""
+        if len(products) > 5:
+            suffix += f" và {len(products) - 5} sản phẩm khác"
+        return (
+            f"Có {count} sản phẩm với {sizes} kích thước cần bổ sung hàng; "
+            f"{unavailable} sản phẩm hiện không còn kích thước nào bán được{suffix}. "
+            "Ưu tiên kiểm tra kế hoạch sản xuất/nhập lô và hạn dùng trước khi mở bán lại. "
+            "Chưa đủ dữ liệu để tự đề xuất số lượng nhập."
+        )
+
     product = condition.get("product") or f"lô #{condition.get('batch_id')}"
     batch = condition.get("batch_code")
     expiry = condition.get("expires_at")
@@ -114,8 +136,15 @@ def _run_llm_evaluation(
     condition: dict[str, Any],
 ) -> tuple[str, list[dict[str, Any]], bool, Optional[str]]:
     """Run a bounded tool-use loop. Failure deliberately returns fallback."""
+    scenario = str(condition.get("scenario") or PROACTIVE_SCENARIO)
+    prompt_version = (
+        PRODUCT_STOCK_PROMPT_VERSION if scenario == PRODUCT_STOCK_SCENARIO else PROACTIVE_PROMPT_VERSION
+    )
     with observability.trace_proactive_evaluation(
-        int(condition["alert_id"]), condition, prompt_version=PROACTIVE_PROMPT_VERSION
+        int(condition["alert_id"]),
+        condition,
+        prompt_version=prompt_version,
+        scenario=scenario,
     ) as span:
         trace_id = observability.get_trace_id(span)
         api_key = os.getenv("DEEPSEEK_API_KEY")
@@ -212,11 +241,16 @@ def _run_llm_evaluation(
             return fallback, [], False, trace_id
 
 
-def _supersede_noncurrent_insights(db: Session, current_alert_ids: set[int]) -> int:
+def _supersede_noncurrent_insights(
+    db: Session,
+    current_alert_ids: set[int],
+    scenarios: frozenset[str],
+) -> int:
     active_ids = db.query(CanhBaoTonKho.canhbao_id).filter(
         CanhBaoTonKho.trang_thai.in_(_ACTIVE_ALERT_STATUSES)
     )
     rows = db.query(ProactiveInsight).filter(
+        ProactiveInsight.scenario.in_(scenarios),
         ProactiveInsight.trang_thai.in_(_OPEN_INSIGHT_STATUSES),
         (
             ~ProactiveInsight.source_alert_id.in_(active_ids)
@@ -229,28 +263,52 @@ def _supersede_noncurrent_insights(db: Session, current_alert_ids: set[int]) -> 
     return len(rows)
 
 
-def refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
-    """Persist one recommendation per current high-severity expiry condition."""
+def refresh_proactive_insights(
+    db: Session,
+    *,
+    scenarios: frozenset[str] = frozenset({PROACTIVE_SCENARIO, PRODUCT_STOCK_SCENARIO}),
+) -> dict[str, Any]:
+    """Persist current expiry and catalog stock recommendations."""
     alert_service = AlertService()
     candidates: list[dict[str, Any]] = []
-    for alert_type in sorted(_TARGET_ALERT_TYPES):
-        candidates.extend(alert_service.list_alerts(
+    if PROACTIVE_SCENARIO in scenarios:
+        for alert_type in sorted(_EXPIRY_ALERT_TYPES):
+            candidates.extend(alert_service.list_alerts(
+                db,
+                loai_canh_bao=alert_type,
+                muc_do="cao",
+                trang_thai="chua_xu_ly",
+                limit=200,
+            ))
+        candidates = [alert for alert in candidates if is_current_high_expiry_alert(alert)]
+    if PRODUCT_STOCK_SCENARIO in scenarios:
+        stock_candidates = alert_service.list_alerts(
             db,
-            loai_canh_bao=alert_type,
-            muc_do="cao",
+            loai_canh_bao=PRODUCT_STOCK_ALERT_TYPE,
             trang_thai="chua_xu_ly",
-            limit=200,
-        ))
-    candidates = [alert for alert in candidates if is_current_high_expiry_alert(alert)]
+            limit=10,
+        )
+        candidates.extend(
+            alert for alert in stock_candidates
+            if (alert.get("chi_tiet_ton_kho_san_pham") or {}).get("products")
+        )
 
     created = 0
     reopened = 0
     skipped = 0
     failed = 0
     proposed = 0
-    superseded = _supersede_noncurrent_insights(db, {int(alert["canhbao_id"]) for alert in candidates})
+    superseded = _supersede_noncurrent_insights(
+        db,
+        {int(alert["canhbao_id"]) for alert in candidates},
+        scenarios,
+    )
     for alert in candidates:
         condition = build_alert_condition(alert)
+        scenario = str(condition.get("scenario") or PROACTIVE_SCENARIO)
+        prompt_version = (
+            PRODUCT_STOCK_PROMPT_VERSION if scenario == PRODUCT_STOCK_SCENARIO else PROACTIVE_PROMPT_VERSION
+        )
         fingerprint = insight_fingerprint(condition)
         existing = db.query(ProactiveInsight).filter(ProactiveInsight.fingerprint == fingerprint).first()
         reopen_token = None
@@ -269,20 +327,23 @@ def refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
         ).all()
 
         recommendation, trace, used_llm, trace_id = _run_llm_evaluation(db, condition)
-        title = f"Hạn dùng cần xử lý: {condition.get('product') or condition.get('batch_code') or condition['alert_id']}"
+        if scenario == PRODUCT_STOCK_SCENARIO:
+            title = f"{condition['product_count']} sản phẩm cần bổ sung hàng"
+        else:
+            title = f"Hạn dùng cần xử lý: {condition.get('product') or condition.get('batch_code') or condition['alert_id']}"
         automation = agent_service.execute_automated_action(
             db,
             "create_proactive_notification",
             {
                 "source_alert_id": condition["alert_id"],
                 "fingerprint": fingerprint,
-                "scenario": PROACTIVE_SCENARIO,
+                "scenario": scenario,
                 "severity": condition["severity"],
                 "title": title,
                 "recommendation": recommendation,
                 "evidence": condition,
                 "tool_trace": trace,
-                "prompt_version": PROACTIVE_PROMPT_VERSION,
+                "prompt_version": prompt_version,
                 "model": PROACTIVE_MODEL if used_llm else None,
                 "used_llm": used_llm,
                 "reopen_existing": reopen_token is not None,
@@ -290,10 +351,10 @@ def refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
             idempotency_key=automation_idempotency_key(condition, occurrence=reopen_token),
             trigger_context={
                 "source": "inventory_alert",
-                "scenario": PROACTIVE_SCENARIO,
+                "scenario": scenario,
                 "source_alert_id": condition["alert_id"],
             },
-            reasoning_reference=f"prompt={PROACTIVE_PROMPT_VERSION};fingerprint={fingerprint}",
+            reasoning_reference=f"prompt={prompt_version};fingerprint={fingerprint}",
             ly_do=recommendation,
             langfuse_trace_id=trace_id,
             preconditions=condition,
@@ -328,13 +389,36 @@ def refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
     }
 
 
+def refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
+    """Refresh only the original expiring-batch proactive scenario."""
+    return refresh_proactive_insights(db, scenarios=frozenset({PROACTIVE_SCENARIO}))
+
+
 def safe_refresh_expiring_batch_insights(db: Session) -> dict[str, Any]:
-    """Best effort so proactive analysis never blocks business writes/jobs."""
+    """Best-effort wrapper for the original expiring-batch scenario."""
     try:
         return refresh_expiring_batch_insights(db)
     except Exception as exc:
         db.rollback()
         logger.exception("Proactive expiry insight refresh failed")
+        return {
+            "created": 0,
+            "reopened": 0,
+            "skipped": 0,
+            "superseded": 0,
+            "proposed": 0,
+            "failed": 1,
+            "error": type(exc).__name__,
+        }
+
+
+def safe_refresh_proactive_insights(db: Session) -> dict[str, Any]:
+    """Best-effort refresh across every registered proactive scenario."""
+    try:
+        return refresh_proactive_insights(db)
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Proactive insight refresh failed")
         return {
             "created": 0,
             "reopened": 0,

@@ -151,6 +151,7 @@ export default function OperationsAttentionWidget() {
                     {insight.status === 'unread' ? (
                       <Button size="small" startIcon={<VisibilityIcon />} disabled={busyId === id} onClick={() => void updateInsight(insight, 'read')}>Đã xem</Button>
                     ) : null}
+                    {insight.scenario === 'product_stock' ? <Button size="small" component={Link} to="/admin/batches">Nhập lô</Button> : null}
                     <Button size="small" variant="outlined" startIcon={<TaskAltIcon />} disabled={busyId === id} onClick={() => void updateInsight(insight, 'resolved')}>Đã xử lý</Button>
                     <Button size="small" component={Link} to="/admin/alerts">Mở cảnh báo</Button>
                   </Stack>

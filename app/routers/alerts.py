@@ -44,6 +44,7 @@ class AlertResponse(BaseModel):
     ma_lo: Optional[str] = None
     ngay_het_han: Optional[datetime] = None
     so_luong_hien_tai: Optional[int] = None
+    chi_tiet_ton_kho_san_pham: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -73,6 +74,10 @@ class GenerateAlertsResult(BaseModel):
     low_stock_created: int
     expiring_created: int
     expired_created: int
+    product_stock_created: int = 0
+    product_stock_resolved: int = 0
+    product_stock_condition_count: int = 0
+    legacy_product_low_stock_resolved: int = 0
     total_created: int
 
 
@@ -81,7 +86,7 @@ class GenerateAlertsResult(BaseModel):
 # =========================================================
 @router.get("", response_model=Union[List[AlertResponse], Page[AlertResponse]])
 def get_alerts(
-    loai_canh_bao: Optional[str] = Query(None, description="Filter by type: ton_kho_thap, sap_het_han, het_han, qua_han"),
+    loai_canh_bao: Optional[str] = Query(None, description="Filter by alert type"),
     muc_do: Optional[str] = Query(None, description="Filter by severity: thap, binh_thuong, cao"),
     trang_thai: Optional[str] = Query(None, description="Filter by status: chua_xu_ly, dang_xu_ly, da_xu_ly, bo_qua"),
     skip: int = Query(0, ge=0),
@@ -124,9 +129,9 @@ def generate_alerts(
     """Tự động tạo cảnh báo dựa trên tình trạng tồn kho hiện tại"""
     result = alert_service.generate_alerts(db, low_stock_threshold, expiring_days)
     # Best effort: observability/LLM failures cannot invalidate an inventory scan.
-    from app.services.agent.proactive_service import safe_refresh_expiring_batch_insights
+    from app.services.agent.proactive_service import safe_refresh_proactive_insights
 
-    safe_refresh_expiring_batch_insights(db)
+    safe_refresh_proactive_insights(db)
     return result
 
 

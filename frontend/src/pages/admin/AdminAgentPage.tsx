@@ -7,6 +7,7 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SendIcon from '@mui/icons-material/Send'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
+import { Link } from 'react-router-dom'
 import AdminPage from '../../components/admin/ui/admin-page'
 import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
@@ -17,6 +18,7 @@ import {
   type AgentAction, type ChatReply, type Insight, type ProactiveInsight, type ToolCallTrace,
 } from '../../services/admin/agentService'
 import { useAuth } from '../../contexts/AuthContext'
+import { formatProactiveEvidence } from '../../utils/admin/operationsPresentation'
 
 interface ChatEntry {
   role: 'user' | 'assistant'
@@ -167,10 +169,7 @@ export default function AdminAgentPage() {
         <Stack spacing={1.5} sx={{ mb: 3 }}>
           <Typography variant="subtitle1" fontWeight={600}>Khuyến nghị chủ động</Typography>
           {proactiveInsights.map((insight) => {
-            const evidence = insight.evidence
-            const batch = evidence.batch_code ? String(evidence.batch_code) : null
-            const expiry = evidence.expires_at ? new Date(String(evidence.expires_at)).toLocaleString('vi-VN') : null
-            const units = evidence.units_on_hand
+            const evidence = formatProactiveEvidence(insight)
             return (
               <Card key={insight.insight_id} variant="outlined" sx={{ opacity: insight.status === 'superseded' ? 0.62 : 1 }}>
                 <CardContent sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, '&:last-child': { pb: 2 } }}>
@@ -181,13 +180,14 @@ export default function AdminAgentPage() {
                       <Typography variant="subtitle1" fontWeight={600}>{insight.title}</Typography>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">{insight.recommendation}</Typography>
-                    {(batch || expiry || units !== undefined) && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-                      {[batch && `Lô ${batch}`, expiry && `Hạn dùng ${expiry}`, units !== undefined && `Tồn ${String(units)}`].filter(Boolean).join(' • ')}
+                    {evidence.length > 0 && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                      {evidence.join(' • ')}
                     </Typography>}
                   </Box>
                   {(insight.status === 'unread' || insight.status === 'read') && (
                     <Stack direction="row" spacing={1}>
                       {insight.status === 'unread' && <Button size="small" disabled={busyProactiveInsightId === insight.insight_id} onClick={() => void updateProactiveStatus(insight, 'read')}>Đã đọc</Button>}
+                      {insight.scenario === 'product_stock' && <Button size="small" component={Link} to="/admin/batches">Nhập lô</Button>}
                       <Button size="small" variant="outlined" disabled={busyProactiveInsightId === insight.insight_id} onClick={() => void updateProactiveStatus(insight, 'resolved')}>Đã xử lý</Button>
                     </Stack>
                   )}

@@ -37,6 +37,7 @@ from sqlalchemy.orm import Session
 from app.models import ThanhToan
 from app.core.time import utc_now
 from app.services.alerts import AlertService
+from app.services.alerts.runtime import safe_refresh_inventory_attention
 from app.services.orders import OrderService
 
 _STALE_PAYMENT_STATUS = "dang_xu_ly"
@@ -78,16 +79,17 @@ class MaintenanceService:
                 db.rollback()
                 errors.append({"donhang_id": payment.donhang_id, "error": str(e)})
 
+        if failed_order_ids:
+            safe_refresh_inventory_attention(db)
+
         return {"swept": len(failed_order_ids), "order_ids": failed_order_ids, "errors": errors}
 
     def run_daily_alert_scan(self, db: Session, low_stock_threshold: int = 10, expiring_days: int = 7) -> dict:
         """Thin passthrough to the existing, already-correct
         AlertService.generate_alerts — same defaults as the manual
         POST /alerts/generate endpoint (app/routers/alerts.py)."""
-        result = self.alert_service.generate_alerts(db, low_stock_threshold, expiring_days)
-        # The detector owns the thresholds. The proactive layer only reviews
-        # high-severity expiry alerts created or still open after that scan.
-        from app.services.agent.proactive_service import safe_refresh_expiring_batch_insights
-
-        result["proactive"] = safe_refresh_expiring_batch_insights(db)
-        return result
+        return safe_refresh_inventory_attention(
+            db,
+            low_stock_threshold=low_stock_threshold,
+            expiring_days=expiring_days,
+        )
