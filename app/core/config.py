@@ -85,9 +85,12 @@ class Settings:
     MOMO_LANG: str = os.getenv("MOMO_LANG", "vi")
 
     # MoMo Simple QR Payment (không cần Business API)
-    MOMO_QR_PHONE: str = os.getenv("MOMO_QR_PHONE", "")
-    MOMO_QR_ACCOUNT_NAME: str = os.getenv("MOMO_QR_ACCOUNT_NAME", "")
-    MOMO_QR_IMAGE_PATH: str = os.getenv("MOMO_QR_IMAGE_PATH", "")
+    # Public receiving details embedded in the versioned VietQR/MoMo image.
+    # Environment variables can still override these defaults when the
+    # receiving account changes.
+    MOMO_QR_PHONE: str = os.getenv("MOMO_QR_PHONE") or "0911263934"
+    MOMO_QR_ACCOUNT_NAME: str = os.getenv("MOMO_QR_ACCOUNT_NAME") or "LÂM CHÍ TÀI"
+    MOMO_QR_IMAGE_PATH: str = os.getenv("MOMO_QR_IMAGE_PATH") or "/uploads/payment/momo_qr.png"
 
 
 settings = Settings()

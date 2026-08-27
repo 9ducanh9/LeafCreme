@@ -14,6 +14,7 @@ from decimal import Decimal
 import pytest
 
 from app.models import DonHang, NguoiDung, ThanhToan, VaiTro
+from app.core.config import settings
 from app.services.payments import DomainError, PaymentService
 
 
@@ -316,3 +317,29 @@ class TestMomoIpn:
         db_session.refresh(order)
         assert payment.trang_thai == "thanh_cong"
         assert order.trang_thai == "hoan_thanh"
+
+
+class TestMomoQr:
+    def test_static_qr_creates_pending_payment_for_order_owner(
+        self, db_session, role_customer, service, monkeypatch
+    ):
+        customer = _make_user(db_session, role_customer, "buyer-static-qr")
+        order = _make_order(db_session, customer, Decimal("260000"), "static-qr")
+        monkeypatch.setattr(settings, "MOMO_QR_PHONE", "0911263934")
+        monkeypatch.setattr(settings, "MOMO_QR_ACCOUNT_NAME", "LÂM CHÍ TÀI")
+        monkeypatch.setattr(settings, "MOMO_QR_IMAGE_PATH", "/uploads/payment/momo_qr.png")
+
+        class Payload:
+            donhang_id = order.donhang_id
+
+        result = service.create_momo_qr_payment(db_session, Payload(), customer)
+
+        assert result["method"] == "momo_qr"
+        assert result["qr_image"] == "/uploads/payment/momo_qr.png"
+        assert "qr_code" not in result
+        assert result["amount"] == 260000
+        assert result["transfer_content"] == order.ma_don_hang
+        payment = db_session.query(ThanhToan).filter(
+            ThanhToan.thanhtoan_id == result["payment_id"]
+        ).one()
+        assert payment.trang_thai == "dang_xu_ly"
