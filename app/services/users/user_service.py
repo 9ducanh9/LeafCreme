@@ -16,8 +16,6 @@ service builds the response dict explicitly field-by-field instead, so a
 mistake elsewhere can't accidentally serialize the password hash. No
 change to what a client receives.
 """
-import uuid
-from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy import or_
@@ -136,6 +134,8 @@ class UserService:
 
         if "avatar_url" in update_data and not update_data["avatar_url"]:
             update_data["avatar_url"] = None
+            update_data["avatar_data"] = None
+            update_data["avatar_content_type"] = None
 
         if "email" in update_data and update_data["email"] != user.email:
             existing = db.query(NguoiDung).filter(NguoiDung.email == update_data["email"]).first()
@@ -197,27 +197,13 @@ class UserService:
         if len(file_content) > _MAX_AVATAR_BYTES:
             raise DomainError(status_code=400, detail="Kích thước file không được vượt quá 5MB")
 
-        upload_dir = Path("uploads/avatars")
-        upload_dir.mkdir(parents=True, exist_ok=True)
-
-        if user.avatar_url:
-            try:
-                old_avatar_path = user.avatar_url.replace("/uploads/avatars/", "")
-                old_file_path = upload_dir / old_avatar_path
-                if old_file_path.exists() and old_file_path.is_file():
-                    old_file_path.unlink()
-            except Exception:
-                pass
-
-        file_ext = Path(filename).suffix if filename else ".jpg"
-        unique_filename = f"{user_id}_{uuid.uuid4().hex}{file_ext}"
-        file_path = upload_dir / unique_filename
-
-        with open(file_path, "wb") as f:
-            f.write(file_content)
-
-        avatar_url = f"/uploads/avatars/{unique_filename}"
+        # Keep the binary and MIME type in the database. Local container
+        # uploads are ephemeral on deploy/restart, while this data follows
+        # the persistent user row wherever the API runs.
+        avatar_url = f"/users/{user_id}/avatar"
         user.avatar_url = avatar_url
+        user.avatar_data = file_content
+        user.avatar_content_type = content_type
         db.commit()
         db.refresh(user)
         return avatar_url

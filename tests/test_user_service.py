@@ -141,3 +141,42 @@ class TestDeleteUser:
         remaining = db_session.query(NguoiDung).filter(NguoiDung.nguoidung_id == target.nguoidung_id).first()
         assert remaining is not None
         assert remaining.dang_hoat_dong is False
+
+
+class TestUploadAvatar:
+    def test_avatar_bytes_and_content_type_persist_in_database(self, db_session, service, customer_role):
+        user = _make_user(db_session, customer_role, "avatar")
+
+        avatar_url = service.upload_avatar(
+            db_session,
+            user.nguoidung_id,
+            user,
+            "image/png",
+            "profile.png",
+            b"png-bytes",
+        )
+
+        db_session.expire_all()
+        persisted = db_session.query(NguoiDung).filter(NguoiDung.nguoidung_id == user.nguoidung_id).one()
+
+        assert avatar_url == f"/users/{user.nguoidung_id}/avatar"
+        assert persisted.avatar_url == avatar_url
+        assert persisted.avatar_data == b"png-bytes"
+        assert persisted.avatar_content_type == "image/png"
+
+    def test_avatar_endpoint_serves_persisted_bytes(self, db_session, client, service, customer_role):
+        user = _make_user(db_session, customer_role, "avatar_endpoint")
+        service.upload_avatar(
+            db_session,
+            user.nguoidung_id,
+            user,
+            "image/webp",
+            "profile.webp",
+            b"webp-bytes",
+        )
+
+        response = client.get(f"/users/{user.nguoidung_id}/avatar")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/webp"
+        assert response.content == b"webp-bytes"

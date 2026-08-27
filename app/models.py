@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
-    String, Integer, DateTime, Date, ForeignKey, Text, Boolean, func, Numeric, UniqueConstraint, CheckConstraint
+    String, Integer, DateTime, Date, ForeignKey, Text, Boolean, LargeBinary,
+    func, Numeric, UniqueConstraint, CheckConstraint
 )
 from sqlalchemy.dialects.postgresql import ENUM, JSONB, ARRAY
 from datetime import datetime, date
@@ -78,6 +79,10 @@ class NguoiDung(Base):
     ngay_sinh: Mapped[date | None] = mapped_column(Date, nullable=True)
     gioi_tinh: Mapped[str | None] = mapped_column(String(10), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)  # Database column name: avatar_url
+    # Avatar bytes live in PostgreSQL so a container restart/redeploy cannot
+    # leave the database pointing at a missing local file.
+    avatar_data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    avatar_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     dang_hoat_dong: Mapped[bool] = mapped_column(Boolean, default=True)
     lan_dang_nhap_cuoi: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

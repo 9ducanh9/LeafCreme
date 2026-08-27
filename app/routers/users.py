@@ -5,7 +5,7 @@ Thin by design — see app.services.users.UserService for the business logic
 (moved out as part of the Phase 1 service-layer migration).
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
@@ -157,3 +157,12 @@ async def upload_user_avatar(
     except DomainError as exc:
         _raise_http(exc)
     return JSONResponse({"avatar_url": avatar_url, "message": "Upload avatar thành công"})
+
+
+@router.get("/{user_id}/avatar", response_class=Response)
+def get_user_avatar(user_id: int, db: Session = Depends(get_db)):
+    """Serve the avatar stored with the user row."""
+    user = db.query(NguoiDung).filter(NguoiDung.nguoidung_id == user_id).first()
+    if not user or not user.avatar_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avatar không tồn tại")
+    return Response(content=user.avatar_data, media_type=user.avatar_content_type or "image/jpeg")

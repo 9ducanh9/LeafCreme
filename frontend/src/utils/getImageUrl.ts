@@ -15,8 +15,8 @@ export function getImageUrl(path: string | null | undefined): string {
     return path
   }
 
-  // If path starts with /uploads, prepend API base URL
-  if (path.startsWith('/uploads')) {
+  // API resources such as database-backed avatars can live outside /uploads.
+  if (path.startsWith('/')) {
     return `${API_BASE_URL}${path}`
   }
 
