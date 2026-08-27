@@ -95,11 +95,22 @@ def _past(days=1) -> datetime:
 
 
 class _ProductBatchPayload:
-    def __init__(self, bienthe_sanpham_id, ma_lo, so_luong=10, ma_qr=None, ngay_het_han=None, ncc_id=None):
+    def __init__(
+        self,
+        bienthe_sanpham_id,
+        ma_lo,
+        so_luong=10,
+        ma_qr=None,
+        ngay_het_han=None,
+        ncc_id=None,
+        ngay_san_xuat=None,
+        auto_expiry=False,
+    ):
         self.bienthe_sanpham_id = bienthe_sanpham_id
         self.ncc_id = ncc_id
         self.ma_lo = ma_lo
-        self.ngay_het_han = ngay_het_han or _future()
+        self.ngay_san_xuat = ngay_san_xuat or datetime.now()
+        self.ngay_het_han = None if auto_expiry else (ngay_het_han or _future())
         self.so_luong = so_luong
         self.gia_don_vi = Decimal("50000")
         self.trang_thai = "hoatdong"
@@ -111,6 +122,7 @@ class _ProductBatchPayload:
             "bienthe_sanpham_id": self.bienthe_sanpham_id,
             "ncc_id": self.ncc_id,
             "ma_lo": self.ma_lo,
+            "ngay_san_xuat": self.ngay_san_xuat,
             "ngay_het_han": self.ngay_het_han,
             "so_luong": self.so_luong,
             "gia_don_vi": self.gia_don_vi,
@@ -147,6 +159,57 @@ class _ComponentBatchPayload:
 
 
 class TestCreateBatch:
+    def test_product_batch_auto_calculates_expiry_from_product_shelf_life(
+        self, db_session, service, staff_user, variant
+    ):
+        produced_at = datetime.now().replace(microsecond=0)
+        variant.sanpham.han_su_dung_ngay = 3
+        db_session.flush()
+        payload = _ProductBatchPayload(
+            variant.bienthe_id,
+            "LOT-AUTO-EXPIRY",
+            ngay_san_xuat=produced_at,
+            auto_expiry=True,
+        )
+
+        result = service.create_batch(db_session, "products", payload, staff_user)
+
+        assert result["ngay_san_xuat"] == produced_at
+        assert result["ngay_het_han"] == produced_at + timedelta(days=3)
+
+    def test_product_batch_manual_expiry_overrides_product_default(
+        self, db_session, service, staff_user, variant
+    ):
+        produced_at = datetime.now().replace(microsecond=0)
+        manual_expiry = produced_at + timedelta(days=7)
+        variant.sanpham.han_su_dung_ngay = 3
+        db_session.flush()
+        payload = _ProductBatchPayload(
+            variant.bienthe_id,
+            "LOT-MANUAL-EXPIRY",
+            ngay_san_xuat=produced_at,
+            ngay_het_han=manual_expiry,
+        )
+
+        result = service.create_batch(db_session, "products", payload, staff_user)
+
+        assert result["ngay_het_han"] == manual_expiry
+
+    def test_product_batch_without_default_requires_manual_expiry(
+        self, db_session, service, staff_user, variant
+    ):
+        payload = _ProductBatchPayload(
+            variant.bienthe_id,
+            "LOT-MISSING-EXPIRY",
+            auto_expiry=True,
+        )
+
+        with pytest.raises(DomainError) as exc_info:
+            service.create_batch(db_session, "products", payload, staff_user)
+
+        assert exc_info.value.status_code == 400
+        assert "chưa cấu hình hạn sử dụng" in exc_info.value.detail
+
     def test_product_batch_creates_inventory_and_ledger_entry(self, db_session, service, staff_user, variant):
         payload = _ProductBatchPayload(variant.bienthe_id, "LOT-001", so_luong=25)
 

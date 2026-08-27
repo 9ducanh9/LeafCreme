@@ -31,6 +31,8 @@ export interface ProductVariant {
   status: 'active' | 'hidden'
   image: string
   sku?: string
+  productSku?: string
+  shelfLifeDays?: number | null
 }
 
 export interface Product {
@@ -126,4 +128,3 @@ export interface DashboardStats {
   totalOrders: number
   bestSeller: string
 }
-

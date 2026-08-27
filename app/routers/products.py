@@ -57,6 +57,7 @@ class ProductCreate(BaseModel):
     hinh_anh_url: Optional[str] = Field(None, max_length=500)
     danh_muc: Optional[str] = Field(None, max_length=100)
     don_vi_tinh: Optional[str] = Field(default="chiếc", max_length=20)
+    han_su_dung_ngay: Optional[int] = Field(None, ge=1, le=3650)
     phu_hop_dip: Optional[List[str]] = Field(
         None,
         description="Danh sách dịp phù hợp (đồng bộ với GiftBoxOccasion): birthday, thanks, love, holiday, self_care"
@@ -78,6 +79,7 @@ class ProductUpdate(BaseModel):
     hinh_anh_url: Optional[str] = Field(None, max_length=500)
     danh_muc: Optional[str] = Field(None, max_length=100)
     don_vi_tinh: Optional[str] = Field(None, max_length=20)
+    han_su_dung_ngay: Optional[int] = Field(None, ge=1, le=3650)
     phu_hop_dip: Optional[List[str]] = Field(
         None,
         description="Danh sách dịp phù hợp (đồng bộ với GiftBoxOccasion): birthday, thanks, love, holiday, self_care"
@@ -100,6 +102,7 @@ class ProductResponse(BaseModel):
     hinh_anh_url: Optional[str]
     danh_muc: Optional[str]
     don_vi_tinh: Optional[str]
+    han_su_dung_ngay: Optional[int]
     phu_hop_dip: Optional[List[str]]
     dang_hoat_dong: bool
     ngay_tao: datetime
@@ -185,6 +188,8 @@ class AdminVariantRow(BaseModel):
     kich_thuoc: str | None
     gia: Decimal
     sku: str | None
+    product_sku: str
+    han_su_dung_ngay: int | None
     danh_muc: str | None
     mo_ta: str | None
     hinh_anh_url: str | None
@@ -369,6 +374,8 @@ def list_admin_variants(
             kich_thuoc=variant.kich_thuoc if variant else None,
             gia=variant.gia_bienthe if variant else product.gia_co_ban,
             sku=variant.sku_bienthe if variant and variant.sku_bienthe else product.sku,
+            product_sku=product.sku,
+            han_su_dung_ngay=product.han_su_dung_ngay,
             danh_muc=product.danh_muc,
             mo_ta=product.mo_ta,
             hinh_anh_url=product.hinh_anh_url,

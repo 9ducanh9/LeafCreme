@@ -27,6 +27,8 @@ function mapToAdminVariant(
       status: variant.dang_hoat_dong ? 'active' : 'hidden',
       image: product.hinh_anh_url || '',
       sku: variant.sku_bienthe || product.sku,
+      productSku: product.sku,
+      shelfLifeDays: product.han_su_dung_ngay ?? null,
     }
   }
   
@@ -44,6 +46,8 @@ function mapToAdminVariant(
     status: product.dang_hoat_dong ? 'active' : 'hidden',
     image: product.hinh_anh_url || '',
     sku: product.sku,
+    productSku: product.sku,
+    shelfLifeDays: product.han_su_dung_ngay ?? null,
   }
 }
 
@@ -88,6 +92,8 @@ export async function getProductVariants(filters?: {
       kich_thuoc: string | null
       gia: number
       sku: string | null
+      product_sku: string
+      han_su_dung_ngay: number | null
       danh_muc: string | null
       mo_ta: string | null
       hinh_anh_url: string | null
@@ -119,6 +125,8 @@ export async function getProductVariants(filters?: {
         status: row.dang_hoat_dong ? 'active' : 'hidden',
         image: row.hinh_anh_url || '',
         sku: row.sku || undefined,
+        productSku: row.product_sku,
+        shelfLifeDays: row.han_su_dung_ngay,
       })),
     }
   } catch (error) {
@@ -173,14 +181,18 @@ export async function createProductVariant(
           }
         }
         
+        const variantSku = data.sku?.trim().toUpperCase()
+        if (!variantSku) throw new Error('SKU biến thể là bắt buộc')
+        const productSku = data.productSku?.trim().toUpperCase() || variantSku.split('-')[0]
         product = await apiClient.post<Product>('/products', {
           ten: data.name,
-          sku: data.sku || `SP-${Date.now()}`,
+          sku: productSku,
           loai: 'bien_the',
           gia_co_ban: data.price,
           mo_ta: data.description,
           hinh_anh_url: imagePath || null,
           danh_muc: data.category,
+          han_su_dung_ngay: data.shelfLifeDays ?? null,
           dang_hoat_dong: data.status === 'active',
         })
       }
@@ -195,14 +207,18 @@ export async function createProductVariant(
         }
       }
       
+      const variantSku = data.sku?.trim().toUpperCase()
+      if (!variantSku) throw new Error('SKU biến thể là bắt buộc')
+      const productSku = data.productSku?.trim().toUpperCase() || variantSku.split('-')[0]
       product = await apiClient.post<Product>('/products', {
         ten: data.name,
-        sku: data.sku || `SP-${Date.now()}`,
+        sku: productSku,
         loai: 'bien_the',
         gia_co_ban: data.price,
         mo_ta: data.description,
         hinh_anh_url: imagePath || null,
         danh_muc: data.category,
+        han_su_dung_ngay: data.shelfLifeDays ?? null,
         dang_hoat_dong: data.status === 'active',
       })
     }
@@ -214,7 +230,7 @@ export async function createProductVariant(
         huong_vi: data.flavor,
         kich_thuoc: data.size,
         gia_bienthe: data.price,
-        sku_bienthe: data.sku || `${product.sku}-${data.size}`,
+        sku_bienthe: data.sku?.trim().toUpperCase(),
         dang_hoat_dong: data.status === 'active',
       })
 
@@ -283,6 +299,9 @@ export async function updateProductVariant(
       if (data.category !== undefined && data.category !== null && data.category !== '') {
         productUpdatePayload.danh_muc = data.category
       }
+      if (data.shelfLifeDays !== undefined) {
+        productUpdatePayload.han_su_dung_ngay = data.shelfLifeDays
+      }
       if (data.status !== undefined) {
         productUpdatePayload.dang_hoat_dong = data.status === 'active'
       }
@@ -312,6 +331,9 @@ export async function updateProductVariant(
       }
       if (data.category !== undefined && data.category !== null && data.category !== '') {
         productUpdatePayload.danh_muc = data.category
+      }
+      if (data.shelfLifeDays !== undefined) {
+        productUpdatePayload.han_su_dung_ngay = data.shelfLifeDays
       }
       if (data.price !== undefined && data.price !== null && data.price > 0) {
         productUpdatePayload.gia_co_ban = data.price

@@ -10,9 +10,10 @@ export function isBefore(left: string, right: string): boolean {
   return new Date(left).getTime() < new Date(right).getTime()
 }
 
-export function validateBatch(values: BatchValues) {
+export function validateBatch(values: BatchValues, options: { requireProductionDate?: boolean } = {}) {
   const errors: Record<string, string> = {}
   if (!values.ma_lo?.trim()) errors.ma_lo = 'Mã lô là bắt buộc'
+  if (options.requireProductionDate && !values.ngay_san_xuat) errors.ngay_san_xuat = 'Ngày sản xuất là bắt buộc'
   if (!values.ngay_het_han) errors.ngay_het_han = 'Ngày hết hạn là bắt buộc'
   if (values.ngay_san_xuat && values.ngay_het_han && isBefore(values.ngay_het_han, values.ngay_san_xuat)) {
     errors.ngay_het_han = 'Ngày hết hạn phải sau ngày sản xuất'

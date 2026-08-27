@@ -33,21 +33,6 @@ interface ProductFormProps {
   onSubmit: (data: Omit<ProductVariant, 'id'>) => Promise<void>
 }
 
-// Helper function to generate SKU
-function generateSKU(name: string, size: string): string {
-  // Get first 3 letters of product name (uppercase, remove spaces and special chars)
-  const nameAbbr = name
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .substring(0, 3)
-    .toUpperCase()
-    .padEnd(3, 'X') // If less than 3 chars, pad with X
-  
-  // Get timestamp last 3 digits for unique number
-  const number = Date.now().toString().slice(-3)
-  
-  return `${nameAbbr}-${size}-${number}`
-}
-
 export default function ProductForm({ open, variant, sizeOptions = [], onClose, onSubmit }: ProductFormProps) {
   const [formData, setFormData] = useState<Omit<ProductVariant, 'id'>>({
     productId: '',
@@ -61,6 +46,8 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
     status: 'active',
     image: '',
     sku: '',
+    productSku: '',
+    shelfLifeDays: null,
   })
   const [loading, setLoading] = useState(false)
   const [imageInputType, setImageInputType] = useState<'url' | 'file'>('url')
@@ -77,6 +64,13 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
     const isVariant = !variant || variant.id.startsWith('variant:')
     if (isVariant && !values.flavor.trim()) next.flavor = 'Hương vị là bắt buộc'
     if (isVariant && !values.size.trim()) next.size = 'Kích thước là bắt buộc'
+    if (!values.sku?.trim()) next.sku = 'SKU là bắt buộc'
+    const normalizedSku = values.sku?.trim().toUpperCase() || ''
+    const expectedSku = isVariant ? /^[A-Z]{3}\d{2}-\d{1,3}$/ : /^[A-Z]{3}\d{2}$/
+    if (normalizedSku && !expectedSku.test(normalizedSku)) {
+      next.sku = isVariant ? 'Dùng dạng CRM02-20' : 'Dùng dạng CRM02'
+    }
+    if (values.shelfLifeDays != null && values.shelfLifeDays <= 0) next.shelfLifeDays = 'HSD phải lớn hơn 0 ngày'
     if (values.size.length > 50) next.size = 'Kích thước tối đa 50 ký tự'
     if (values.flavor.length > 100) next.flavor = 'Hương vị tối đa 100 ký tự'
     return next
@@ -108,6 +102,8 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
         status: variant.status,
         image: variant.image,
         sku: variant.sku || '',
+        productSku: variant.productSku || '',
+        shelfLifeDays: variant.shelfLifeDays ?? null,
       })
       // Use getImageUrl to convert relative path to full URL for preview
       const previewUrl = variant.image ? (variant.image.startsWith('http') || variant.image.startsWith('data:') || variant.image.startsWith('blob:') ? variant.image : getImageUrl(variant.image)) : ''
@@ -132,6 +128,8 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
         status: 'active',
         image: '',
         sku: '',
+        productSku: '',
+        shelfLifeDays: null,
       })
       setImagePreview('')
       setImageInputType('url')
@@ -159,11 +157,10 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
       // If already relative path (product/xxx.jpg), keep as is
     }
     
-    // Auto-generate SKU if not editing or if SKU is empty
     const finalData = {
       ...formData,
       image: imagePath || '',
-      sku: variant?.sku || generateSKU(formData.name, formData.size),
+      sku: formData.sku?.trim().toUpperCase(),
     }
     
     setLoading(true)
@@ -241,6 +238,32 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
                 ))}
               </Select>
             </FormControl>
+
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <TextField
+                label="SKU"
+                required
+                value={formData.sku || ''}
+                onChange={(event) => setFormData({ ...formData, sku: event.target.value.toUpperCase() })}
+                error={Boolean(fieldErrors.sku)}
+                helperText={fieldErrors.sku || 'Ví dụ CRM02-20; không dùng LC, IN hoặc CM'}
+                inputProps={{ maxLength: 50 }}
+                sx={{ flex: 1, minWidth: 220 }}
+              />
+              <TextField
+                label="HSD mặc định (ngày)"
+                type="number"
+                value={formData.shelfLifeDays ?? ''}
+                onChange={(event) => setFormData({
+                  ...formData,
+                  shelfLifeDays: event.target.value === '' ? null : Number(event.target.value),
+                })}
+                error={Boolean(fieldErrors.shelfLifeDays)}
+                helperText={fieldErrors.shelfLifeDays || 'Áp dụng cho tất cả kích thước của sản phẩm'}
+                inputProps={{ min: 1, max: 3650 }}
+                sx={{ flex: 1, minWidth: 220 }}
+              />
+            </Box>
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               <Box sx={{ flex: 1, minWidth: '200px' }}>
@@ -369,4 +392,3 @@ export default function ProductForm({ open, variant, sizeOptions = [], onClose, 
     </Dialog>
   )
 }
-

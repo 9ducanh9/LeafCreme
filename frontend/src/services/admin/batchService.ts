@@ -29,7 +29,8 @@ export interface ProductBatchCreate {
   bienthe_sanpham_id: number
   ncc_id?: number | null
   ma_lo: string
-  ngay_het_han: string
+  ngay_san_xuat: string
+  ngay_het_han?: string | null
   so_luong: number
   gia_don_vi: number
   trang_thai?: 'hoatdong' | 'hethan' | 'huy'

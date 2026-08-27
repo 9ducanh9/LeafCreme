@@ -58,20 +58,31 @@ def _raise_http(exc: DomainError) -> None:
 # =========================================================
 # Pydantic Schemas - Product Batch
 # =========================================================
-class ProductBatchCreate(BatchDateValidationMixin):
+class ProductBatchCreate(BaseModel):
     bienthe_sanpham_id: int = Field(..., gt=0)
     ncc_id: Optional[int] = Field(None, gt=0)
     ma_lo: str = Field(..., min_length=1, max_length=50)
-    ngay_het_han: datetime
+    ngay_san_xuat: datetime = Field(default_factory=datetime.now)
+    ngay_het_han: Optional[datetime] = None
     so_luong: int = Field(..., gt=0)
     gia_don_vi: Decimal = Field(..., gt=0)
     trang_thai: str = Field(default="hoatdong", pattern="^(hoatdong|tamdung|hethan|daxuathet)$")
     ma_qr: Optional[str] = Field(None, max_length=100)
     ghi_chu: Optional[str] = None
 
+    @model_validator(mode="after")
+    def validate_product_dates(self):
+        if self.ngay_het_han is not None:
+            if self.ngay_het_han.date() < date.today():
+                raise ValueError("Ngày hết hạn không được ở trước hôm nay")
+            if self.ngay_het_han <= self.ngay_san_xuat:
+                raise ValueError("Ngày hết hạn phải sau ngày sản xuất")
+        return self
+
 
 class ProductBatchUpdate(BatchUpdateDateValidationMixin):
     ncc_id: Optional[int] = Field(None, gt=0)
+    ngay_san_xuat: Optional[datetime] = None
     ngay_het_han: Optional[datetime] = None
     so_luong: Optional[int] = Field(None, gt=0)
     gia_don_vi: Optional[Decimal] = Field(None, gt=0)
@@ -86,6 +97,7 @@ class ProductBatchResponse(BaseModel):
     ncc_id: Optional[int]
     ma_lo: str
     ngay_nhap: datetime
+    ngay_san_xuat: datetime
     ngay_het_han: datetime
     so_luong: int
     gia_don_vi: float

@@ -15,7 +15,13 @@ import { parseAdminEntityId, type ProductVariant } from '../../types/admin'
 import type { BackendGiftBox } from '../../types/giftBox'
 
 type BatchKind = 'product' | 'component' | 'giftbox'
-const emptyValues = { ncc_id: '', ma_lo: '', ngay_het_han: '', so_luong: 1, gia_don_vi: 0, ghi_chu: '' }
+const emptyValues = { ncc_id: '', ma_lo: '', ngay_san_xuat: '', ngay_het_han: '', so_luong: 1, gia_don_vi: 0, ghi_chu: '' }
+
+function addDays(dateValue: string, days: number): string {
+  const date = new Date(`${dateValue}T00:00:00`)
+  date.setDate(date.getDate() + days)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
 
 export default function AdminBatchCreatePage() {
   const [searchParams] = useSearchParams()
@@ -32,8 +38,9 @@ export default function AdminBatchCreatePage() {
   const [error, setError] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
   const [ackWarnings, setAckWarnings] = useState(false)
+  const [manualExpiry, setManualExpiry] = useState(false)
 
-  const validate = (nextValues: typeof values) => validateBatch(nextValues)
+  const validate = (nextValues: typeof values) => validateBatch(nextValues, { requireProductionDate: kind === 'product' })
   const adminForm = useAdminForm({ initialValues: values, validate })
   const { setValues: syncFormValues } = adminForm
   useEffect(() => { syncFormValues(values) }, [syncFormValues, values])
@@ -48,8 +55,15 @@ export default function AdminBatchCreatePage() {
       .catch(() => setError('Không thể tải danh mục cho nhập lô'))
   }, [])
 
-  const options = useMemo(() => kind === 'product' ? variants.filter((item) => parseAdminEntityId(item.id).kind === 'variant').map((item) => ({ id: item.id, label: `${item.name} · ${item.sizeLabel || item.size} · ${item.sku}`, price: item.price })) : kind === 'component' ? components.map((item) => ({ id: String(item.linh_kien_id), label: `${item.ten_linh_kien}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_don_vi })) : giftBoxes.map((item) => ({ id: String(item.hop_qua_id), label: `${item.ten_hop_qua}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_ban })), [components, giftBoxes, kind, variants])
-  const selectItem = (id: string) => { setSelectedId(id); const selected = options.find((item) => item.id === id); if (selected) setValues((current) => ({ ...current, gia_don_vi: selected.price })) }
+  const options = useMemo(() => kind === 'product' ? variants.filter((item) => parseAdminEntityId(item.id).kind === 'variant').map((item) => ({ id: item.id, label: `${item.name} · ${item.sizeLabel || item.size} · ${item.sku}`, price: item.price, shelfLifeDays: item.shelfLifeDays ?? null })) : kind === 'component' ? components.map((item) => ({ id: String(item.linh_kien_id), label: `${item.ten_linh_kien}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_don_vi, shelfLifeDays: null })) : giftBoxes.map((item) => ({ id: String(item.hop_qua_id), label: `${item.ten_hop_qua}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_ban, shelfLifeDays: null })), [components, giftBoxes, kind, variants])
+  const selectedOption = options.find((item) => item.id === selectedId)
+  const selectItem = (id: string) => { setSelectedId(id); setManualExpiry(false); const selected = options.find((item) => item.id === id); if (selected) setValues((current) => ({ ...current, gia_don_vi: selected.price })) }
+
+  useEffect(() => {
+    if (kind !== 'product' || manualExpiry || !values.ngay_san_xuat || !selectedOption?.shelfLifeDays) return
+    const calculated = addDays(values.ngay_san_xuat, selectedOption.shelfLifeDays)
+    if (values.ngay_het_han !== calculated) setValues((current) => ({ ...current, ngay_het_han: calculated }))
+  }, [kind, manualExpiry, selectedOption?.shelfLifeDays, values.ngay_het_han, values.ngay_san_xuat])
 
   useEffect(() => {
     if (!requestedVariant || kind !== 'product' || selectedId) return
@@ -59,9 +73,9 @@ export default function AdminBatchCreatePage() {
     setValues((current) => ({ ...current, gia_don_vi: requested.price }))
   }, [kind, options, requestedVariant, selectedId])
 
-  const reset = () => { setValues(emptyValues); setSelectedId(''); setError(null); setWarnings([]); setAckWarnings(false) }
+  const reset = () => { setValues(emptyValues); setSelectedId(''); setError(null); setWarnings([]); setAckWarnings(false); setManualExpiry(false) }
   const submit = async () => {
-    const errors = validateBatch(values)
+    const errors = validateBatch(values, { requireProductionDate: kind === 'product' })
     if (!selectedId) errors.item = 'Vui lòng chọn đối tượng cần nhập lô'
     if (Object.keys(errors).length) { setError(Object.values(errors)[0]); return }
 
@@ -78,7 +92,12 @@ export default function AdminBatchCreatePage() {
       if (kind === 'product') {
         const entity = parseAdminEntityId(selectedId)
         if (entity.kind !== 'variant') throw new Error('Biến thể sản phẩm không hợp lệ')
-        await createProductBatch({ ...common, bienthe_sanpham_id: entity.id })
+        await createProductBatch({
+          ...common,
+          bienthe_sanpham_id: entity.id,
+          ngay_san_xuat: new Date(`${values.ngay_san_xuat}T00:00:00`).toISOString(),
+          ngay_het_han: manualExpiry ? common.ngay_het_han : null,
+        })
       }
       if (kind === 'component') await createComponentBatch({ ...common, linh_kien_id: Number(selectedId) })
       if (kind === 'giftbox') await createGiftBoxBatch({ ...common, hop_qua_id: Number(selectedId) })
@@ -104,7 +123,7 @@ export default function AdminBatchCreatePage() {
         </Alert>
       )}
       <form onSubmit={(event) => { event.preventDefault(); void submit() }}>
-        <TextField select fullWidth label="Loại lô" value={kind} onChange={(event) => { setKind(event.target.value as BatchKind); setSelectedId('') }} sx={{ mb: 2 }}>
+        <TextField select fullWidth label="Loại lô" value={kind} onChange={(event) => { setKind(event.target.value as BatchKind); setSelectedId(''); setManualExpiry(false) }} sx={{ mb: 2 }}>
           <MenuItem value="product">Lô sản phẩm</MenuItem><MenuItem value="component">Lô linh kiện</MenuItem><MenuItem value="giftbox">Lô hộp quà</MenuItem>
         </TextField>
         <TextField select fullWidth label={kind === 'product' ? 'Sản phẩm / kích thước' : 'Đối tượng'} value={selectedId} onChange={(event) => selectItem(event.target.value)} sx={{ mb: 2 }}>
@@ -112,7 +131,15 @@ export default function AdminBatchCreatePage() {
         </TextField>
         <TextField select fullWidth label="Nhà cung cấp" value={values.ncc_id} onChange={(event) => setValues({ ...values, ncc_id: event.target.value })} sx={{ mb: 2 }}><MenuItem value="">Không chọn</MenuItem>{suppliers.map((item) => <MenuItem key={item.ncc_id} value={item.ncc_id}>{item.ten_ncc}</MenuItem>)}</TextField>
         <TextField fullWidth required label="Mã lô" value={values.ma_lo} onChange={(event) => setValues({ ...values, ma_lo: event.target.value })} sx={{ mb: 2 }} />
-        <TextField fullWidth required type="date" label="Ngày hết hạn" InputLabelProps={{ shrink: true }} value={values.ngay_het_han} onChange={(event) => setValues({ ...values, ngay_het_han: event.target.value })} sx={{ mb: 2 }} />
+        {kind === 'product' && <TextField fullWidth required type="date" label="Ngày sản xuất" InputLabelProps={{ shrink: true }} value={values.ngay_san_xuat} onChange={(event) => setValues({ ...values, ngay_san_xuat: event.target.value })} sx={{ mb: 2 }} />}
+        <TextField
+          fullWidth required type="date" label="Ngày hết hạn" InputLabelProps={{ shrink: true }}
+          value={values.ngay_het_han}
+          onChange={(event) => { setManualExpiry(true); setValues({ ...values, ngay_het_han: event.target.value }) }}
+          helperText={kind === 'product' && selectedOption?.shelfLifeDays ? `Tự tính theo HSD ${selectedOption.shelfLifeDays} ngày của sản phẩm${manualExpiry ? ' · Đang chỉnh tay' : ''}` : kind === 'product' ? 'Sản phẩm chưa có HSD mặc định; cần nhập thủ công' : undefined}
+          sx={{ mb: 1 }}
+        />
+        {kind === 'product' && selectedOption?.shelfLifeDays && manualExpiry && <Button type="button" size="small" onClick={() => setManualExpiry(false)} sx={{ mb: 2 }}>Tính lại theo HSD sản phẩm</Button>}
         <TextField fullWidth required type="number" label="Số lượng" value={values.so_luong} onChange={(event) => setValues({ ...values, so_luong: Number(event.target.value) })} sx={{ mb: 2 }} />
         <TextField fullWidth required type="number" label="Giá đơn vị" value={values.gia_don_vi || ''} onChange={(event) => setValues({ ...values, gia_don_vi: Number(event.target.value) })} sx={{ mb: 2 }} />
         <TextField fullWidth label="Ghi chú" multiline minRows={2} value={values.ghi_chu} onChange={(event) => setValues({ ...values, ghi_chu: event.target.value })} sx={{ mb: 2 }} />

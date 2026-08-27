@@ -108,8 +108,8 @@ export default function AdminProductPage() {
     const rows = variants.filter((v) => selected.has(v.id))
     downloadCsv(
       `san-pham-${new Date().toISOString().slice(0, 10)}.csv`,
-      ['Tên', 'Danh mục', 'Giá', 'Kích thước', 'Trạng thái', 'SKU'],
-      rows.map((v) => [v.name, v.category, v.price, v.sizeLabel || v.size, v.status === 'active' ? 'Hoạt động' : 'Ẩn', v.sku || '']),
+      ['Tên', 'Danh mục', 'Giá', 'Kích thước', 'HSD (ngày)', 'Trạng thái', 'SKU'],
+      rows.map((v) => [v.name, v.category, v.price, v.sizeLabel || v.size, v.shelfLifeDays ?? '', v.status === 'active' ? 'Hoạt động' : 'Ẩn', v.sku || '']),
     )
   }
 

@@ -105,6 +105,30 @@ class TestCreateProductValidation:
         assert res.status_code == 201
         assert res.json()["gia_co_ban"] == 99999.99
 
+    def test_stores_product_level_shelf_life(self, client, admin_token):
+        payload = {
+            **VALID_PAYLOAD,
+            "sku": "CRM99",
+            "han_su_dung_ngay": 3,
+        }
+
+        res = client.post("/products", json=payload, headers=_auth(admin_token))
+
+        assert res.status_code == 201
+        assert res.json()["han_su_dung_ngay"] == 3
+
+    @pytest.mark.parametrize("days", [0, -1, 3651])
+    def test_rejects_invalid_product_shelf_life(self, client, admin_token, days):
+        payload = {
+            **VALID_PAYLOAD,
+            "sku": f"SHELF-{days}",
+            "han_su_dung_ngay": days,
+        }
+
+        res = client.post("/products", json=payload, headers=_auth(admin_token))
+
+        assert res.status_code == 422
+
 
 class TestSkuNormalization:
     """SKUs are uppercased + trimmed at the schema boundary (see

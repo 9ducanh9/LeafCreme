@@ -45,34 +45,67 @@ def variants(*rows: tuple[str, int, bool]) -> tuple[VariantSeed, ...]:
 
 
 CATALOG: tuple[ProductSeed, ...] = (
-    ProductSeed("LC-MOU-01", "Mousse chanh dây", "Mousse", "chanh dây", "Mousse vị chanh dây.", "product/1_Mousse_chanh_dây.jpg", variants(("7cm", 45000, False), ("16cm", 220000, True), ("18cm", 280000, False))),
-    ProductSeed("LC-MOU-02", "Mousse dâu tươi", "Mousse", "dâu tươi", "Mousse vị dâu tươi.", "product/2_Mousse_dâu_tươi.jpg", variants(("7cm", 45000, False), ("16cm", 220000, True), ("18cm", 280000, False))),
-    ProductSeed("LC-MOU-03", "Mousse matcha phô mai", "Mousse", "matcha phô mai", "Mousse vị matcha phô mai.", "product/3_Mousse_matcha_phô_mai.jpg", variants(("7cm", 50000, False), ("16cm", 240000, True), ("18cm", 300000, False))),
-    ProductSeed("LC-MOU-04", "Mousse chocolate đen", "Mousse", "chocolate đen", "Mousse vị chocolate đen.", "product/4_Mousse_chocolate_đen.jpg", variants(("7cm", 50000, False), ("16cm", 230000, True), ("18cm", 290000, False))),
-    ProductSeed("LC-MOU-05", "Mousse việt quất", "Mousse", "việt quất", "Mousse vị việt quất.", "product/5_Mousse_việt_quất.jpg", variants(("7cm", 45000, False), ("16cm", 220000, True), ("18cm", 280000, False))),
-    ProductSeed("LC-TIR-01", "Tiramisu classic coffee", "Tiramisu", "classic coffee", "Tiramisu vị classic coffee.", "product/6_Tiramisu_classic_coffee.jpg", variants(("6in", 220000, False), ("8in", 320000, True), ("10in", 450000, False))),
-    ProductSeed("LC-TIR-02", "Tiramisu cacao", "Tiramisu", "cacao", "Tiramisu vị cacao.", "product/7_Tiramisu_cacao.jpg", variants(("6in", 230000, False), ("8in", 330000, True), ("10in", 460000, False))),
-    ProductSeed("LC-TIR-03", "Tiramisu matcha", "Tiramisu", "matcha", "Tiramisu vị matcha.", "product/8_Tiramisu_matcha.jpg", variants(("6in", 240000, False), ("8in", 340000, True), ("10in", 470000, False))),
-    ProductSeed("LC-TIR-04", "Tiramisu dâu", "Tiramisu", "dâu", "Tiramisu vị dâu.", "product/9_Tiramisu_dâu.jpg", variants(("6in", 230000, False), ("8in", 330000, True), ("10in", 460000, False))),
-    ProductSeed("LC-TIR-05", "Tiramisu oreo", "Tiramisu", "oreo", "Tiramisu vị oreo.", "product/10_Tiramisu_oreo.jpg", variants(("6in", 240000, False), ("8in", 350000, True), ("10in", 480000, False))),
-    ProductSeed("LC-SPO-01", "Bông lan trứng muối basic", "Bông lan", "trứng muối basic", "Bông lan trứng muối basic.", "product/11_Bông_lan_trứng_muối_basic.jpg", variants(("18cm", 180000, False), ("20cm", 240000, True))),
-    ProductSeed("LC-SPO-02", "Bông lan trứng muối phô mai", "Bông lan", "trứng muối phô mai", "Bông lan trứng muối phô mai.", "product/12_Bông_lan_trứng_muối_phô_mai.jpg", variants(("18cm", 200000, False), ("20cm", 260000, True))),
-    ProductSeed("LC-SPO-03", "Bông lan trứng muối sốt dầu trứng", "Bông lan", "trứng muối sốt dầu trứng", "Bông lan trứng muối sốt dầu trứng.", "product/13_Bông_lan_trứng_muối_sốt_dầu_trứng.jpg", variants(("18cm", 210000, False), ("20cm", 270000, True))),
-    ProductSeed("LC-SPO-04", "Bông lan bơ sữa trái cây", "Bông lan", "bơ sữa trái cây", "Bông lan bơ sữa trái cây.", "product/14_Bông_lan_bơ_sữa_trái_cây.jpg", variants(("18cm", 190000, False), ("20cm", 250000, True))),
-    ProductSeed("LC-SPO-05", "Bông lan bơ sữa chocolate chips", "Bông lan", "bơ sữa chocolate chips", "Bông lan bơ sữa chocolate chips.", "product/15_Bông_lan_bơ_sữa_chocolate_chips.jpg", variants(("18cm", 200000, False), ("20cm", 260000, True))),
-    ProductSeed("LC-CRM-01", "Bánh kem vanilla trái cây", "Bánh kem", "vanilla trái cây", "Bánh kem vanilla trái cây.", "product/16_Banh_kem_vanilla_trai_cay.jpg", variants(("6in", 250000, False), ("8in", 380000, True), ("10in", 520000, False), ("12in", 680000, False))),
-    ProductSeed("LC-CRM-02", "Bánh kem chocolate", "Bánh kem", "chocolate", "Bánh kem chocolate.", "product/17_Bánh_kem_chocolate.jpg", variants(("6in", 260000, False), ("8in", 390000, True), ("10in", 530000, False), ("12in", 690000, False))),
-    ProductSeed("LC-CRM-03", "Bánh kem red velvet", "Bánh kem", "red velvet", "Bánh kem red velvet.", "product/18_Bánh_kem_red_velvet.jpg", variants(("6in", 270000, False), ("8in", 400000, True), ("10in", 540000, False), ("12in", 700000, False))),
-    ProductSeed("LC-CRM-04", "Bánh kem oreo", "Bánh kem", "oreo", "Bánh kem oreo.", "product/19_Bánh_kem_oreo.jpg", variants(("6in", 260000, False), ("8in", 390000, True), ("10in", 530000, False), ("12in", 690000, False))),
-    ProductSeed("LC-CRM-05", "Bánh kem tiramisu kem", "Bánh kem", "tiramisu kem", "Bánh kem tiramisu kem.", "product/20_Bánh_kem_tiramisu_kem.jpg", variants(("6in", 280000, False), ("8in", 410000, True), ("10in", 550000, False), ("12in", 720000, False))),
+    ProductSeed("MOU01", "Mousse chanh dây", "Mousse", "chanh dây", "Mousse vị chanh dây.", "product/1_Mousse_chanh_dây.jpg", variants(("7cm", 45000, False), ("16cm", 220000, True), ("18cm", 280000, False))),
+    ProductSeed("MOU02", "Mousse dâu tươi", "Mousse", "dâu tươi", "Mousse vị dâu tươi.", "product/2_Mousse_dâu_tươi.jpg", variants(("7cm", 45000, False), ("16cm", 220000, True), ("18cm", 280000, False))),
+    ProductSeed("MOU03", "Mousse matcha phô mai", "Mousse", "matcha phô mai", "Mousse vị matcha phô mai.", "product/3_Mousse_matcha_phô_mai.jpg", variants(("7cm", 50000, False), ("16cm", 240000, True), ("18cm", 300000, False))),
+    ProductSeed("MOU04", "Mousse chocolate đen", "Mousse", "chocolate đen", "Mousse vị chocolate đen.", "product/4_Mousse_chocolate_đen.jpg", variants(("7cm", 50000, False), ("16cm", 230000, True), ("18cm", 290000, False))),
+    ProductSeed("MOU05", "Mousse việt quất", "Mousse", "việt quất", "Mousse vị việt quất.", "product/5_Mousse_việt_quất.jpg", variants(("7cm", 45000, False), ("16cm", 220000, True), ("18cm", 280000, False))),
+    ProductSeed("TIR01", "Tiramisu classic coffee", "Tiramisu", "classic coffee", "Tiramisu vị classic coffee.", "product/6_Tiramisu_classic_coffee.jpg", variants(("6in", 220000, False), ("8in", 320000, True), ("10in", 450000, False))),
+    ProductSeed("TIR02", "Tiramisu cacao", "Tiramisu", "cacao", "Tiramisu vị cacao.", "product/7_Tiramisu_cacao.jpg", variants(("6in", 230000, False), ("8in", 330000, True), ("10in", 460000, False))),
+    ProductSeed("TIR03", "Tiramisu matcha", "Tiramisu", "matcha", "Tiramisu vị matcha.", "product/8_Tiramisu_matcha.jpg", variants(("6in", 240000, False), ("8in", 340000, True), ("10in", 470000, False))),
+    ProductSeed("TIR04", "Tiramisu dâu", "Tiramisu", "dâu", "Tiramisu vị dâu.", "product/9_Tiramisu_dâu.jpg", variants(("6in", 230000, False), ("8in", 330000, True), ("10in", 460000, False))),
+    ProductSeed("TIR05", "Tiramisu oreo", "Tiramisu", "oreo", "Tiramisu vị oreo.", "product/10_Tiramisu_oreo.jpg", variants(("6in", 240000, False), ("8in", 350000, True), ("10in", 480000, False))),
+    ProductSeed("SPO01", "Bông lan trứng muối basic", "Bông lan", "trứng muối basic", "Bông lan trứng muối basic.", "product/11_Bông_lan_trứng_muối_basic.jpg", variants(("18cm", 180000, False), ("20cm", 240000, True))),
+    ProductSeed("SPO02", "Bông lan trứng muối phô mai", "Bông lan", "trứng muối phô mai", "Bông lan trứng muối phô mai.", "product/12_Bông_lan_trứng_muối_phô_mai.jpg", variants(("18cm", 200000, False), ("20cm", 260000, True))),
+    ProductSeed("SPO03", "Bông lan trứng muối sốt dầu trứng", "Bông lan", "trứng muối sốt dầu trứng", "Bông lan trứng muối sốt dầu trứng.", "product/13_Bông_lan_trứng_muối_sốt_dầu_trứng.jpg", variants(("18cm", 210000, False), ("20cm", 270000, True))),
+    ProductSeed("SPO04", "Bông lan bơ sữa trái cây", "Bông lan", "bơ sữa trái cây", "Bông lan bơ sữa trái cây.", "product/14_Bông_lan_bơ_sữa_trái_cây.jpg", variants(("18cm", 190000, False), ("20cm", 250000, True))),
+    ProductSeed("SPO05", "Bông lan bơ sữa chocolate chips", "Bông lan", "bơ sữa chocolate chips", "Bông lan bơ sữa chocolate chips.", "product/15_Bông_lan_bơ_sữa_chocolate_chips.jpg", variants(("18cm", 200000, False), ("20cm", 260000, True))),
+    ProductSeed("CRM01", "Bánh kem vanilla trái cây", "Bánh kem", "vanilla trái cây", "Bánh kem vanilla trái cây.", "product/16_Banh_kem_vanilla_trai_cay.jpg", variants(("6in", 250000, False), ("8in", 380000, True), ("10in", 520000, False), ("12in", 680000, False))),
+    ProductSeed("CRM02", "Bánh kem chocolate", "Bánh kem", "chocolate", "Bánh kem chocolate.", "product/17_Bánh_kem_chocolate.jpg", variants(("6in", 260000, False), ("8in", 390000, True), ("10in", 530000, False), ("12in", 690000, False))),
+    ProductSeed("CRM03", "Bánh kem red velvet", "Bánh kem", "red velvet", "Bánh kem red velvet.", "product/18_Bánh_kem_red_velvet.jpg", variants(("6in", 270000, False), ("8in", 400000, True), ("10in", 540000, False), ("12in", 700000, False))),
+    ProductSeed("CRM04", "Bánh kem oreo", "Bánh kem", "oreo", "Bánh kem oreo.", "product/19_Bánh_kem_oreo.jpg", variants(("6in", 260000, False), ("8in", 390000, True), ("10in", 530000, False), ("12in", 690000, False))),
+    ProductSeed("CRM05", "Bánh kem tiramisu kem", "Bánh kem", "tiramisu kem", "Bánh kem tiramisu kem.", "product/20_Bánh_kem_tiramisu_kem.jpg", variants(("6in", 280000, False), ("8in", 410000, True), ("10in", 550000, False), ("12in", 720000, False))),
 )
+
+SHELF_LIFE_DAYS_BY_NAME: dict[str, int] = {
+    "Bánh kem chocolate": 3,
+    "Bánh kem oreo": 3,
+    "Bánh kem red velvet": 3,
+    "Bánh kem tiramisu kem": 2,
+    "Bánh kem vanilla trái cây": 2,
+    "Bông lan bơ sữa chocolate chips": 4,
+    "Bông lan bơ sữa trái cây": 2,
+    "Bông lan trứng muối basic": 3,
+    "Bông lan trứng muối phô mai": 2,
+    "Bông lan trứng muối sốt dầu trứng": 2,
+    "Mousse chanh dây": 3,
+    "Mousse chocolate đen": 4,
+    "Mousse dâu tươi": 2,
+    "Mousse matcha phô mai": 3,
+    "Mousse việt quất": 3,
+    "Tiramisu cacao": 3,
+    "Tiramisu classic coffee": 3,
+    "Tiramisu matcha": 3,
+    "Tiramisu dâu": 3,
+    "Tiramisu oreo": 3,
+}
 
 DEMO_SKUS = ("BN-001", "BN-002", "BD-001", "BD-002", "BP-001")
 TEST_SKU_PREFIX = "LC_VERIFY%"
 
 
 def variant_sku(product: ProductSeed, size: str) -> str:
-    return f"{product.sku}-{size.upper()}".replace(" ", "")
+    size_tokens = {
+        "6in": "15",
+        "8in": "20",
+        "10in": "25",
+        "12in": "30",
+    }
+    normalized_size = size.strip().lower()
+    token = size_tokens.get(normalized_size, "".join(character for character in normalized_size if character.isdigit()))
+    if not token:
+        raise ValueError(f"Unsupported size for SKU: {size!r}")
+    return f"{product.sku}-{token}"
 
 
 def validate_catalog() -> None:
@@ -229,6 +262,7 @@ def replace_catalog(apply: bool, purge_test_data: bool, purge_mixed_orders: bool
             product.hinh_anh_url = seed.image_path
             product.danh_muc = seed.category
             product.don_vi_tinh = "chiếc"
+            product.han_su_dung_ngay = SHELF_LIFE_DAYS_BY_NAME.get(seed.name)
             product.phu_hop_dip = None
             product.dang_hoat_dong = True
             db.flush()

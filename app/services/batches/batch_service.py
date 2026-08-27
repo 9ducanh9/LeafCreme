@@ -195,7 +195,7 @@ class BatchService:
         cfg = self._kind(kind)
 
         item_id = getattr(payload, cfg.item_fk_field)
-        self._get_or_404(
+        item = self._get_or_404(
             db, cfg.item_model, cfg.item_pk_field, item_id,
             f"{cfg.item_not_found_label} với ID {item_id} không tồn tại",
         )
@@ -215,10 +215,29 @@ class BatchService:
             if existing_qr:
                 raise DomainError(status_code=400, detail=f"Mã QR '{payload.ma_qr}' đã tồn tại")
 
-        if payload.ngay_het_han.date() < date.today():
+        payload_data = payload.model_dump()
+        if kind == "products":
+            produced_at = payload_data.get("ngay_san_xuat") or datetime.now()
+            expires_at = payload_data.get("ngay_het_han")
+            if expires_at is None:
+                product = db.query(SanPham).filter(SanPham.sanpham_id == item.sanpham_id).first()
+                shelf_life_days = product.han_su_dung_ngay if product else None
+                if shelf_life_days is None:
+                    raise DomainError(
+                        status_code=400,
+                        detail="Sản phẩm chưa cấu hình hạn sử dụng; vui lòng nhập ngày hết hạn thủ công",
+                    )
+                expires_at = produced_at + timedelta(days=shelf_life_days)
+            if expires_at <= produced_at:
+                raise DomainError(status_code=400, detail="Ngày hết hạn phải sau ngày sản xuất")
+            payload_data["ngay_san_xuat"] = produced_at
+            payload_data["ngay_het_han"] = expires_at
+
+        expires_at = payload_data["ngay_het_han"]
+        if expires_at.date() < date.today():
             raise DomainError(status_code=400, detail="Ngày hết hạn phải sau ngày nhập")
 
-        batch = cfg.batch_model(**payload.model_dump())
+        batch = cfg.batch_model(**payload_data)
         db.add(batch)
         db.flush()
 
@@ -278,10 +297,14 @@ class BatchService:
                 query = query.filter(cfg.batch_model.ma_lo.ilike(f"%{search}%"))
 
         total = query.count()
+        production_column = (
+            cfg.batch_model.ngay_san_xuat
+            if kind == "products"
+            else cfg.batch_model.ngay_nhap
+        )
         sort_columns = {
             "ngay_het_han": cfg.batch_model.ngay_het_han,
-            # The current schema calls production/import time `ngay_nhap`.
-            "ngay_san_xuat": cfg.batch_model.ngay_nhap,
+            "ngay_san_xuat": production_column,
             "ngay_tao": cfg.batch_model.ngay_tao,
         }
         if sort_by == "so_luong_hien_tai":
@@ -328,15 +351,21 @@ class BatchService:
                     raise DomainError(status_code=400, detail=f"Mã QR '{update_data['ma_qr']}' đã tồn tại")
 
         ngay_het_han = update_data.get("ngay_het_han", batch.ngay_het_han)
-        if ngay_het_han <= batch.ngay_nhap:
-            raise DomainError(status_code=400, detail="Ngày hết hạn phải sau ngày nhập")
+        baseline = (
+            update_data.get("ngay_san_xuat", batch.ngay_san_xuat)
+            if kind == "products"
+            else batch.ngay_nhap
+        )
+        if ngay_het_han <= baseline:
+            detail = "Ngày hết hạn phải sau ngày sản xuất" if kind == "products" else "Ngày hết hạn phải sau ngày nhập"
+            raise DomainError(status_code=400, detail=detail)
 
         for field, value in update_data.items():
             setattr(batch, field, value)
 
         db.commit()
         db.refresh(batch)
-        if {"ngay_het_han", "trang_thai"} & update_data.keys():
+        if {"ngay_san_xuat", "ngay_het_han", "trang_thai"} & update_data.keys():
             _refresh_proactive_expiry_insights(db)
         return self._to_response(cfg, batch, self._get_inventory(db, cfg, batch.lohang_id))
 

@@ -45,6 +45,7 @@ export default function ProductTable({ variants, onEdit, onDelete, onRestock, to
     { id: 'category', label: 'Danh mục', sortable: true, render: (variant) => <Chip label={variant.category || '-'} size="small" color="warning" variant="outlined" /> },
     { id: 'price', label: 'Giá', numeric: true, sortable: true, render: (variant) => <Box sx={{ fontWeight: 700 }}>{formatPrice(variant.price)}</Box> },
     { id: 'size', label: 'Kích thước', render: (variant) => <Chip label={variant.sizeLabel || variant.size || 'N/A'} size="small" sx={{ bgcolor: 'grey.100', color: 'text.secondary' }} /> },
+    { id: 'shelfLifeDays', label: 'HSD', render: (variant) => variant.shelfLifeDays ? `${variant.shelfLifeDays} ngày` : 'Chưa đặt' },
     { id: 'status', label: 'Trạng thái', render: (variant) => <Chip label={variant.status === 'active' ? 'Hoạt động' : 'Ẩn'} color={getStatusColor(variant.status)} size="small" /> },
     { id: 'sku', label: 'SKU', render: (variant) => <Box sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.8125rem' }}>{variant.sku || '-'}</Box> },
   ]
