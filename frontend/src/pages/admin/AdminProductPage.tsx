@@ -1,5 +1,6 @@
 // Admin Product Management Page
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
@@ -22,6 +23,7 @@ import { downloadCsv } from '../../utils/admin/exportCsv'
 import { useAdminCreateAction } from '../../contexts/AdminCreateActionContext'
 
 export default function AdminProductPage() {
+  const navigate = useNavigate()
   const { showSuccess, showError } = useToast()
   const { can } = useAuth()
   const canWrite = can('products.write')
@@ -98,6 +100,10 @@ export default function AdminProductPage() {
     setDeleteConfirm({ open: true, id })
   }
 
+  const handleRestock = (variant: ProductVariant) => {
+    navigate(`/admin/batches?variant=${encodeURIComponent(variant.id)}`)
+  }
+
   const exportSelected = () => {
     const rows = variants.filter((v) => selected.has(v.id))
     downloadCsv(
@@ -136,7 +142,7 @@ export default function AdminProductPage() {
       />
 
       <ProductTable
-        variants={variants} onEdit={handleEdit} onDelete={handleDelete} total={total} page={table.page} pageSize={table.pageSize}
+        variants={variants} onEdit={handleEdit} onDelete={handleDelete} onRestock={handleRestock} total={total} page={table.page} pageSize={table.pageSize}
         onPageChange={(page) => table.patch({ page })} onPageSizeChange={(pageSize) => table.patch({ pageSize })}
         sortBy={table.sortBy} sortDir={table.sortDir} onSortChange={(sortBy, sortDir) => table.patch({ sortBy, sortDir })}
         status={tableStatus} error={tableError} onRetry={() => void loadVariants()}
@@ -167,4 +173,3 @@ export default function AdminProductPage() {
     </AdminPage>
   )
 }
-

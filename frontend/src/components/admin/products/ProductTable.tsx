@@ -1,7 +1,8 @@
 // Product Table component - displays product variants in a table
-import { IconButton, Chip, Avatar, Box } from '@mui/material'
+import { IconButton, Chip, Avatar, Box, Tooltip } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import AddBusinessIcon from '@mui/icons-material/AddBusiness'
 import { ProductVariant } from '../../../types/admin'
 import { formatPrice } from '../../../utils/formatPrice'
 import { getImageUrl } from '../../../utils/getImageUrl'
@@ -12,6 +13,7 @@ interface ProductTableProps {
   variants: ProductVariant[]
   onEdit: (variant: ProductVariant) => void
   onDelete: (id: string) => void
+  onRestock: (variant: ProductVariant) => void
   total: number
   page: number
   pageSize: number
@@ -28,9 +30,10 @@ interface ProductTableProps {
   bulkActions?: React.ReactNode
 }
 
-export default function ProductTable({ variants, onEdit, onDelete, total, page, pageSize, onPageChange, onPageSizeChange, sortBy, sortDir, onSortChange, status = 'idle', error, onRetry, selectedIds, onSelectionChange, bulkActions }: ProductTableProps) {
+export default function ProductTable({ variants, onEdit, onDelete, onRestock, total, page, pageSize, onPageChange, onPageSizeChange, sortBy, sortDir, onSortChange, status = 'idle', error, onRetry, selectedIds, onSelectionChange, bulkActions }: ProductTableProps) {
   const { can } = useAuth()
   const canWrite = can('products.write')
+  const canRestock = can('batches.write')
   const getStatusColor = (status: ProductVariant['status']) => {
     return status === 'active' ? 'success' : 'default'
   }
@@ -65,7 +68,10 @@ export default function ProductTable({ variants, onEdit, onDelete, total, page, 
     selectedIds={selectedIds}
     onSelectionChange={onSelectionChange}
     bulkActions={bulkActions}
-    rowActions={canWrite ? (variant) => <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}><IconButton size="small" color="primary" aria-label="Sửa sản phẩm" onClick={() => onEdit(variant)}><EditIcon fontSize="small" /></IconButton><IconButton size="small" color="error" aria-label="Xóa sản phẩm" onClick={() => onDelete(variant.id)}><DeleteIcon fontSize="small" /></IconButton></Box> : undefined}
+    rowActions={canWrite || canRestock ? (variant) => <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+      {canRestock && variant.id.startsWith('variant:') && <Tooltip title="Nhập thêm hàng"><IconButton size="small" color="success" aria-label={`Nhập thêm hàng cho ${variant.name} ${variant.sizeLabel || variant.size}`} onClick={() => onRestock(variant)}><AddBusinessIcon fontSize="small" /></IconButton></Tooltip>}
+      {canWrite && <IconButton size="small" color="primary" aria-label="Sửa sản phẩm" onClick={() => onEdit(variant)}><EditIcon fontSize="small" /></IconButton>}
+      {canWrite && <IconButton size="small" color="error" aria-label="Xóa sản phẩm" onClick={() => onDelete(variant.id)}><DeleteIcon fontSize="small" /></IconButton>}
+    </Box> : undefined}
   />
 }
-

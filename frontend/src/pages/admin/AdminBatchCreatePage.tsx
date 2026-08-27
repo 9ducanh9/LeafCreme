@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Alert, AlertTitle, Button, Checkbox, FormControlLabel, MenuItem, TextField } from '@mui/material'
 import AdminPage from '../../components/admin/ui/admin-page'
 import { useAdminForm } from '../../hooks/admin/useAdminForm'
@@ -17,6 +18,8 @@ type BatchKind = 'product' | 'component' | 'giftbox'
 const emptyValues = { ncc_id: '', ma_lo: '', ngay_het_han: '', so_luong: 1, gia_don_vi: 0, ghi_chu: '' }
 
 export default function AdminBatchCreatePage() {
+  const [searchParams] = useSearchParams()
+  const requestedVariant = searchParams.get('variant')
   const { showSuccess, showError } = useToast()
   const [kind, setKind] = useState<BatchKind>('product')
   const [values, setValues] = useState(emptyValues)
@@ -48,6 +51,14 @@ export default function AdminBatchCreatePage() {
   const options = useMemo(() => kind === 'product' ? variants.filter((item) => parseAdminEntityId(item.id).kind === 'variant').map((item) => ({ id: item.id, label: `${item.name} · ${item.sizeLabel || item.size} · ${item.sku}`, price: item.price })) : kind === 'component' ? components.map((item) => ({ id: String(item.linh_kien_id), label: `${item.ten_linh_kien}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_don_vi })) : giftBoxes.map((item) => ({ id: String(item.hop_qua_id), label: `${item.ten_hop_qua}${item.sku ? ` · ${item.sku}` : ''}`, price: item.gia_ban })), [components, giftBoxes, kind, variants])
   const selectItem = (id: string) => { setSelectedId(id); const selected = options.find((item) => item.id === id); if (selected) setValues((current) => ({ ...current, gia_don_vi: selected.price })) }
 
+  useEffect(() => {
+    if (!requestedVariant || kind !== 'product' || selectedId) return
+    const requested = options.find((item) => item.id === requestedVariant)
+    if (!requested) return
+    setSelectedId(requested.id)
+    setValues((current) => ({ ...current, gia_don_vi: requested.price }))
+  }, [kind, options, requestedVariant, selectedId])
+
   const reset = () => { setValues(emptyValues); setSelectedId(''); setError(null); setWarnings([]); setAckWarnings(false) }
   const submit = async () => {
     const errors = validateBatch(values)
@@ -71,7 +82,7 @@ export default function AdminBatchCreatePage() {
       }
       if (kind === 'component') await createComponentBatch({ ...common, linh_kien_id: Number(selectedId) })
       if (kind === 'giftbox') await createGiftBoxBatch({ ...common, hop_qua_id: Number(selectedId) })
-      showSuccess('Tạo lô hàng thành công'); reset()
+      showSuccess('Nhập hàng thành công. Tồn kho đã được cập nhật.'); reset()
     } catch (caught: unknown) { const detail = caught && typeof caught === 'object' && 'detail' in caught ? (caught as { detail?: unknown }).detail : undefined; const message = typeof detail === 'string' ? detail : 'Không thể tạo lô hàng'; setError(message); showError(message) }
     finally { setLoading(false) }
   }
@@ -96,8 +107,8 @@ export default function AdminBatchCreatePage() {
         <TextField select fullWidth label="Loại lô" value={kind} onChange={(event) => { setKind(event.target.value as BatchKind); setSelectedId('') }} sx={{ mb: 2 }}>
           <MenuItem value="product">Lô sản phẩm</MenuItem><MenuItem value="component">Lô linh kiện</MenuItem><MenuItem value="giftbox">Lô hộp quà</MenuItem>
         </TextField>
-        <TextField select fullWidth label="Đối tượng" value={selectedId} onChange={(event) => selectItem(event.target.value)} sx={{ mb: 2 }}>
-          <MenuItem value="">Chọn đối tượng</MenuItem>{options.map((item) => <MenuItem key={item.id} value={item.id}>{item.label}</MenuItem>)}
+        <TextField select fullWidth label={kind === 'product' ? 'Sản phẩm / kích thước' : 'Đối tượng'} value={selectedId} onChange={(event) => selectItem(event.target.value)} sx={{ mb: 2 }}>
+          <MenuItem value="">{kind === 'product' ? 'Chọn sản phẩm và kích thước' : 'Chọn đối tượng'}</MenuItem>{options.map((item) => <MenuItem key={item.id} value={item.id}>{item.label}</MenuItem>)}
         </TextField>
         <TextField select fullWidth label="Nhà cung cấp" value={values.ncc_id} onChange={(event) => setValues({ ...values, ncc_id: event.target.value })} sx={{ mb: 2 }}><MenuItem value="">Không chọn</MenuItem>{suppliers.map((item) => <MenuItem key={item.ncc_id} value={item.ncc_id}>{item.ten_ncc}</MenuItem>)}</TextField>
         <TextField fullWidth required label="Mã lô" value={values.ma_lo} onChange={(event) => setValues({ ...values, ma_lo: event.target.value })} sx={{ mb: 2 }} />

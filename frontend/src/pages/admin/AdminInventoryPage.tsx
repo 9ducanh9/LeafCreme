@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Chip, MenuItem, Tab, Tabs, TextField } from '@mui/material'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import AddBusinessIcon from '@mui/icons-material/AddBusiness'
+import { useNavigate } from 'react-router-dom'
 import AdminPage from '../../components/admin/ui/admin-page'
 import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar, { ADMIN_SEARCH_FIELD_ID } from '../../components/admin/ui/data-table-toolbar'
@@ -9,6 +11,7 @@ import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import { useDebouncedCallback } from '../../hooks/admin/useDebouncedCallback'
 import { getBatchPage, type BatchListKind, type BatchPageItem } from '../../services/admin/batchService'
 import { downloadCsv } from '../../utils/admin/exportCsv'
+import { useAuth } from '../../contexts/AuthContext'
 
 const tabs: Array<{ kind: BatchListKind; label: string }> = [
   { kind: 'products', label: 'Sản phẩm' },
@@ -40,6 +43,9 @@ const columns: Column<BatchPageItem>[] = [
 ]
 
 export default function AdminInventoryPage() {
+  const navigate = useNavigate()
+  const { can } = useAuth()
+  const canReceiveStock = can('batches.write')
   const table = useDataTableState({ key: 'inventory', defaultSortBy: 'ngay_het_han', defaultSortDir: 'asc', defaultPageSize: 50, filterKeys: ['search', 'trang_thai'] })
   const [activeTab, setActiveTab] = useState(0)
   const [rows, setRows] = useState<BatchPageItem[]>([])
@@ -90,7 +96,11 @@ export default function AdminInventoryPage() {
   }
 
   return (
-    <AdminPage title="Tồn kho" breadcrumb={[{ label: 'Tồn kho' }]}>
+    <AdminPage
+      title="Tồn kho"
+      breadcrumb={[{ label: 'Tồn kho' }]}
+      actions={canReceiveStock && <Button variant="contained" startIcon={<AddBusinessIcon />} onClick={() => navigate('/admin/batches')}>Nhập thêm hàng</Button>}
+    >
       <Tabs value={activeTab} onChange={(_, value) => { setActiveTab(value); table.patch({ page: 0 }) }} aria-label="Nhóm tồn kho">
         {tabs.map((tab) => <Tab key={tab.kind} label={tab.label} />)}
       </Tabs>
