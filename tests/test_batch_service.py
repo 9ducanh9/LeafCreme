@@ -159,6 +159,35 @@ class _ComponentBatchPayload:
 
 
 class TestCreateBatch:
+    def test_product_batch_generates_compact_lot_code_when_omitted(self, db_session, service, staff_user, variant):
+        produced_at = datetime(2026, 8, 27, 9, 30)
+        payload = _ProductBatchPayload(
+            variant.bienthe_id,
+            None,
+            ngay_san_xuat=produced_at,
+            ngay_het_han=produced_at + timedelta(days=3),
+        )
+
+        result = service.create_batch(db_session, "products", payload, staff_user)
+
+        assert result["ma_lo"] == "SP-BATCH-TEST-260827-01"
+
+    def test_product_batch_increments_generated_lot_sequence(self, db_session, service, staff_user, variant):
+        produced_at = datetime(2026, 8, 27, 9, 30)
+        for expected_sequence in ("01", "02"):
+            result = service.create_batch(
+                db_session,
+                "products",
+                _ProductBatchPayload(
+                    variant.bienthe_id,
+                    None,
+                    ngay_san_xuat=produced_at,
+                    ngay_het_han=produced_at + timedelta(days=3),
+                ),
+                staff_user,
+            )
+            assert result["ma_lo"] == f"SP-BATCH-TEST-260827-{expected_sequence}"
+
     def test_product_batch_auto_calculates_expiry_from_product_shelf_life(
         self, db_session, service, staff_user, variant
     ):

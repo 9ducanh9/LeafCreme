@@ -32,7 +32,7 @@ import { getProductVariants } from '../../services/admin/productService'
 import { getGiftBoxes } from '../../services/admin/giftBoxService'
 import { getSuppliers } from '../../services/admin/supplierService'
 import { getComponents } from '../../services/admin/componentService'
-import { createProductBatch, createComponentBatch, createGiftBoxBatch } from '../../services/admin/batchService'
+import { createProductBatch, createComponentBatch, createGiftBoxBatch, suggestBatchCode, type BatchCodeKind } from '../../services/admin/batchService'
 import { useToast } from '../../contexts/ToastContext'
 import { parseAdminEntityId, type ProductVariant } from '../../types/admin'
 import type { BackendGiftBox } from '../../types/giftBox'
@@ -93,6 +93,12 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`))
 }
 
+function fallbackLotCode(sku: string | null | undefined, dateValue: string): string {
+  const prefix = (sku || 'LOT').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'LOT'
+  const datePart = dateValue.replace(/-/g, '').slice(2)
+  return `${prefix}-${datePart}-01`
+}
+
 export default function AdminBatchCreatePage() {
   const navigate = useNavigate()
   const theme = useTheme()
@@ -112,6 +118,7 @@ export default function AdminBatchCreatePage() {
   const [warnings, setWarnings] = useState<string[]>([])
   const [ackWarnings, setAckWarnings] = useState(false)
   const [manualExpiry, setManualExpiry] = useState(false)
+  const [lotCodeManuallyEdited, setLotCodeManuallyEdited] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const loadCatalog = useCallback(async () => {
@@ -170,6 +177,7 @@ export default function AdminBatchCreatePage() {
   }, [components, giftBoxes, kind, variants])
 
   const selectedOption = options.find((item) => item.id === selectedId) ?? null
+  const selectedSku = selectedOption?.sku
   const selectedSupplier = suppliers.find((item) => String(item.ncc_id) === values.ncc_id) ?? null
   const totalValue = Math.max(0, Number(values.so_luong) || 0) * Math.max(0, Number(values.gia_don_vi) || 0)
   const hasStarted = Boolean(selectedId || values.ncc_id || values.ma_lo || values.ngay_san_xuat || values.ngay_het_han || values.ghi_chu || values.so_luong !== 1 || values.gia_don_vi !== 0)
@@ -187,6 +195,25 @@ export default function AdminBatchCreatePage() {
   }, [kind, manualExpiry, selectedOption?.shelfLifeDays, values.ngay_het_han, values.ngay_san_xuat])
 
   useEffect(() => {
+    if (!selectedId || lotCodeManuallyEdited || (kind === 'product' && !values.ngay_san_xuat)) return
+    const itemId = kind === 'product' ? parseAdminEntityId(selectedId).id : Number(selectedId)
+    const apiKind: BatchCodeKind = kind === 'product' ? 'products' : kind === 'component' ? 'components' : 'gift_boxes'
+    const referenceDate = kind === 'product' ? values.ngay_san_xuat : todayValue()
+    let cancelled = false
+
+    setValues((current) => ({ ...current, ma_lo: fallbackLotCode(selectedSku, referenceDate) }))
+    void suggestBatchCode(apiKind, itemId, referenceDate)
+      .then((suggestion) => {
+        if (!cancelled) setValues((current) => ({ ...current, ma_lo: suggestion.ma_lo }))
+      })
+      .catch(() => {
+        // Keep the deterministic local fallback when the suggestion endpoint is unavailable.
+      })
+
+    return () => { cancelled = true }
+  }, [kind, lotCodeManuallyEdited, selectedId, selectedSku, values.ngay_san_xuat])
+
+  useEffect(() => {
     if (!requestedVariant || kind !== 'product' || selectedId) return
     const requested = options.find((item) => item.id === requestedVariant)
     if (!requested) return
@@ -199,16 +226,19 @@ export default function AdminBatchCreatePage() {
     setKind(nextKind)
     setSelectedId('')
     setManualExpiry(false)
+    setLotCodeManuallyEdited(false)
     setFieldErrors({})
-    setValues((current) => ({ ...current, ngay_san_xuat: '', ngay_het_han: '', so_luong: 1, gia_don_vi: 0 }))
+    setValues((current) => ({ ...current, ma_lo: '', ngay_san_xuat: '', ngay_het_han: '', so_luong: 1, gia_don_vi: 0 }))
   }
 
   const selectItem = (item: ReceiveOption | null) => {
     setSelectedId(item?.id ?? '')
     setManualExpiry(false)
+    setLotCodeManuallyEdited(false)
     setFieldErrors((current) => ({ ...current, item: '' }))
     setValues((current) => ({
       ...current,
+      ma_lo: '',
       gia_don_vi: item?.price ?? 0,
       ngay_san_xuat: kind === 'product' && item ? (current.ngay_san_xuat || todayValue()) : current.ngay_san_xuat,
       ngay_het_han: kind === 'product' && !item ? '' : current.ngay_het_han,
@@ -222,6 +252,7 @@ export default function AdminBatchCreatePage() {
     setWarnings([])
     setAckWarnings(false)
     setManualExpiry(false)
+    setLotCodeManuallyEdited(false)
     setFieldErrors({})
   }
 
@@ -245,7 +276,7 @@ export default function AdminBatchCreatePage() {
     try {
       const common = {
         ncc_id: values.ncc_id ? Number(values.ncc_id) : null,
-        ma_lo: values.ma_lo.trim(),
+        ma_lo: lotCodeManuallyEdited ? values.ma_lo.trim() : null,
         ngay_het_han: new Date(`${values.ngay_het_han}T23:59:59`).toISOString(),
         so_luong: Number(values.so_luong),
         gia_don_vi: Number(values.gia_don_vi),
@@ -353,7 +384,7 @@ export default function AdminBatchCreatePage() {
               <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 } }}>
                 <Stack spacing={2}>
                   <Box><Typography variant="subtitle1" fontWeight={700}>3. Thông tin lô</Typography><Typography variant="body2" color="text.secondary">Mã lô dùng để truy vết xuất xứ, hạn dùng và lịch sử tồn kho.</Typography></Box>
-                  <TextField fullWidth required label="Mã lô" value={values.ma_lo} onChange={(event) => setValues((current) => ({ ...current, ma_lo: event.target.value }))} error={Boolean(fieldErrors.ma_lo)} helperText={fieldErrors.ma_lo || 'Ví dụ: BL-20260827-01'} />
+                  <TextField fullWidth required label="Mã lô" value={values.ma_lo} onChange={(event) => { setLotCodeManuallyEdited(true); setValues((current) => ({ ...current, ma_lo: event.target.value })) }} error={Boolean(fieldErrors.ma_lo)} helperText={fieldErrors.ma_lo || (lotCodeManuallyEdited ? 'Mã lô chỉnh tay.' : 'Tự sinh theo SKU + ngày; vẫn có thể sửa.')} />
                   {kind === 'product' && <TextField fullWidth required type="date" label="Ngày sản xuất" InputLabelProps={{ shrink: true }} value={values.ngay_san_xuat} onChange={(event) => setValues((current) => ({ ...current, ngay_san_xuat: event.target.value }))} error={Boolean(fieldErrors.ngay_san_xuat)} helperText={fieldErrors.ngay_san_xuat || 'Ngày hết hạn sẽ tính tự động theo HSD của sản phẩm.'} />}
                   <Box>
                     <TextField

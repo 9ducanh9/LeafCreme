@@ -42,6 +42,7 @@ shape instead.
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 import logging
+import re
 from typing import Any, Callable, Optional
 
 from sqlalchemy import and_, or_
@@ -179,6 +180,52 @@ class BatchService:
             getattr(cfg.inventory_model, cfg.inventory_fk_field) == batch_id
         ).first()
 
+    @staticmethod
+    def _lot_prefix(raw_code: Any, fallback: str) -> str:
+        """Keep lot identifiers short while preserving the item's SKU meaning."""
+        normalized = re.sub(r"[^A-Z0-9]+", "-", str(raw_code or "").upper()).strip("-")
+        return (normalized[:24].rstrip("-") or fallback)
+
+    def _item_lot_prefix(self, db: Session, cfg: _BatchKind, item) -> str:
+        if cfg.item_model is BienTheSanPham:
+            product = db.query(SanPham).filter(SanPham.sanpham_id == item.sanpham_id).first()
+            return self._lot_prefix(
+                getattr(item, "sku_bienthe", None) or getattr(product, "sku", None),
+                f"SP{item.bienthe_id:02d}",
+            )
+        if cfg.item_model is LinhKien:
+            return self._lot_prefix(getattr(item, "sku", None), f"LK{item.linh_kien_id:02d}")
+        return self._lot_prefix(getattr(item, "sku", None), f"HQ{item.hop_qua_id:02d}")
+
+    def _next_lot_code(self, db: Session, cfg: _BatchKind, item, reference_date: date) -> str:
+        prefix = self._item_lot_prefix(db, cfg, item)
+        stem = f"{prefix}-{reference_date:%y%m%d}-"
+        rows = db.query(cfg.batch_model.ma_lo).filter(
+            cfg.batch_model.ma_lo.ilike(f"{stem}%")
+        ).all()
+        pattern = re.compile(rf"^{re.escape(stem)}(\d+)$", re.IGNORECASE)
+        used_sequences = [
+            int(match.group(1))
+            for (code,) in rows
+            if (match := pattern.fullmatch(str(code).strip()))
+        ]
+        next_sequence = max(used_sequences, default=0) + 1
+        return f"{stem}{next_sequence:02d}"
+
+    def suggest_lot_code(
+        self,
+        db: Session,
+        kind: str,
+        item_id: int,
+        reference_date: Optional[date] = None,
+    ) -> dict[str, str]:
+        cfg = self._kind(kind)
+        item = self._get_or_404(
+            db, cfg.item_model, cfg.item_pk_field, item_id,
+            f"{cfg.item_not_found_label} với ID {item_id} không tồn tại",
+        )
+        return {"ma_lo": self._next_lot_code(db, cfg, item, reference_date or date.today())}
+
     # ------------------------------------------------------------------
     # Generic CRUD (was duplicated 3x in the original router)
     # ------------------------------------------------------------------
@@ -197,16 +244,22 @@ class BatchService:
                 f"Nhà cung cấp với ID {payload.ncc_id} không tồn tại",
             )
 
-        existing = db.query(cfg.batch_model).filter(cfg.batch_model.ma_lo == payload.ma_lo).first()
+        payload_data = payload.model_dump()
+        lot_code = str(payload_data.get("ma_lo") or "").strip()
+        if not lot_code:
+            reference_at = payload_data.get("ngay_san_xuat") if kind == "products" else datetime.now()
+            lot_code = self._next_lot_code(db, cfg, item, reference_at.date())
+        payload_data["ma_lo"] = lot_code
+
+        existing = db.query(cfg.batch_model).filter(cfg.batch_model.ma_lo == lot_code).first()
         if existing:
-            raise DomainError(status_code=400, detail=f"Mã lô '{payload.ma_lo}' đã tồn tại")
+            raise DomainError(status_code=400, detail=f"Mã lô '{lot_code}' đã tồn tại")
 
         if payload.ma_qr:
             existing_qr = db.query(cfg.batch_model).filter(cfg.batch_model.ma_qr == payload.ma_qr).first()
             if existing_qr:
                 raise DomainError(status_code=400, detail=f"Mã QR '{payload.ma_qr}' đã tồn tại")
 
-        payload_data = payload.model_dump()
         if kind == "products":
             produced_at = payload_data.get("ngay_san_xuat") or datetime.now()
             expires_at = payload_data.get("ngay_het_han")

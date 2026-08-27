@@ -61,7 +61,7 @@ def _raise_http(exc: DomainError) -> None:
 class ProductBatchCreate(BaseModel):
     bienthe_sanpham_id: int = Field(..., gt=0)
     ncc_id: Optional[int] = Field(None, gt=0)
-    ma_lo: str = Field(..., min_length=1, max_length=50)
+    ma_lo: Optional[str] = Field(None, min_length=1, max_length=50)
     ngay_san_xuat: datetime = Field(default_factory=datetime.now)
     ngay_het_han: Optional[datetime] = None
     so_luong: int = Field(..., gt=0)
@@ -117,7 +117,7 @@ class ProductBatchResponse(BaseModel):
 class ComponentBatchCreate(BatchDateValidationMixin):
     linh_kien_id: int = Field(..., gt=0)
     ncc_id: Optional[int] = Field(None, gt=0)
-    ma_lo: str = Field(..., min_length=1, max_length=50)
+    ma_lo: Optional[str] = Field(None, min_length=1, max_length=50)
     ngay_het_han: datetime
     so_luong: int = Field(..., gt=0)
     gia_don_vi: Decimal = Field(..., gt=0)
@@ -161,7 +161,7 @@ class ComponentBatchResponse(BaseModel):
 class GiftBoxBatchCreate(BatchDateValidationMixin):
     hop_qua_id: int = Field(..., gt=0)
     ncc_id: Optional[int] = Field(None, gt=0)
-    ma_lo: str = Field(..., min_length=1, max_length=50)
+    ma_lo: Optional[str] = Field(None, min_length=1, max_length=50)
     ngay_het_han: datetime
     so_luong: int = Field(..., gt=0)
     gia_don_vi: Decimal = Field(..., gt=0)
@@ -202,6 +202,25 @@ class GiftBoxBatchResponse(BaseModel):
 # =========================================================
 # Product Batch Endpoints
 # =========================================================
+class LotCodeSuggestion(BaseModel):
+    ma_lo: str
+
+
+@router.get("/suggest-code", response_model=LotCodeSuggestion)
+def suggest_batch_code(
+    kind: Literal["products", "components", "gift_boxes"] = Query(...),
+    item_id: int = Query(..., gt=0),
+    reference_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_capability("batches.write")),
+):
+    """Suggest the next compact lot code without creating a batch."""
+    try:
+        return batch_service.suggest_lot_code(db, kind, item_id, reference_date)
+    except DomainError as exc:
+        _raise_http(exc)
+
+
 @router.post("/products", response_model=ProductBatchResponse, status_code=status.HTTP_201_CREATED)
 def create_product_batch(
     batch_data: ProductBatchCreate,

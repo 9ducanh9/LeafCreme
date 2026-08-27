@@ -17,6 +17,7 @@ export interface BatchPageItem {
 }
 
 export type BatchListKind = 'products' | 'components' | 'gift-boxes'
+export type BatchCodeKind = 'products' | 'components' | 'gift_boxes'
 
 export async function getBatchPage(
   kind: BatchListKind,
@@ -28,7 +29,7 @@ export async function getBatchPage(
 export interface ProductBatchCreate {
   bienthe_sanpham_id: number
   ncc_id?: number | null
-  ma_lo: string
+  ma_lo?: string | null
   ngay_san_xuat: string
   ngay_het_han?: string | null
   so_luong: number
@@ -41,7 +42,7 @@ export interface ProductBatchCreate {
 export interface ComponentBatchCreate {
   linh_kien_id: number
   ncc_id?: number | null
-  ma_lo: string
+  ma_lo?: string | null
   ngay_het_han: string
   so_luong: number
   gia_don_vi: number
@@ -53,7 +54,7 @@ export interface ComponentBatchCreate {
 export interface GiftBoxBatchCreate {
   hop_qua_id: number
   ncc_id?: number | null
-  ma_lo: string
+  ma_lo?: string | null
   ngay_het_han: string
   so_luong: number
   gia_don_vi: number
@@ -72,6 +73,14 @@ export async function createComponentBatch(payload: ComponentBatchCreate) {
 
 export async function createGiftBoxBatch(payload: GiftBoxBatchCreate) {
   return await apiClient.post('/batches/gift-boxes', payload)
+}
+
+export async function suggestBatchCode(kind: BatchCodeKind, itemId: number, referenceDate?: string) {
+  return await apiClient.get<{ ma_lo: string }>('/batches/suggest-code', {
+    kind,
+    item_id: itemId,
+    reference_date: referenceDate || null,
+  })
 }
 
 export interface ExpiringBatchItem {
