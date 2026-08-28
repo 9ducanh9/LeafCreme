@@ -20,6 +20,12 @@ export function getImageUrl(path: string | null | undefined): string {
     return `${API_BASE_URL}${path}`
   }
 
+  // Some backend settings use an uploads-relative path without a leading slash.
+  // Avoid turning uploads/payment/... into /uploads/uploads/payment/....
+  if (path.startsWith('uploads/')) {
+    return `${API_BASE_URL}/${path}`
+  }
+
   // If path is relative (product/xxx.jpg or giftboxes/xxx.jpg), add /uploads/
   if (path.startsWith('product/') || path.startsWith('giftboxes/')) {
     return `${API_BASE_URL}/uploads/${path}`
