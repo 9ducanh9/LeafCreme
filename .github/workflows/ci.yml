@@ -89,8 +89,5 @@ jobs:
       - name: Pull Vercel production settings
         run: npx --yes vercel@59.7.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Build frontend for Vercel
-        run: npx --yes vercel@59.7.0 build --prod --token="$VERCEL_TOKEN"
-
       - name: Deploy frontend to production
-        run: npx --yes vercel@59.7.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@59.7.0 deploy --prod --token="$VERCEL_TOKEN"
