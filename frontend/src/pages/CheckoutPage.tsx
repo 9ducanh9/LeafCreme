@@ -65,6 +65,7 @@ export default function CheckoutPage() {
   const { user } = useAuth()
   const { showSuccess } = useToast()
   const firstErrorRef = useRef<HTMLElement | null>(null)
+  const checkoutCompletedRef = useRef(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({})
@@ -73,7 +74,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'pay_later' | 'momo_qr'>('pay_later')
   const minDelivery = useMemo(minDeliveryValue, [])
 
-  useEffect(() => { if (!cart.items.length) navigate('/cart') }, [cart.items.length, navigate])
+  useEffect(() => {
+    if (!cart.items.length && !checkoutCompletedRef.current) navigate('/cart')
+  }, [cart.items.length, navigate])
   useEffect(() => { if (appliedVoucher?.code) setVoucherCode(appliedVoucher.code) }, [appliedVoucher])
 
   const updateShipping = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { const { name, value } = event.target; setShippingInfo((current) => ({ ...current, [name]: value })); setErrors((current) => ({ ...current, [name]: undefined })); setError(null) }
@@ -108,10 +111,12 @@ export default function CheckoutPage() {
       const order = await createOrder(orderData, 'online')
       if (paymentMethod === 'momo_qr') {
         const paymentInfo = await createMomoQRPayment(order.donhang_id)
+        checkoutCompletedRef.current = true
         clearCart()
         showSuccess(`Đơn hàng ${order.ma_don_hang} đã được tạo. Tiếp tục thanh toán bằng mã QR.`)
         navigate(`/orders/${order.donhang_id}/payment-qr`, { state: { paymentInfo } })
       } else {
+        checkoutCompletedRef.current = true
         clearCart()
         showSuccess(`Đơn hàng ${order.ma_don_hang} đã được tạo thành công!`)
         navigate(`/orders/${order.donhang_id}/success`)

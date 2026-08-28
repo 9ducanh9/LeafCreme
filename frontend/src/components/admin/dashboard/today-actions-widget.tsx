@@ -63,8 +63,10 @@ export default function TodayActionsWidget() {
     return () => { active = false }
   }, [])
 
+  const expiringRows = expiring ?? []
+  const preorderRows = preorders ?? []
   const loaded = expiring !== null && preorders !== null
-  const isEmpty = loaded && !expiringError && !preorderError && expiring!.length === 0 && preorders!.length === 0
+  const isEmpty = loaded && !expiringError && !preorderError && expiringRows.length === 0 && preorderRows.length === 0
   if (!loaded && !expiringError && !preorderError) return null // widget riêng, không chặn phần còn lại của dashboard
 
   return (
@@ -77,14 +79,14 @@ export default function TodayActionsWidget() {
           <Stack spacing={2} sx={{ mt: 0.5 }}>
             {expiringError ? (
               <Typography variant="body2" color="error">Không tải được lô sắp hết hạn.</Typography>
-            ) : expiring!.length > 0 && (
+            ) : expiringRows.length > 0 && (
               <Box>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <ReportProblemIcon fontSize="small" color="warning" />
                   <Typography variant="body2" fontWeight={600}>Lô sắp hết hạn (trong 2 ngày)</Typography>
                 </Stack>
                 <Stack spacing={0.75}>
-                  {expiring!.slice(0, 6).map((row) => {
+                  {expiringRows.slice(0, 6).map((row) => {
                     const left = daysLeft(row.ngay_het_han)
                     return (
                       <Stack key={`${row.kind}-${row.lohang_id}`} direction="row" spacing={1} alignItems="center" justifyContent="space-between" component={Link} to="/admin/inventory" sx={{ textDecoration: 'none', color: 'inherit', py: 0.25, minWidth: 0 }}>
@@ -106,14 +108,14 @@ export default function TodayActionsWidget() {
 
             {preorderError ? (
               <Typography variant="body2" color="error">Không tải được đơn cần chuẩn bị hôm nay.</Typography>
-            ) : preorders!.length > 0 && (
+            ) : preorderRows.length > 0 && (
               <Box>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <EventAvailableIcon fontSize="small" color="info" />
                   <Typography variant="body2" fontWeight={600}>Đơn đặt trước cần chuẩn bị hôm nay</Typography>
                 </Stack>
                 <Stack spacing={0.75}>
-                  {preorders!.slice(0, 6).map((order) => (
+                  {preorderRows.slice(0, 6).map((order) => (
                     <Stack key={order.id} direction="row" spacing={1} alignItems="center" justifyContent="space-between" component={Link} to={`/admin/orders/${order.id}`} sx={{ textDecoration: 'none', color: 'inherit', py: 0.25, minWidth: 0 }}>
                       <Typography variant="body2" noWrap sx={{ minWidth: 0 }}>{order.orderCode} — {order.customerName}</Typography>
                       <Chip size="small" color={ORDER_STATUS_COLOR[order.status]} label={ORDER_STATUS_LABEL[order.status]} sx={{ flexShrink: 0 }} />
