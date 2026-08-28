@@ -91,3 +91,4 @@ jobs:
 
       - name: Deploy frontend to production
         run: npx --yes vercel@59.7.0 deploy --prod --token="$VERCEL_TOKEN"
+        working-directory: ${{ github.workspace }}
