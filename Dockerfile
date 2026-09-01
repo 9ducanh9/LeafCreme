@@ -9,10 +9,6 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
@@ -35,7 +31,7 @@ COPY uploads/product ./uploads/product
 COPY uploads/payment ./uploads/payment
 
 # uploads/ is served via StaticFiles at /uploads and receives new files at
-# runtime (product images, avatars, MoMo QR) — must exist and be writable.
+# runtime (product images and avatars) and must remain writable.
 RUN mkdir -p uploads && chown -R appuser:appuser /app
 USER appuser
 
