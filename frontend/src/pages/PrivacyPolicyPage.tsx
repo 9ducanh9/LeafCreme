@@ -44,7 +44,7 @@ export default function PrivacyPolicyPage() {
           <div className="space-y-3 text-text-secondary leading-relaxed">
             <p>Chúng tôi chỉ chia sẻ thông tin cần thiết với các đối tác sau, để vận hành dịch vụ:</p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong className="text-text-primary">Cổng thanh toán</strong> (VNPay, MoMo): xử lý giao dịch thanh toán đơn hàng.</li>
+              <li><strong className="text-text-primary">Đối tác thanh toán</strong> (SePay/VietQR): tạo mã chuyển khoản và xác nhận giao dịch đơn hàng.</li>
               <li><strong className="text-text-primary">Nhà cung cấp xác thực</strong> (Amazon Cognito, và Facebook/Google nếu bạn chọn đăng nhập bằng mạng xã hội): xác minh danh tính tài khoản.</li>
               <li><strong className="text-text-primary">Đơn vị giao hàng</strong>: họ tên, số điện thoại, địa chỉ để giao bánh đến bạn.</li>
             </ul>

@@ -76,21 +76,13 @@ class Settings:
     VNPAY_CURR_CODE: str = os.getenv("VNPAY_CURR_CODE", "VND")
     VNPAY_ORDER_TYPE: str = os.getenv("VNPAY_ORDER_TYPE", "other")
 
-    # MoMo Settings
-    MOMO_PARTNER_CODE: str = os.getenv("MOMO_PARTNER_CODE", "")
-    MOMO_ACCESS_KEY: str = os.getenv("MOMO_ACCESS_KEY", "")
-    MOMO_SECRET_KEY: str = os.getenv("MOMO_SECRET_KEY", "")
-    MOMO_PAYMENT_URL: str = os.getenv("MOMO_PAYMENT_URL", "https://test-payment.momo.vn/v2/gateway/api/create")
-    MOMO_REQUEST_TYPE: str = os.getenv("MOMO_REQUEST_TYPE", "payWithMethod")
-    MOMO_LANG: str = os.getenv("MOMO_LANG", "vi")
-
-    # MoMo Simple QR Payment (không cần Business API)
-    # Public receiving details embedded in the versioned VietQR/MoMo image.
-    # Environment variables can still override these defaults when the
-    # receiving account changes.
-    MOMO_QR_PHONE: str = os.getenv("MOMO_QR_PHONE") or "0911263934"
-    MOMO_QR_ACCOUNT_NAME: str = os.getenv("MOMO_QR_ACCOUNT_NAME") or "LÂM CHÍ TÀI"
-    MOMO_QR_IMAGE_PATH: str = os.getenv("MOMO_QR_IMAGE_PATH") or "/uploads/payment/momo_qr.png"
+    # SePay/VietQR. Receiving details are configured per environment and are
+    # intentionally not committed to the repository.
+    SEPAY_BANK_ACCOUNT: str = os.getenv("SEPAY_BANK_ACCOUNT", "")
+    SEPAY_BANK_CODE: str = os.getenv("SEPAY_BANK_CODE", "")
+    SEPAY_ACCOUNT_NAME: str = os.getenv("SEPAY_ACCOUNT_NAME", "")
+    SEPAY_WEBHOOK_API_KEY: str = os.getenv("SEPAY_WEBHOOK_API_KEY", "")
+    SEPAY_QR_BASE_URL: str = os.getenv("SEPAY_QR_BASE_URL", "https://vietqr.app/img")
 
 
 settings = Settings()

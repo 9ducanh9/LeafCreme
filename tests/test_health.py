@@ -3,7 +3,7 @@
 These exist to prove the pipeline works end to end (migrations apply, the
 app boots with its full middleware/router stack — events, Leafie, payments —
 and the DB is reachable) — not to cover business logic yet. Domain test
-coverage (orders, FEFO allocation, MoMo/VNPay callbacks) is Phase 1+ work.
+coverage (orders, FEFO allocation, payment callbacks) is Phase 1+ work.
 """
 
 

@@ -14,11 +14,10 @@ payment->API response serialization, and "mark order hoan_thanh once fully
 paid" logic.
 """
 
-import uuid
+import re
 from decimal import Decimal
 from typing import Any, Optional
 
-import requests
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
@@ -27,10 +26,9 @@ from app.core.dependencies import BACK_OFFICE_ROLES, MANAGEMENT_ROLES, role_name
 from app.core.time import utc_now
 from app.models import DonHang, NguoiDung, ThanhToan
 from app.schemas import validate_thong_tin_giao_dich
-from app.services.momo import create_payment_request, parse_momo_datetime, verify_signature
-from app.services.momo_qr import create_momo_payment_info
 from app.services.errors import DomainError
 from app.services.orders import OrderService, can_access_order
+from app.services.sepay import build_sepay_qr_url
 
 _COMPLETABLE_STATUSES = ("cho", "cho_coc", "dang_xu_ly")
 
@@ -299,18 +297,54 @@ class PaymentService:
         return self._to_response(payment, order)
 
     # ------------------------------------------------------------------
-    # MoMo (Business API) payments
+    # SePay/VietQR payments
     # ------------------------------------------------------------------
-    def create_momo_payment(self, db: Session, payload: Any, current_user: NguoiDung) -> dict:
-        if not settings.MOMO_PARTNER_CODE or not settings.MOMO_ACCESS_KEY or not settings.MOMO_SECRET_KEY:
+    def _sepay_payment_info(self, payment: ThanhToan) -> dict:
+        payment_code = f"LC{payment.thanhtoan_id}"
+        amount = int(payment.so_tien or Decimal("0"))
+        return {
+            "payment_id": payment.thanhtoan_id,
+            "method": "sepay",
+            "bank_account": settings.SEPAY_BANK_ACCOUNT,
+            "bank_code": settings.SEPAY_BANK_CODE,
+            "account_name": settings.SEPAY_ACCOUNT_NAME,
+            "amount": amount,
+            "transfer_content": payment_code,
+            "qr_image": build_sepay_qr_url(
+                bank_account=settings.SEPAY_BANK_ACCOUNT,
+                bank_code=settings.SEPAY_BANK_CODE,
+                amount=amount,
+                payment_code=payment_code,
+                account_name=settings.SEPAY_ACCOUNT_NAME,
+                base_url=settings.SEPAY_QR_BASE_URL,
+            ),
+        }
+
+    def create_sepay_payment(self, db: Session, payload: Any, current_user: NguoiDung) -> dict:
+        if not settings.SEPAY_BANK_ACCOUNT or not settings.SEPAY_BANK_CODE:
             raise DomainError(
                 status_code=500,
-                detail="Thiếu cấu hình MoMo (MOMO_PARTNER_CODE/MOMO_ACCESS_KEY/MOMO_SECRET_KEY)",
+                detail="Thiếu cấu hình SePay (SEPAY_BANK_ACCOUNT/SEPAY_BANK_CODE)",
             )
 
         order = self._get_order_or_404(db, payload.donhang_id)
         self._ensure_order_access(order, current_user, "Bạn chỉ có thể thanh toán đơn hàng của mình")
 
+        existing = (
+            db.query(ThanhToan)
+            .filter(
+                ThanhToan.donhang_id == order.donhang_id,
+                ThanhToan.phuong_thuc == "chuyen_khoan",
+                ThanhToan.trang_thai == "dang_xu_ly",
+            )
+            .order_by(desc(ThanhToan.ngay_tao))
+            .first()
+        )
+        if existing:
+            raw = (existing.thong_tin_giao_dich or {}).get("chi_tiet_raw") or {}
+            if raw.get("provider") == "sepay":
+                return self._sepay_payment_info(existing)
+
         total_paid = self._total_paid(db, order.donhang_id)
         remaining = (order.tien_thanh_toan or Decimal("0")) - total_paid
         if remaining <= 0:
@@ -318,233 +352,88 @@ class PaymentService:
 
         payment = ThanhToan(
             donhang_id=order.donhang_id,
-            phuong_thuc="vi_dien_tu",
+            phuong_thuc="chuyen_khoan",
             so_tien=remaining,
             trang_thai="dang_xu_ly",
-            thong_tin_giao_dich=validate_thong_tin_giao_dich(
-                {
-                    "ma_giao_dich_ben_thu_3": None,
-                    "thoi_gian_giao_dich": None,
-                    "chi_tiet_raw": {"provider": "momo"},
-                }
-            ),
         )
         db.add(payment)
         db.flush()
 
-        request_id = f"MOMO_{payment.thanhtoan_id}_{uuid.uuid4().hex[:8]}"
-        order_id = str(payment.thanhtoan_id)
-        amount = int(payment.so_tien or Decimal("0"))
-
-        return_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/payments/momo/return"
-        ipn_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/payments/momo/ipn"
-
-        momo_request = create_payment_request(
-            partner_code=settings.MOMO_PARTNER_CODE,
-            access_key=settings.MOMO_ACCESS_KEY,
-            secret_key=settings.MOMO_SECRET_KEY,
-            order_id=order_id,
-            amount=amount,
-            order_info=f"Thanh toán đơn {order.ma_don_hang}",
-            redirect_url=return_url,
-            ipn_url=ipn_url,
-            request_id=request_id,
-            extra_data="",
-            request_type=settings.MOMO_REQUEST_TYPE,
-            lang=settings.MOMO_LANG,
+        payment_code = f"LC{payment.thanhtoan_id}"
+        payment.thong_tin_giao_dich = validate_thong_tin_giao_dich(
+            {
+                "ma_giao_dich_ben_thu_3": None,
+                "thoi_gian_giao_dich": None,
+                "chi_tiet_raw": {
+                    "provider": "sepay",
+                    "payment_code": payment_code,
+                    "bank_code": settings.SEPAY_BANK_CODE,
+                },
+            }
         )
+        db.commit()
+        db.refresh(payment)
+        return self._sepay_payment_info(payment)
 
-        try:
-            response = requests.post(settings.MOMO_PAYMENT_URL, json=momo_request, timeout=30)
-            response.raise_for_status()
-            momo_response = response.json()
+    def handle_sepay_webhook(self, db: Session, body: dict) -> dict:
+        """Idempotently reconcile one incoming SePay bank transaction."""
+        transaction_id = body.get("id")
+        if transaction_id is None:
+            return {"success": False, "message": "Missing transaction id"}
 
-            if momo_response.get("resultCode") != 0:
-                raise DomainError(
-                    status_code=400, detail=f"MoMo error: {momo_response.get('message', 'Unknown error')}"
-                )
+        gateway_transaction = f"SEPAY-{transaction_id}"
+        duplicate = db.query(ThanhToan).filter(ThanhToan.ma_giao_dich == gateway_transaction).first()
+        if duplicate:
+            return {"success": True, "message": "Transaction already processed"}
 
-            payment_url = momo_response.get("payUrl")
-            if not payment_url:
-                raise DomainError(status_code=500, detail="MoMo không trả về payment URL")
+        if str(body.get("transferType", "")).lower() != "in":
+            return {"success": True, "message": "Outgoing transaction ignored"}
 
-            db.commit()
-            db.refresh(payment)
-            return {"payment_id": payment.thanhtoan_id, "payment_url": payment_url}
+        webhook_account = str(body.get("accountNumber") or "").strip()
+        if webhook_account != settings.SEPAY_BANK_ACCOUNT:
+            return {"success": True, "message": "Receiving account mismatch"}
 
-        except requests.exceptions.RequestException as e:
-            db.rollback()
-            raise DomainError(status_code=500, detail=f"Lỗi kết nối MoMo: {str(e)}")
+        searchable = f"{body.get('code') or ''} {body.get('content') or ''}".upper()
+        code_match = re.search(r"(?<![A-Z0-9])LC([0-9]+)(?![A-Z0-9])", searchable)
+        if not code_match:
+            return {"success": True, "message": "No Leaf Creme payment code"}
 
-    def handle_momo_ipn(self, db: Session, body: dict) -> dict:
-        """MoMo IPN (Instant Payment Notification) callback body -> content
-        dict to return with HTTP 200 (MoMo expects 200 regardless of
-        resultCode; only transport-level failures like bad JSON or missing
-        server config are non-200, and those are handled in the router
-        before this is called)."""
-        ok, _ = verify_signature(body, settings.MOMO_SECRET_KEY)
-        if not ok:
-            return {"resultCode": 97, "message": "Invalid signature"}
-
-        order_id = body.get("orderId")
-        if not order_id:
-            return {"resultCode": 1, "message": "Order not found"}
-
-        try:
-            payment_id = int(str(order_id))
-        except Exception:
-            return {"resultCode": 1, "message": "Invalid order ID"}
-
-        payment = db.query(ThanhToan).filter(ThanhToan.thanhtoan_id == payment_id).first()
+        payment_id = int(code_match.group(1))
+        payment = (
+            db.query(ThanhToan)
+            .filter(ThanhToan.thanhtoan_id == payment_id)
+            .with_for_update()
+            .first()
+        )
         if not payment:
-            return {"resultCode": 1, "message": "Payment not found"}
+            return {"success": True, "message": "Payment not found"}
 
-        order = db.query(DonHang).filter(DonHang.donhang_id == payment.donhang_id).first()
-        if not order:
-            return {"resultCode": 1, "message": "Order not found"}
-
-        received_amount = body.get("amount")
-        if received_amount is None:
-            return {"resultCode": 4, "message": "Invalid amount"}
+        raw = (payment.thong_tin_giao_dich or {}).get("chi_tiet_raw") or {}
+        expected_code = f"LC{payment.thanhtoan_id}"
+        if raw.get("provider") != "sepay" or raw.get("payment_code") != expected_code:
+            return {"success": True, "message": "Payment provider mismatch"}
+        if payment.trang_thai == "thanh_cong":
+            return {"success": True, "message": "Payment already confirmed"}
 
         try:
-            expected_amount = int(payment.so_tien or Decimal("0"))
-            received_amount = int(received_amount)
+            received_amount = Decimal(str(body.get("transferAmount")))
         except Exception:
-            return {"resultCode": 4, "message": "Invalid amount"}
+            return {"success": True, "message": "Invalid transfer amount"}
+        if received_amount != (payment.so_tien or Decimal("0")):
+            return {"success": True, "message": "Transfer amount mismatch"}
 
-        if received_amount != expected_amount:
-            return {"resultCode": 4, "message": "Amount mismatch"}
-
-        if payment.trang_thai == "thanh_cong":
-            return {"resultCode": 2, "message": "Order already confirmed"}
-
-        result_code = body.get("resultCode")
-        if result_code == 0:
-            payment.trang_thai = "thanh_cong"
-            payment.ngay_thanh_toan = parse_momo_datetime(str(body.get("responseTime"))) or utc_now()
-        else:
-            payment.trang_thai = "that_bai"
-
-        trans_id = body.get("transId")
-        if trans_id:
-            payment.ma_giao_dich = str(trans_id)
-
-        payment.thong_tin_giao_dich = {
-            "ma_giao_dich_ben_thu_3": str(trans_id) if trans_id else None,
-            "thoi_gian_giao_dich": str(body.get("responseTime")) if body.get("responseTime") else None,
-            "chi_tiet_raw": body,
-        }
-
-        if payment.trang_thai == "thanh_cong":
-            total_paid = self._total_paid(db, order.donhang_id)
-            self._maybe_complete_order(order, total_paid)
-        else:
-            self.order_service.fail_unpaid_order(db, order.donhang_id, "MoMo payment failed")
-
-        db.commit()
-        return {"resultCode": 0, "message": "Success"}
-
-    def resolve_momo_return(self, db: Session, params: dict) -> str:
-        """Resolve the MoMo return-URL redirect params -> the frontend URL
-        to redirect the shopper to."""
-        payment_status = "unknown"
-        if not settings.MOMO_SECRET_KEY:
-            payment_status = "config_error"
-        else:
-            result_code = params.get("resultCode")
-            if result_code == "0":
-                payment_status = "success"
-            elif result_code:
-                payment_status = "failed"
-
-        order_id = None
-        momo_order_id = params.get("orderId")
-        if momo_order_id:
-            try:
-                payment_id = int(str(momo_order_id))
-                payment = db.query(ThanhToan).filter(ThanhToan.thanhtoan_id == payment_id).first()
-                if payment:
-                    order_id = payment.donhang_id
-            except Exception:
-                order_id = None
-
-        if not order_id:
-            return f"{settings.FRONTEND_BASE_URL.rstrip('/')}/"
-
-        return f"{settings.FRONTEND_BASE_URL.rstrip('/')}/orders/{order_id}/success?payment_status={payment_status}&payment_method=momo"
-
-    # ------------------------------------------------------------------
-    # MoMo QR (manual / non-API) payments
-    # ------------------------------------------------------------------
-    def create_momo_qr_payment(self, db: Session, payload: Any, current_user: NguoiDung) -> dict:
-        if not settings.MOMO_QR_PHONE:
-            raise DomainError(status_code=500, detail="Chưa cấu hình số điện thoại MoMo (MOMO_QR_PHONE)")
-
-        order = self._get_order_or_404(db, payload.donhang_id)
-        self._ensure_order_access(order, current_user, "Bạn chỉ có thể thanh toán đơn hàng của mình")
-
-        total_paid = self._total_paid(db, order.donhang_id)
-        remaining = (order.tien_thanh_toan or Decimal("0")) - total_paid
-        if remaining <= 0:
-            raise DomainError(status_code=400, detail="Đơn hàng đã được thanh toán đủ")
-
-        payment = ThanhToan(
-            donhang_id=order.donhang_id,
-            phuong_thuc="vi_dien_tu",
-            so_tien=remaining,
-            trang_thai="dang_xu_ly",
-            thong_tin_giao_dich=validate_thong_tin_giao_dich(
-                {
-                    "ma_giao_dich_ben_thu_3": None,
-                    "thoi_gian_giao_dich": None,
-                    "chi_tiet_raw": {"provider": "momo_qr", "method": "manual"},
-                }
-            ),
-        )
-        db.add(payment)
-        db.flush()
-
-        payment_info = create_momo_payment_info(
-            order_code=order.ma_don_hang,
-            amount=int(remaining),
-            phone_number=settings.MOMO_QR_PHONE,
-            account_name=settings.MOMO_QR_ACCOUNT_NAME or "Leaf Creme",
-            qr_image_path=settings.MOMO_QR_IMAGE_PATH or None,
-        )
-
-        db.commit()
-        db.refresh(payment)
-        return {"payment_id": payment.thanhtoan_id, **payment_info}
-
-    def confirm_momo_qr_payment(self, db: Session, payment_id: int, payload: Any, current_user: NguoiDung) -> dict:
-        if payload.payment_id != payment_id:
-            raise DomainError(status_code=400, detail="Payment ID không khớp")
-
-        payment = self._get_payment_or_404(db, payment_id)
         order = self._get_order_or_404(db, payment.donhang_id)
-
-        if payload.confirmed:
-            payment.trang_thai = "thanh_cong"
-            payment.ngay_thanh_toan = utc_now()
-
-            if payment.thong_tin_giao_dich:
-                payment.thong_tin_giao_dich["confirmed_by"] = current_user.nguoidung_id
-                payment.thong_tin_giao_dich["confirmed_at"] = utc_now().isoformat()
-                if payload.transaction_note:
-                    payment.thong_tin_giao_dich["admin_note"] = payload.transaction_note
-
-            total_paid = self._total_paid(db, order.donhang_id)
-            self._maybe_complete_order(order, total_paid)
-        else:
-            payment.trang_thai = "that_bai"
-            if payment.thong_tin_giao_dich:
-                payment.thong_tin_giao_dich["rejected_by"] = current_user.nguoidung_id
-                payment.thong_tin_giao_dich["rejected_at"] = utc_now().isoformat()
-                if payload.transaction_note:
-                    payment.thong_tin_giao_dich["reject_reason"] = payload.transaction_note
-            self.order_service.fail_unpaid_order(db, order.donhang_id, "MoMo QR payment rejected")
-
+        payment.trang_thai = "thanh_cong"
+        payment.ma_giao_dich = gateway_transaction
+        payment.ngay_thanh_toan = utc_now()
+        payment.thong_tin_giao_dich = validate_thong_tin_giao_dich(
+            {
+                "ma_giao_dich_ben_thu_3": gateway_transaction,
+                "thoi_gian_giao_dich": str(body.get("transactionDate") or ""),
+                "chi_tiet_raw": body,
+            }
+        )
+        db.flush()
+        self._maybe_complete_order(order, self._total_paid(db, order.donhang_id))
         db.commit()
-        db.refresh(payment)
-        return self._to_response(payment, order)
+        return {"success": True, "message": "Payment confirmed", "payment_id": payment.thanhtoan_id}

@@ -35,7 +35,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/bakery
     ports: ["8000:8000"]
     volumes:
-      # Product/avatar/MoMo-QR images live outside the image so they survive
+      # Product/avatar images live outside the image so they survive
       # rebuilds and don't bloat the image layer — mount the real folder.
       - ./uploads:/app/uploads
     depends_on:

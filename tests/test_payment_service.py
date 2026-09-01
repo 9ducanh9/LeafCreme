@@ -10,6 +10,7 @@ DATABASE_URL/TEST_DATABASE_URL (see tests/conftest.py) — skipped otherwise,
 same as the rest of the suite.
 """
 from decimal import Decimal
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -257,89 +258,122 @@ class TestUpdatePaymentStatus:
         assert exc_info.value.status_code == 400
 
 
-class TestMomoIpn:
-    def test_invalid_signature_returns_result_code_97(self, db_session, service, monkeypatch):
-        monkeypatch.setattr(
-            "app.services.payments.payment_service.verify_signature",
-            lambda body, secret: (False, ""),
-        )
-        result = service.handle_momo_ipn(db_session, {"orderId": "1", "amount": 1000})
-        assert result["resultCode"] == 97
+class TestSePay:
+    @staticmethod
+    def _configure(monkeypatch):
+        monkeypatch.setattr(settings, "SEPAY_BANK_ACCOUNT", "0123456789")
+        monkeypatch.setattr(settings, "SEPAY_BANK_CODE", "MB")
+        monkeypatch.setattr(settings, "SEPAY_ACCOUNT_NAME", "LAM CHI TAI")
+        monkeypatch.setattr(settings, "SEPAY_QR_BASE_URL", "https://vietqr.app/img")
 
-    def test_amount_mismatch_returns_result_code_4(self, db_session, role_customer, service, monkeypatch):
-        monkeypatch.setattr(
-            "app.services.payments.payment_service.verify_signature",
-            lambda body, secret: (True, ""),
-        )
-        customer = _make_user(db_session, role_customer, "buyer6")
-        order = _make_order(db_session, customer, Decimal("100000"), "momo-mismatch")
-        payment = ThanhToan(
-            donhang_id=order.donhang_id,
-            phuong_thuc="vi_dien_tu",
-            so_tien=Decimal("100000"),
-            trang_thai="dang_xu_ly",
-        )
-        db_session.add(payment)
-        db_session.flush()
-
-        result = service.handle_momo_ipn(db_session, {
-            "orderId": str(payment.thanhtoan_id),
-            "amount": 1,  # wrong on purpose
-            "resultCode": 0,
-        })
-        assert result["resultCode"] == 4
-
-    def test_success_marks_payment_and_order_complete(self, db_session, role_customer, service, monkeypatch):
-        monkeypatch.setattr(
-            "app.services.payments.payment_service.verify_signature",
-            lambda body, secret: (True, ""),
-        )
-        customer = _make_user(db_session, role_customer, "buyer7")
-        order = _make_order(db_session, customer, Decimal("100000"), "momo-success")
-        payment = ThanhToan(
-            donhang_id=order.donhang_id,
-            phuong_thuc="vi_dien_tu",
-            so_tien=Decimal("100000"),
-            trang_thai="dang_xu_ly",
-        )
-        db_session.add(payment)
-        db_session.flush()
-
-        result = service.handle_momo_ipn(db_session, {
-            "orderId": str(payment.thanhtoan_id),
-            "amount": 100000,
-            "resultCode": 0,
-            "transId": "MOMO123",
-        })
-
-        assert result["resultCode"] == 0
-        db_session.refresh(payment)
-        db_session.refresh(order)
-        assert payment.trang_thai == "thanh_cong"
-        assert order.trang_thai == "hoan_thanh"
-
-
-class TestMomoQr:
-    def test_static_qr_creates_pending_payment_for_order_owner(
-        self, db_session, role_customer, service, monkeypatch
-    ):
-        customer = _make_user(db_session, role_customer, "buyer-static-qr")
-        order = _make_order(db_session, customer, Decimal("260000"), "static-qr")
-        monkeypatch.setattr(settings, "MOMO_QR_PHONE", "0911263934")
-        monkeypatch.setattr(settings, "MOMO_QR_ACCOUNT_NAME", "LÂM CHÍ TÀI")
-        monkeypatch.setattr(settings, "MOMO_QR_IMAGE_PATH", "/uploads/payment/momo_qr.png")
+    def _create_payment(self, db_session, role_customer, service, monkeypatch, amount="260000"):
+        self._configure(monkeypatch)
+        customer = _make_user(db_session, role_customer, f"sepay-{amount}")
+        order = _make_order(db_session, customer, Decimal(amount), f"sepay-{amount}")
 
         class Payload:
             donhang_id = order.donhang_id
 
-        result = service.create_momo_qr_payment(db_session, Payload(), customer)
-
-        assert result["method"] == "momo_qr"
-        assert result["qr_image"] == "/uploads/payment/momo_qr.png"
-        assert "qr_code" not in result
-        assert result["amount"] == 260000
-        assert result["transfer_content"] == order.ma_don_hang
+        result = service.create_sepay_payment(db_session, Payload(), customer)
         payment = db_session.query(ThanhToan).filter(
             ThanhToan.thanhtoan_id == result["payment_id"]
         ).one()
+        return result, payment, order
+
+    def test_dynamic_qr_contains_amount_and_payment_code(
+        self, db_session, role_customer, service, monkeypatch
+    ):
+        result, payment, _ = self._create_payment(db_session, role_customer, service, monkeypatch)
+
+        params = parse_qs(urlparse(result["qr_image"]).query)
+        assert result["method"] == "sepay"
+        assert result["transfer_content"] == f"LC{payment.thanhtoan_id}"
+        assert params["amount"] == ["260000"]
+        assert params["des"] == [f"LC{payment.thanhtoan_id}"]
+        assert payment.phuong_thuc == "chuyen_khoan"
         assert payment.trang_thai == "dang_xu_ly"
+
+    def test_amount_mismatch_keeps_payment_pending(
+        self, db_session, role_customer, service, monkeypatch
+    ):
+        _, payment, _ = self._create_payment(db_session, role_customer, service, monkeypatch)
+
+        result = service.handle_sepay_webhook(db_session, {
+            "id": 91001,
+            "accountNumber": "0123456789",
+            "transferType": "in",
+            "transferAmount": 1,
+            "code": f"LC{payment.thanhtoan_id}",
+            "content": "",
+        })
+
+        db_session.refresh(payment)
+        assert result["success"] is True
+        assert result["message"] == "Transfer amount mismatch"
+        assert payment.trang_thai == "dang_xu_ly"
+
+    def test_account_mismatch_keeps_payment_pending(
+        self, db_session, role_customer, service, monkeypatch
+    ):
+        _, payment, _ = self._create_payment(db_session, role_customer, service, monkeypatch)
+
+        result = service.handle_sepay_webhook(db_session, {
+            "id": 91003,
+            "accountNumber": "0000000000",
+            "transferType": "in",
+            "transferAmount": 260000,
+            "code": f"LC{payment.thanhtoan_id}",
+            "content": "",
+        })
+
+        db_session.refresh(payment)
+        assert result == {"success": True, "message": "Receiving account mismatch"}
+        assert payment.trang_thai == "dang_xu_ly"
+
+    def test_webhook_confirms_payment_and_is_idempotent(
+        self, db_session, role_customer, service, monkeypatch
+    ):
+        _, payment, order = self._create_payment(db_session, role_customer, service, monkeypatch, "100000")
+        payload = {
+            "id": 91002,
+            "gateway": "MBBank",
+            "transactionDate": "2026-08-29 10:30:00",
+            "accountNumber": "0123456789",
+            "transferType": "in",
+            "transferAmount": 100000,
+            "code": f"LC{payment.thanhtoan_id}",
+            "content": f"Thanh toan LC{payment.thanhtoan_id}",
+            "referenceCode": "FT2612345678",
+        }
+
+        first = service.handle_sepay_webhook(db_session, payload)
+        second = service.handle_sepay_webhook(db_session, payload)
+
+        db_session.refresh(payment)
+        db_session.refresh(order)
+        assert first["message"] == "Payment confirmed"
+        assert second["message"] == "Transaction already processed"
+        assert payment.trang_thai == "thanh_cong"
+        assert payment.ma_giao_dich == "SEPAY-91002"
+        assert order.trang_thai == "hoan_thanh"
+
+
+class TestSePayWebhookRoute:
+    def test_rejects_invalid_api_key(self, client, monkeypatch):
+        monkeypatch.setattr(settings, "SEPAY_WEBHOOK_API_KEY", "expected-secret")
+        payload = {
+            "id": 92001,
+            "gateway": "MBBank",
+            "transactionDate": "2026-08-29 10:30:00",
+            "accountNumber": "0123456789",
+            "transferType": "in",
+            "transferAmount": 100000,
+        }
+
+        response = client.post(
+            "/payments/sepay/webhook",
+            headers={"Authorization": "Apikey wrong-secret"},
+            json=payload,
+        )
+
+        assert response.status_code == 401

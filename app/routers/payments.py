@@ -6,8 +6,9 @@ DomainError -> HTTPException; all business logic lives in
 app.services.payments.PaymentService (see PHASE 1 note in that module).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from secrets import compare_digest
+
+from fastapi import APIRouter, Depends, Header, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
 from decimal import Decimal
@@ -79,35 +80,36 @@ class PaymentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class MomoCreateRequest(BaseModel):
+class SePayCreateRequest(BaseModel):
     donhang_id: int = Field(..., description="ID đơn hàng")
 
 
-class MomoCreateResponse(BaseModel):
-    payment_id: int
-    payment_url: str
-
-
-class MomoQRCreateRequest(BaseModel):
-    donhang_id: int = Field(..., description="ID đơn hàng")
-
-
-class MomoQRPaymentInfo(BaseModel):
+class SePayPaymentInfo(BaseModel):
     payment_id: int
     method: str
-    phone_number: str
+    bank_account: str
+    bank_code: str
     account_name: str
     amount: int
     transfer_content: str
-    qr_code: Optional[str] = None
-    qr_image: Optional[str] = None
-    instructions: List[str]
+    qr_image: str
 
 
-class MomoQRConfirmRequest(BaseModel):
-    payment_id: int = Field(..., description="ID thanh toán")
-    confirmed: bool = Field(..., description="Đã nhận tiền hay chưa")
-    transaction_note: Optional[str] = Field(None, description="Ghi chú từ admin")
+class SePayWebhookPayload(BaseModel):
+    id: int
+    gateway: str
+    transaction_date: str = Field(alias="transactionDate")
+    account_number: str = Field(alias="accountNumber")
+    sub_account: Optional[str] = Field(None, alias="subAccount")
+    code: Optional[str] = None
+    content: Optional[str] = None
+    transfer_type: str = Field(alias="transferType")
+    description: Optional[str] = None
+    transfer_amount: Decimal = Field(alias="transferAmount")
+    accumulated: Optional[Decimal] = None
+    reference_code: Optional[str] = Field(None, alias="referenceCode")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # =========================================================
@@ -143,82 +145,34 @@ def get_payment(payment_id: int, db: Session = Depends(get_db), current_user: Ng
 
 
 # =========================================================
-# MoMo Payment Endpoints
+# SePay/VietQR endpoints
 # =========================================================
-@router.post("/momo/create", response_model=MomoCreateResponse, status_code=status.HTTP_201_CREATED)
-def create_momo_payment(
-    payload: MomoCreateRequest,
-    request: Request,
+@router.post("/sepay/create", response_model=SePayPaymentInfo, status_code=status.HTTP_201_CREATED)
+def create_sepay_payment(
+    payload: SePayCreateRequest,
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_user),
 ):
-    """Tạo thanh toán MoMo"""
+    """Create a pending bank transfer and its order-specific VietQR."""
     try:
-        result = payment_service.create_momo_payment(db, payload, current_user)
-        return MomoCreateResponse(**result)
+        return SePayPaymentInfo(**payment_service.create_sepay_payment(db, payload, current_user))
     except DomainError as exc:
         _raise_http(exc)
 
 
-@router.get("/momo/ipn", operation_id="momo_ipn_get")
-@router.post("/momo/ipn", operation_id="momo_ipn_post")
-async def momo_ipn(request: Request, db: Session = Depends(get_db)):
-    """MoMo IPN (Instant Payment Notification) callback"""
-    try:
-        if request.method == "POST":
-            body = await request.json()
-        else:
-            body = dict(request.query_params)
-    except Exception:
-        return JSONResponse(status_code=400, content={"resultCode": 1, "message": "Invalid request"})
-
-    if not settings.MOMO_SECRET_KEY:
-        return JSONResponse(status_code=500, content={"resultCode": 1, "message": "Missing MoMo config"})
-
-    result = payment_service.handle_momo_ipn(db, body)
-    return JSONResponse(status_code=200, content=result)
-
-
-@router.get("/momo/return")
-def momo_return(request: Request, db: Session = Depends(get_db)):
-    """MoMo return URL - redirect user after payment"""
-    params = dict(request.query_params)
-    target = payment_service.resolve_momo_return(db, params)
-    return RedirectResponse(url=target)
-
-
-# =========================================================
-# MoMo QR Simple Payment Endpoints (không cần Business API)
-# =========================================================
-@router.post("/momo-qr/create", response_model=MomoQRPaymentInfo, status_code=status.HTTP_201_CREATED)
-def create_momo_qr_payment(
-    payload: MomoQRCreateRequest, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)
-):
-    """
-    Tạo thanh toán MoMo QR đơn giản (không cần API)
-    Hiển thị QR cho khách quét và chuyển tiền
-    """
-    try:
-        result = payment_service.create_momo_qr_payment(db, payload, current_user)
-        return MomoQRPaymentInfo(**result)
-    except DomainError as exc:
-        _raise_http(exc)
-
-
-@router.post("/momo-qr/{payment_id}/confirm", response_model=PaymentResponse)
-def confirm_momo_qr_payment(
-    payment_id: int,
-    payload: MomoQRConfirmRequest,
+@router.post("/sepay/webhook")
+def sepay_webhook(
+    payload: SePayWebhookPayload,
+    authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
-    current_user: NguoiDung = Depends(require_capability("payments.manual.create")),
 ):
-    """
-    Admin xác nhận đã nhận tiền MoMo (manual confirmation)
-    """
-    try:
-        return payment_service.confirm_momo_qr_payment(db, payment_id, payload, current_user)
-    except DomainError as exc:
-        _raise_http(exc)
+    """Receive authenticated, idempotent incoming-transfer notifications."""
+    if not settings.SEPAY_WEBHOOK_API_KEY:
+        raise HTTPException(status_code=503, detail="SePay webhook chưa được cấu hình")
+    expected = f"Apikey {settings.SEPAY_WEBHOOK_API_KEY}"
+    if not authorization or not compare_digest(authorization, expected):
+        raise HTTPException(status_code=401, detail="SePay webhook API key không hợp lệ")
+    return payment_service.handle_sepay_webhook(db, payload.model_dump(mode="json", by_alias=True))
 
 
 @router.get("/orders/{order_id}", response_model=List[PaymentResponse])

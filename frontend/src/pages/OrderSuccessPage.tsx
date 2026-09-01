@@ -32,7 +32,7 @@ export default function OrderSuccessPage() {
   if (loading) return <Section tone="canvas"><Container className="max-w-3xl space-y-4"><Skeleton className="h-48" /><Skeleton className="h-64" /><Skeleton className="h-40" /></Container></Section>
   if (error || !order) return <Section tone="canvas"><Container className="max-w-3xl"><Alert variant="danger" title="Không tải được đơn hàng">{error || 'Đơn hàng không tồn tại.'}</Alert><Button href="/" className="mt-6">Về trang chủ</Button></Container></Section>
 
-  const paymentMessage = paymentStatus === 'success' ? 'Thanh toán MoMo thành công.' : paymentStatus === 'failed' ? 'Thanh toán MoMo thất bại hoặc bị hủy.' : paymentStatus === 'checking' ? 'Đang chờ xác nhận thanh toán.' : paymentStatus ? `Trạng thái thanh toán: ${paymentStatus}` : null
+  const paymentMessage = paymentStatus === 'success' ? 'Thanh toán chuyển khoản đã được SePay xác nhận.' : paymentStatus === 'failed' ? 'Thanh toán thất bại hoặc bị hủy.' : paymentStatus === 'checking' || paymentStatus === 'pending' ? 'Đang chờ SePay xác nhận thanh toán.' : paymentStatus ? `Trạng thái thanh toán: ${paymentStatus}` : null
 
   return (
     <Section tone="canvas">

@@ -30,8 +30,7 @@ LeafCreme addresses that by treating inventory as batches with expiry dates and 
 - Order placement and order history flows
 - Payment flows for:
   - cash / manual payment records
-  - MoMo Business API flow
-  - MoMo QR flow with manual confirmation
+  - SePay/VietQR bank transfers with automatic webhook confirmation
 - Leafie AI assistant proxy flow via backend to n8n
 
 ### Admin / operations
@@ -61,7 +60,7 @@ LeafCreme addresses that by treating inventory as batches with expiry dates and 
 - Python services for FEFO allocation and payment helpers
 
 ### External / integration points
-- MoMo payment integration
+- SePay/VietQR payment integration
 - n8n webhook integration for Leafie assistant
 - Docker Compose for local PostgreSQL + Adminer
 
@@ -97,8 +96,8 @@ Implemented through [payments.py](/D:/Leaf%20Creme/app/routers/payments.py:1).
 
 The payment layer supports:
 - direct/manual payment records
-- MoMo redirect/API flow
-- MoMo QR generation with admin confirmation
+- order-specific VietQR generation with amount and payment code
+- authenticated, idempotent SePay webhook confirmation
 
 Successful payment updates can move an order from pending to paid when the total paid amount reaches the order total.
 
@@ -194,12 +193,10 @@ Optional integrations:
 
 ```env
 N8N_WEBHOOK_URL=https://your-n8n-webhook
-MOMO_PARTNER_CODE=
-MOMO_ACCESS_KEY=
-MOMO_SECRET_KEY=
-MOMO_QR_PHONE=
-MOMO_QR_ACCOUNT_NAME=
-MOMO_QR_IMAGE_PATH=
+SEPAY_BANK_ACCOUNT=
+SEPAY_BANK_CODE=
+SEPAY_ACCOUNT_NAME=
+SEPAY_WEBHOOK_API_KEY=
 ```
 
 Apply database migrations (schema is now Alembic-managed — see
