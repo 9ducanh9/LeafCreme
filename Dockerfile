@@ -28,7 +28,6 @@ COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 COPY scripts/apply_approved_catalog.py ./scripts/apply_approved_catalog.py
 COPY uploads/product ./uploads/product
-COPY uploads/payment ./uploads/payment
 
 # uploads/ is served via StaticFiles at /uploads and receives new files at
 # runtime (product images and avatars) and must remain writable.
