@@ -107,33 +107,19 @@ Order creation allocates the exact source lots through FEFO and records one allo
 
 Pre-orders begin at `cho_coc`, online orders at `dang_xu_ly`, and paid/completed orders use `hoan_thanh`. Failed or cancelled orders use `da_huy`. Run `python scripts/verify_inventory_reliability.py` against a disposable PostgreSQL database to verify FEFO, BOM, ledger, and restoration behavior.
 
-## Real Features vs Demo-Only Areas
+## Runtime-backed Features and Boundaries
 
-This distinction matters. The repository contains both real backend-backed functionality and some intentionally bounded demo/admin surfaces.
+The production UI is backed by APIs for authentication (local JWT or Cognito),
+profiles and password changes, catalog/variants, vouchers, batches, inventory,
+orders, reports, analytics, Agent actions, and SePay payments. Voucher
+validation is repeated by backend order creation, so client-side feedback is
+never authoritative.
 
-### Real / backend-backed today
-- Authentication and JWT-based session flow
-- Product, variant, order, user, batch, inventory, and payment APIs
-- FEFO allocation during order creation
-- Sales report endpoint used by admin dashboard revenue views
-- User profile update and avatar upload
-- Leafie backend proxy endpoint
-
-### Demo-only or intentionally limited today
-- Admin voucher management UI
-  - frontend now treats it as demo/dev-only unless explicitly enabled
-  - there is no dedicated voucher CRUD backend API for admin use
-- Customer voucher validation UI
-  - backend applies vouchers during order creation, but there is no standalone public validation endpoint
-- Category management UI
-  - local/demo-only writes, no dedicated backend category CRUD
-- Some admin dashboard analytics breakdowns
-  - revenue trend and summary use real backend data
-  - product/category/best-seller breakdowns remain limited until additional report endpoints exist
-- Contact form
-  - hidden as a fake flow and replaced by direct contact channels
-- Password change UI
-  - hidden until a real backend endpoint exists
+Categories intentionally remain a product attribute rather than a separate
+catalog table. Admins manage them while editing products, and category filters
+are derived from active product data. Leafie remains an integration boundary:
+the backend proxies to the configured n8n workflow and returns `503` when that
+external workflow is not configured.
 
 ## Repository Structure
 
@@ -239,12 +225,10 @@ Create `frontend/.env`:
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-Optional frontend flags:
+Optional frontend integration:
 
 ```env
 VITE_LEAFIE_BACKEND_URL=http://localhost:8000/leafie/ask
-VITE_ENABLE_DEMO_VOUCHERS=false
-VITE_ENABLE_DEMO_CATEGORY_MANAGEMENT=false
 ```
 
 Run frontend:
@@ -274,14 +258,28 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+Frontend quality checks:
+
+```bash
+cd frontend
+npm ci
+npm run lint
+npm run test -- --run
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
 ### 6. Docker (API + Postgres + Adminer together)
 
 ```bash
 docker compose up --build
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint → migrate → test → docker build
-on every push/PR against `main`.
+CI (`.github/workflows/ci.yml`) runs backend lint/migrations/tests, frontend
+lint/unit tests/build/browser smoke tests, and the backend Docker build on
+every push/PR against `main`. A successful push to `main` then deploys the
+frontend to Vercel.
 
 ## Demo / Screenshots
 
@@ -297,20 +295,25 @@ Suggested assets:
 
 ## Current Limitations
 
-- Frontend production build still has unrelated TypeScript issues in some admin surfaces; local dev workflow is the most reliable way to evaluate the UI right now.
-- Admin reporting is partially real, partially limited by missing backend analytics endpoints.
-- Voucher and category management are not complete production features yet.
-- Contact and password-change flows are intentionally hidden/disabled until backend support exists.
-- Leafie depends on external n8n configuration; without it, the assistant endpoint returns a configuration error.
+- Leafie depends on the external n8n workflow configured by `N8N_WEBHOOK_URL`.
+- SePay confirmation depends on a correctly configured provider webhook and a
+  real incoming bank transaction; automated tests cover QR construction,
+  authentication, amount/account matching, and idempotency without moving money.
+- Browser smoke tests use mocked public API responses. Authenticated full-stack
+  browser tests still require a disposable seeded PostgreSQL environment.
+- Categories are derived from products by design; there is no independent
+  category lifecycle, ordering, or category-media model.
+- Railway's legacy `railway.toml` config-as-code path must be migrated to the
+  current Railway Infrastructure-as-Code format before Railway's announced
+  legacy cutoff.
 
 ## Future Improvements
 
-- Add dedicated voucher CRUD and customer-side voucher validation APIs
-- Add full category CRUD on the backend
-- Expand analytics endpoints for product, category, and bestseller reporting
-- Finish frontend TypeScript cleanup so the production build passes cleanly
-- Add automated tests for FEFO allocation, order creation, and payment state transitions
-- Add seeded demo data and polished screenshot assets for faster reviewer evaluation
+- Run authenticated browser tests against an isolated, seeded full stack.
+- Add a backup/restore rehearsal and production recovery runbook.
+- Profile slow queries and frontend bundles before applying performance changes.
+- Migrate Railway deployment configuration to `.railway/railway.ts`.
+- Add polished screenshots/GIFs for portfolio review.
 
 ## Why This Project Matters In A Portfolio
 

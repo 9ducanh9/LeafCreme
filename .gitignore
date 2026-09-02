@@ -55,9 +55,15 @@ server_log*.txt
 scratch/
 .ruff_cache/
 .pytest_cache/
+.pytest-tmp-*/
+_to_delete/
 .coverage
 coverage/
 .vercel/
+
+# Browser test output
+frontend/playwright-report/
+frontend/test-results/
 
 # Local runtime uploads. Versioned catalog and gift-box assets stay under uploads/product
 # and uploads/giftboxes; frontend banner assets live in frontend/public/banners.

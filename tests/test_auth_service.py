@@ -28,11 +28,9 @@ def service() -> AuthService:
 @pytest.fixture()
 def customer_role(db_session):
     # Named exactly "customer" — AuthService.register() looks up this role
-    # by name for every self-registration (see _SELF_REGISTER_ROLE_NAME).
-    role = VaiTro(ten_vai_tro="customer")
-    db_session.add(role)
-    db_session.flush()
-    return role
+    # by name for every self-registration. It is a schema invariant seeded by
+    # migration 0016, so tests use that same runtime path.
+    return db_session.query(VaiTro).filter(VaiTro.ten_vai_tro == "customer").one()
 
 
 @pytest.fixture()
@@ -130,7 +128,10 @@ class TestRegister:
         assert exc_info.value.status_code == 400
 
     def test_missing_customer_role_is_a_server_error_not_a_client_error(self, db_session, service):
-        # No "customer" role seeded in this test's DB at all.
+        role = db_session.query(VaiTro).filter(VaiTro.ten_vai_tro == "customer").one()
+        db_session.delete(role)
+        db_session.flush()
+
         with pytest.raises(DomainError) as exc_info:
             service.register(db_session, _RegisterPayload())
         assert exc_info.value.status_code == 500
@@ -189,6 +190,34 @@ class TestRefreshToken:
         result = service.refresh_token(db_session, refresh)
         assert result["user_id"] == user.nguoidung_id
         assert result["access_token"]
+
+
+class TestChangePassword:
+    def test_rejects_wrong_current_password(self, db_session, service, customer_role):
+        user = _make_user(db_session, customer_role, password="current-password")
+
+        with pytest.raises(DomainError) as exc_info:
+            service.change_password(db_session, user, "wrong-password", "new-password")
+
+        assert exc_info.value.status_code == 400
+        assert service.login(db_session, user.email, "current-password")
+
+    def test_rejects_reusing_current_password(self, db_session, service, customer_role):
+        user = _make_user(db_session, customer_role, password="current-password")
+
+        with pytest.raises(DomainError) as exc_info:
+            service.change_password(db_session, user, "current-password", "current-password")
+
+        assert exc_info.value.status_code == 400
+
+    def test_updates_hash_and_login_credentials(self, db_session, service, customer_role):
+        user = _make_user(db_session, customer_role, password="current-password")
+
+        service.change_password(db_session, user, "current-password", "new-password")
+
+        with pytest.raises(DomainError):
+            service.login(db_session, user.email, "current-password")
+        assert service.login(db_session, user.email, "new-password")["user_id"] == user.nguoidung_id
 
 
 class TestCognitoProvisioning:

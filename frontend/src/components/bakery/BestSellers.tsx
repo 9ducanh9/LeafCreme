@@ -1,18 +1,11 @@
 import { useEffect, useState } from 'react'
-import { getProducts, Product } from '../../services/productService'
+import { getBestSellers, Product } from '../../services/productService'
 import { Container, ProductGrid, Section, SectionHeader } from '../layout'
 import ProductCard from './ProductCard'
 import Alert from '../ui/Alert'
 import Button from '../ui/Button'
 import EmptyState from '../ui/EmptyState'
 import Skeleton from '../ui/Skeleton'
-
-const BEST_SELLER_PRODUCT_NAMES = [
-  'Bánh vanilla trái cây',
-  'Bông lan trứng muối phô mai',
-  'Mousse matcha phô mai',
-  'Tiramisu dâu',
-]
 
 export default function BestSellers() {
   const [products, setProducts] = useState<Product[]>([])
@@ -21,18 +14,10 @@ export default function BestSellers() {
 
   useEffect(() => {
     let active = true
-    getProducts({ dang_hoat_dong: true, limit: 24 })
-      .then((allProducts) => {
+    getBestSellers(4)
+      .then((bestSellers) => {
         if (!active) return
-        const selected = BEST_SELLER_PRODUCT_NAMES.map((name) => {
-          const terms = name.toLowerCase().split(/\s+/)
-          return allProducts.find((product) => {
-            const productName = product.ten.toLowerCase()
-            return productName.includes(name.toLowerCase()) || terms.every((term) => productName.includes(term))
-          })
-        }).filter((product): product is Product => Boolean(product))
-        const ids = new Set(selected.map((product) => product.sanpham_id))
-        setProducts([...selected, ...allProducts.filter((product) => !ids.has(product.sanpham_id))].slice(0, 4))
+        setProducts(bestSellers)
       })
       .catch(() => active && setError('Không thể tải các món được yêu thích.'))
       .finally(() => active && setLoading(false))

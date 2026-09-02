@@ -3,7 +3,7 @@ import { cn } from '../../lib/cn'
 
 export function Section({ className, children, tone = 'canvas', ...props }: HTMLAttributes<HTMLElement> & { children: ReactNode; tone?: 'canvas' | 'subtle' | 'inset' }) {
   const tones = { canvas: 'bg-bg-canvas', subtle: 'bg-bg-subtle', inset: 'bg-bg-inset' }
-  return <section className={cn('py-12 sm:py-16', tones[tone], className)} {...props}>{children}</section>
+  return <section className={cn('py-10 sm:py-12', tones[tone], className)} {...props}>{children}</section>
 }
 
 export function SectionHeader({ eyebrow, title, description, align = 'left', className }: { eyebrow?: string; title: string; description?: string; align?: 'left' | 'center'; className?: string }) {

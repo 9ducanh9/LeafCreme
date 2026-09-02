@@ -18,13 +18,25 @@ export async function getProductsByCategory(category: string): Promise<Product[]
 }
 
 export async function getBestSellers(limit: number = 3): Promise<Product[]> {
-  // For now, get active products and take first N
-  // Later can be enhanced with backend endpoint for best sellers
-  const products = await getProducts({ 
-    dang_hoat_dong: true, 
-    limit 
-  })
-  return products.slice(0, limit)
+  const rows = await apiClient.get<Array<{
+    product_id: number
+    name: string
+    category?: string
+    base_price: number
+    image_url?: string
+  }>>('/analytics/best-sellers', { limit })
+
+  return rows.map((row) => ({
+    sanpham_id: row.product_id,
+    ten: row.name,
+    sku: '',
+    loai: 'don',
+    gia_co_ban: Number(row.base_price),
+    hinh_anh_url: row.image_url,
+    danh_muc: row.category,
+    dang_hoat_dong: true,
+    ngay_tao: '',
+  }))
 }
 
 export async function getProductVariants(productId: number): Promise<ProductVariant[]> {

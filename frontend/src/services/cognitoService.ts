@@ -205,6 +205,18 @@ export async function refreshCognitoSession(): Promise<string> {
   return result.AuthenticationResult.AccessToken
 }
 
+export async function changeCognitoPassword(currentPassword: string, newPassword: string): Promise<void> {
+  const accessToken = localStorage.getItem('access_token')
+  if (!accessToken) {
+    throw { error: 'Authentication required', detail: 'Phiên đăng nhập đã hết hạn.', status: 401 }
+  }
+  await cognitoApi('ChangePassword', {
+    AccessToken: accessToken,
+    PreviousPassword: currentPassword,
+    ProposedPassword: newPassword,
+  })
+}
+
 export async function beginCognitoSocialLogin(provider: string): Promise<void> {
   const { appClientId, domain } = getCognitoConfig()
   const state = randomValue()

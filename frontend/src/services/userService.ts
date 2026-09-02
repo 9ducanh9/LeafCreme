@@ -2,6 +2,8 @@
 import { apiClient } from './api'
 import { API_BASE_URL } from '../config/runtimeConfig'
 import type { User, UserUpdateData, ChangePasswordData } from '../types/user'
+import { cognitoEnabled } from '../config/cognito'
+import { changeCognitoPassword } from './cognitoService'
 
 export type { UserUpdateData, ChangePasswordData }
 
@@ -33,7 +35,10 @@ export async function updateUserProfile(userId: number, data: UserUpdateData): P
   return apiClient.put<User>(`/users/${userId}`, data)
 }
 
-export async function changePassword(_data: ChangePasswordData): Promise<void> {
-  void _data
-  throw new Error('Change password endpoint is not implemented in backend.')
+export async function changePassword(data: ChangePasswordData): Promise<void> {
+  if (cognitoEnabled) {
+    await changeCognitoPassword(data.mat_khau_cu, data.mat_khau_moi)
+    return
+  }
+  await apiClient.post('/auth/change-password', data)
 }

@@ -3,7 +3,12 @@ import { validateBatch, validateBatchSoft } from './validateBatch'
 
 describe('validateBatch', () => {
   it('chấp nhận hết hạn hôm nay', () => {
-    const today = new Date().toISOString().slice(0, 10)
+    const now = new Date()
+    const today = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-')
     expect(validateBatch({ ma_lo: 'LO-1', ngay_het_han: today, so_luong: 1, gia_don_vi: 1 })).not.toHaveProperty('ngay_het_han')
   })
   it('rejects expiry before production', () => {

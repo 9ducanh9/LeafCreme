@@ -6,10 +6,11 @@ import DateInput from '../components/ui/DateInput'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import ErrorMessage from '../components/ui/ErrorMessage'
 import { useAuth } from '../contexts/AuthContext'
-import { updateUserProfile, UserUpdateData, uploadAvatar } from '../services/userService'
+import { changePassword, updateUserProfile, UserUpdateData, uploadAvatar } from '../services/userService'
 import { ArrowLeft, User as UserIcon, Lock, Package } from 'lucide-react'
 import { MAX_AVATAR_SIZE, ALLOWED_IMAGE_TYPES } from '../constants/fileUpload'
 import { API_BASE_URL } from '../config/runtimeConfig'
+import { cognitoEnabled } from '../config/cognito'
 import Container from '../components/layout/container'
 
 type ProfileTab = 'profile' | 'password'
@@ -33,6 +34,11 @@ export default function UserProfilePage() {
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    mat_khau_cu: '',
+    mat_khau_moi: '',
+    xac_nhan_mat_khau_moi: '',
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -140,6 +146,35 @@ export default function UserProfilePage() {
     }
   }
 
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    if (passwordData.mat_khau_moi !== passwordData.xac_nhan_mat_khau_moi) {
+      setError('Xác nhận mật khẩu mới không khớp.')
+      return
+    }
+    const minimumLength = cognitoEnabled ? 10 : 6
+    if (passwordData.mat_khau_moi.length < minimumLength) {
+      setError(`Mật khẩu mới phải có ít nhất ${minimumLength} ký tự.`)
+      return
+    }
+
+    setLoading(true)
+    try {
+      await changePassword(passwordData)
+      setPasswordData({ mat_khau_cu: '', mat_khau_moi: '', xac_nhan_mat_khau_moi: '' })
+      setSuccess('Đổi mật khẩu thành công!')
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
+      setError((typeof detail === 'string' && detail) || 'Không thể đổi mật khẩu lúc này.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -188,7 +223,7 @@ export default function UserProfilePage() {
                 </h3>
                 <div className="space-y-1">
                   <button
-                    onClick={() => setActiveTab('profile')}
+                    onClick={() => { setActiveTab('profile'); setError(null); setSuccess(null) }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default ${
                       activeTab === 'profile'
                         ? 'bg-accent-brown/8 text-text-primary font-medium'
@@ -203,7 +238,7 @@ export default function UserProfilePage() {
                     <span className="text-[15px]">Thông tin cá nhân</span>
                   </button>
                   <button
-                    onClick={() => setActiveTab('password')}
+                    onClick={() => { setActiveTab('password'); setError(null); setSuccess(null) }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-default ${
                       activeTab === 'password'
                         ? 'bg-accent-brown/8 text-text-primary font-medium'
@@ -444,13 +479,42 @@ export default function UserProfilePage() {
                     Đổi mật khẩu
                   </h2>
                   <p className="text-sm text-text-secondary leading-relaxed max-w-2xl">
-                    Chức năng đổi mật khẩu chưa được triển khai backend trong dự án này.
+                    Dùng mật khẩu hiện tại để xác nhận thay đổi cho tài khoản của bạn.
                   </p>
                 </div>
-                <div className="rounded-lg border border-border bg-bg-alt/30 p-4 text-sm text-text-secondary leading-relaxed">
-                  Để tránh gây hiểu lầm, biểu mẫu đổi mật khẩu đã được ẩn cho đến khi endpoint thật sẵn sàng.
-                  Hiện tại bạn có thể quay lại tab thông tin cá nhân hoặc liên hệ quản trị viên để hỗ trợ đổi mật khẩu.
-                </div>
+                <form onSubmit={handlePasswordSubmit} className="max-w-xl space-y-5">
+                  {error && <ErrorMessage message={error} />}
+                  {success && <div className="rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success">{success}</div>}
+                  {[
+                    ['mat_khau_cu', 'Mật khẩu hiện tại'],
+                    ['mat_khau_moi', 'Mật khẩu mới'],
+                    ['xac_nhan_mat_khau_moi', 'Xác nhận mật khẩu mới'],
+                  ].map(([name, label]) => (
+                    <label key={name} className="block">
+                      <span className="mb-2 block text-sm font-medium text-text-primary">{label}</span>
+                      <input
+                        type="password"
+                        name={name}
+                        value={passwordData[name as keyof typeof passwordData]}
+                        onChange={(event) => setPasswordData({ ...passwordData, [name]: event.target.value })}
+                        autoComplete={name === 'mat_khau_cu' ? 'current-password' : 'new-password'}
+                        minLength={name === 'mat_khau_cu' ? undefined : (cognitoEnabled ? 10 : 6)}
+                        required
+                        disabled={loading}
+                        className="h-12 w-full rounded-lg border border-border bg-white px-4 text-text-primary outline-none transition-colors focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/20 disabled:opacity-60"
+                      />
+                    </label>
+                  ))}
+                  <div className="flex justify-end pt-3">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="rounded-button bg-brand px-8 py-3.5 font-semibold text-fg-on-brand transition-all hover:bg-brand-hover focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {loading ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
+                    </button>
+                  </div>
+                </form>
               </Card>
             )}
           </div>

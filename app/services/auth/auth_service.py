@@ -150,6 +150,21 @@ class AuthService:
         vaitro_ten = user.vaitro.ten_vai_tro if user.vaitro else "N/A"
         return self._token_payload(user, vaitro_ten)
 
+    def change_password(
+        self,
+        db: Session,
+        user: NguoiDung,
+        current_password: str,
+        new_password: str,
+    ) -> None:
+        if not verify_password(current_password, user.mat_khau_ma_hoa):
+            raise DomainError(status_code=400, detail="Mật khẩu hiện tại không đúng")
+        if verify_password(new_password, user.mat_khau_ma_hoa):
+            raise DomainError(status_code=400, detail="Mật khẩu mới phải khác mật khẩu hiện tại")
+
+        user.mat_khau_ma_hoa = get_password_hash(new_password)
+        db.commit()
+
     def provision_cognito_user(self, db: Session, claims: dict, profile: Any | None = None) -> dict:
         """Link a Cognito identity to a local user or create a customer.
 

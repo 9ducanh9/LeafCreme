@@ -7,7 +7,7 @@ export default function Card({ className, interactive = false, ...props }: CardP
   return (
     <div
       className={cn(
-        'relative flex flex-col overflow-hidden rounded-lg border border-border bg-bg-surface p-6 shadow-xs',
+        'relative flex flex-col overflow-hidden rounded-lg border border-border bg-bg-surface p-5 shadow-xs',
         interactive && 'transition-[box-shadow,transform] duration-normal ease-out hover:-translate-y-0.5 hover:shadow-md focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2',
         className,
       )}

@@ -56,6 +56,12 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class ChangePasswordRequest(BaseModel):
+    mat_khau_cu: str = Field(..., min_length=1)
+    mat_khau_moi: str = Field(..., min_length=6, max_length=128)
+    xac_nhan_mat_khau_moi: str = Field(..., min_length=6, max_length=128)
+
+
 class CognitoProfile(BaseModel):
     ten_dang_nhap: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
@@ -119,6 +125,23 @@ def refresh_token(token_data: RefreshTokenRequest, db: Session = Depends(get_db)
         return auth_service.refresh_token(db, token_data.refresh_token)
     except DomainError as exc:
         _raise_http(exc)
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(get_current_user),
+):
+    if settings.AUTH_PROVIDER == "cognito":
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Use Cognito ChangePassword")
+    if payload.mat_khau_moi != payload.xac_nhan_mat_khau_moi:
+        raise HTTPException(status_code=400, detail="Xác nhận mật khẩu mới không khớp")
+    try:
+        auth_service.change_password(db, current_user, payload.mat_khau_cu, payload.mat_khau_moi)
+    except DomainError as exc:
+        _raise_http(exc)
+    return None
 
 
 @router.post("/cognito/session")

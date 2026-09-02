@@ -12,6 +12,7 @@ that staging/production go through.
 import os
 import re
 import sys
+import tempfile
 
 import pytest
 from alembic import command
@@ -22,6 +23,11 @@ from sqlalchemy.orm import sessionmaker
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+
+# Windows can retain handles under the shared user temp directory after image
+# tests. A process-specific workspace temp keeps runs isolated and disposable.
+tempfile.tempdir = os.path.join(ROOT, f".pytest-tmp-{os.getpid()}")
+os.makedirs(tempfile.tempdir, exist_ok=True)
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 _PROTECTED_ENVS = {"prod", "production", "staging"}

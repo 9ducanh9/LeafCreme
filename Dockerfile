@@ -43,8 +43,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Migrations run as a separate deploy step (see docker-compose.yml command /
-# a future fly.toml release_command) — NOT at container start, so a bad
+# Migrations run as a separate deploy step (see docker-compose.yml command and
+# railway.toml preDeployCommand) — NOT at container start, so a bad
 # migration fails the deploy instead of crash-looping the running app.
 # The app owns an APScheduler instance. Keep a single worker unless scheduled
 # work is moved into a separate worker service, otherwise every worker runs it.
