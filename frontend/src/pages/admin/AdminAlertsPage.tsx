@@ -10,6 +10,7 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import AdminPage from '../../components/admin/ui/admin-page'
 import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar from '../../components/admin/ui/data-table-toolbar'
+import OperationsAttentionWidget from '../../components/admin/dashboard/operations-attention-widget'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import ExpiryCell from '../../components/admin/ui/expiry-cell'
 import StatCard from '../../components/admin/ui/stat-card'
@@ -204,6 +205,7 @@ export default function AdminAlertsPage() {
   return (
     <AdminPage title="Cảnh báo tồn kho" breadcrumb={[{ label: 'Cảnh báo' }]}>
       {summary && <SummaryTiles summary={summary} onPick={(v) => setFilter('trang_thai', v)} />}
+      <OperationsAttentionWidget />
       {/* Lỗi tải bảng đã được DataTable hiển thị kèm nút thử lại; chỉ hiện ở
           đây những lỗi thao tác (cập nhật, dọn, đánh dấu hàng loạt) mà bảng
           không biết tới — trước đây cả hai cùng hiện nên lỗi tải bị lặp. */}

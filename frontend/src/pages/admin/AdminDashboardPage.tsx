@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { Alert, Box, Button, Card, CardContent, Chip, LinearProgress, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Card, CardContent, LinearProgress, MenuItem, TextField, Typography } from '@mui/material'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import StarIcon from '@mui/icons-material/Star'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
+import { Link } from 'react-router-dom'
 import AdminPage from '../../components/admin/ui/admin-page'
 import StatCard from '../../components/admin/ui/stat-card'
 import TodayActionsWidget from '../../components/admin/dashboard/today-actions-widget'
-import OperationsAttentionWidget from '../../components/admin/dashboard/operations-attention-widget'
 import RevenueByDayMonth from '../../components/admin/dashboard/RevenueByDayMonth'
 import RevenueByProduct from '../../components/admin/dashboard/RevenueByProduct'
 import { useDashboardData } from '../../hooks/admin/useDashboardData'
@@ -32,7 +32,6 @@ export default function AdminDashboardPage() {
         </TextField>
       </Box>
       {loading && <LinearProgress sx={{ mb: 2 }} />}
-      <OperationsAttentionWidget />
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
         <StatCard label="Doanh thu" value={stats ? money(stats.totalRevenue) : errors.stats ? 'Lỗi' : '—'} icon={<AttachMoneyIcon />} href="/admin/orders" />
         <StatCard label="Đơn hàng" value={stats?.totalOrders ?? (errors.stats ? 'Lỗi' : '—')} icon={<ShoppingCartIcon />} href="/admin/orders" />
@@ -42,7 +41,21 @@ export default function AdminDashboardPage() {
       <TodayActionsWidget />
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.4fr 1fr' }, gap: 2 }}>
         {errorMessage('revenue') ? <Card><CardContent>{errorMessage('revenue')}</CardContent></Card> : <RevenueByDayMonth data={revenueData} view={timeRange} />}
-        <Card><CardContent><Typography variant="h6" gutterBottom><WarningAmberIcon sx={{ verticalAlign: 'middle', mr: 1 }} />Cảnh báo tồn kho</Typography>{alertsSummary ? <Stack spacing={1}><Chip label={`Sản phẩm cần nhập: ${alertsSummary.by_type?.san_pham_can_nhap || 0}`} /><Chip label={`Tồn kho thấp: ${alertsSummary.by_type?.ton_kho_thap || 0}`} /><Chip label={`Sắp/hết hạn: ${(alertsSummary.by_type?.sap_het_han || 0) + (alertsSummary.by_type?.qua_han || 0)}`} /><Chip label={`Mức độ cao: ${alertsSummary.by_severity?.cao || 0}`} color="warning" /></Stack> : <Typography color="text.secondary">Chưa có dữ liệu cảnh báo.</Typography>}</CardContent></Card>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+              <Box>
+                <Typography variant="h6"><WarningAmberIcon sx={{ verticalAlign: 'middle', mr: 1 }} />Cảnh báo</Typography>
+                {alertsSummary ? (
+                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+                    {alertsSummary.pending} việc chờ xử lý{alertsSummary.by_severity?.cao ? `, ${alertsSummary.by_severity.cao} mức cao` : ''}.
+                  </Typography>
+                ) : <Typography color="text.secondary" sx={{ mt: 0.75 }}>Chưa có dữ liệu cảnh báo.</Typography>}
+              </Box>
+              <Button component={Link} to="/admin/alerts" size="small" variant="outlined" sx={{ flexShrink: 0 }}>Mở cảnh báo</Button>
+            </Box>
+          </CardContent>
+        </Card>
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mt: 2 }}>
         {errorMessage('products') ? <Card><CardContent>{errorMessage('products')}</CardContent></Card> : <RevenueByProduct data={productRevenue.slice(0, 5)} />}
