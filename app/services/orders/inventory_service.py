@@ -159,12 +159,15 @@ class InventoryService:
         nguoidung_id: Optional[int] = None,
         reason: str = "Trừ kho linh kiện theo đơn hàng",
     ) -> InventoryAllocation:
+        today = date.today()
         row = db.execute(
             select(LoHangLinhKien, TonKhoLinhKien)
             .join(TonKhoLinhKien, TonKhoLinhKien.lohang_linhkien_id == LoHangLinhKien.lohang_id)
             .where(
                 LoHangLinhKien.lohang_id == lohang_linhkien_id,
                 LoHangLinhKien.trang_thai == "hoatdong",
+                cast(LoHangLinhKien.ngay_het_han, Date) >= today,
+                TonKhoLinhKien.so_luong_hien_tai > 0,
             )
             .with_for_update()
         ).first()

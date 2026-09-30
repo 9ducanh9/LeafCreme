@@ -9,6 +9,7 @@
 // đơn đặt trước luôn rỗng. Service này dùng thẳng string enum thật, không
 // còn lớp map có thể lệch.
 import { apiClient } from '../api'
+import type { SePayPaymentInfo } from '../paymentService'
 import type { Order, OrderItem, OrderStatus, OrderType } from '../../types/admin'
 import { toAmount, type BackendOrder, type BackendOrderItem } from '../../types/api/order'
 import type { Page } from '../../types/page'
@@ -125,6 +126,16 @@ export interface CreateOrderPayload {
   tien_dat_coc?: number
   ghi_chu?: string
   phieu_giam_gia_codes?: string[]
+}
+
+export type PreorderCheckoutPayload = Omit<CreateOrderPayload, 'loai_don' | 'tien_dat_coc'>
+
+export async function checkoutPreorder(payload: PreorderCheckoutPayload, idempotencyKey: string): Promise<{ order: BackendOrder; payment_info: SePayPaymentInfo | null; payment_status: 'paid' | 'pending' | 'unpaid' }> {
+  return apiClient.post<{ order: BackendOrder; payment_info: SePayPaymentInfo | null; payment_status: 'paid' | 'pending' | 'unpaid' }>(
+    '/orders/preorder-checkout',
+    payload,
+    { headers: { 'Idempotency-Key': idempotencyKey } },
+  )
 }
 
 export async function createOrder(payload: CreateOrderPayload): Promise<Order> {

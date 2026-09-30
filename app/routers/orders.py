@@ -7,7 +7,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Literal, List, Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,8 @@ from app.db import get_db
 from app.models import NguoiDung
 from app.services.orders import DomainError, OrderService
 from app.schemas import Page
+from app.services.orders.checkout_service import CheckoutService
+from app.routers.payments import SePayPaymentInfo
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 order_service = OrderService()
@@ -102,8 +104,22 @@ class OrderResponse(BaseModel):
 class OrderUpdateStatus(BaseModel):
     """Cập nhật trạng thái đơn hàng"""
 
-    trang_thai: str = Field(..., description="Trạng thái mới: cho, dang_xu_ly, thanh_toan, da_nhan, huy")
+    trang_thai: str = Field(..., description="Trạng thái mới: cho, dang_xu_ly, dang_giao, hoan_thanh, da_huy")
     ghi_chu: Optional[str] = None
+
+
+class CheckoutCreate(OrderCreate):
+    payment_method: Literal["pay_later", "sepay_qr"]
+
+
+class PreorderCheckoutCreate(OrderCreate):
+    """Staff-created pre-orders are paid in full through an order-specific SePay QR."""
+
+
+class CheckoutResponse(BaseModel):
+    order: OrderResponse
+    payment_info: Optional[SePayPaymentInfo] = None
+    payment_status: Literal["paid", "pending", "unpaid"]
 
 
 class OrderListResponse(BaseModel):
@@ -182,6 +198,36 @@ def list_orders(
         _raise_http(exc)
 
 
+@router.post("/checkout", response_model=CheckoutResponse, status_code=status.HTTP_201_CREATED)
+def checkout(
+    payload: CheckoutCreate,
+    idempotency_key: str = Header(..., min_length=1, max_length=128, alias="Idempotency-Key"),
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(get_current_user),
+):
+    if not idempotency_key.strip():
+        raise HTTPException(422, "Idempotency-Key không được để trống")
+    try:
+        return CheckoutService().checkout(db, payload, idempotency_key, current_user)
+    except DomainError as exc:
+        _raise_http(exc)
+
+
+@router.post("/preorder-checkout", response_model=CheckoutResponse, status_code=status.HTTP_201_CREATED)
+def preorder_checkout(
+    payload: PreorderCheckoutCreate,
+    idempotency_key: str = Header(..., min_length=1, max_length=128, alias="Idempotency-Key"),
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_capability("orders.pos.create")),
+):
+    if not idempotency_key.strip():
+        raise HTTPException(422, "Idempotency-Key không được để trống")
+    try:
+        return CheckoutService().checkout(db, payload, idempotency_key, current_user, order_type="dat_truoc")
+    except DomainError as exc:
+        _raise_http(exc)
+
+
 @router.get("/{order_id}", response_model=OrderResponse)
 def get_order(
     order_id: int,
@@ -202,6 +248,9 @@ def create_order(
     db: Session = Depends(get_db),
     current_user: NguoiDung = Depends(get_current_user),
 ):
+    if loai_don.value in ("dat_truoc", "online"):
+        endpoint = "/orders/preorder-checkout" if loai_don.value == "dat_truoc" else "/orders/checkout"
+        raise HTTPException(400, f"Loại đơn này phải được tạo qua {endpoint}.")
     try:
         order_dict = order_service.create_order(
             db=db,

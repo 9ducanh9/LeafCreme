@@ -68,13 +68,14 @@ class MaintenanceService:
         errors: list[dict[str, Any]] = []
         for payment in stale_payments:
             try:
-                self.order_service.fail_unpaid_order(
+                cancelled = self.order_service.fail_unpaid_order(
                     db,
                     payment.donhang_id,
                     f"Auto-cancelled: payment pending > {stale_after_minutes} phút không có phản hồi",
                 )
                 db.commit()
-                failed_order_ids.append(payment.donhang_id)
+                if cancelled:
+                    failed_order_ids.append(payment.donhang_id)
             except Exception as e:  # noqa: BLE001 — deliberately broad, see docstring
                 db.rollback()
                 errors.append({"donhang_id": payment.donhang_id, "error": str(e)})

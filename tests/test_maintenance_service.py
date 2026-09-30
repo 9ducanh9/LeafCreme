@@ -115,7 +115,5 @@ class TestSweepStalePendingPayments:
 
         result = service.sweep_stale_pending_payments(db_session, stale_after_minutes=30)
 
-        # fail_unpaid_order() no-ops for already-cancelled orders — swept
-        # still counts it as "handled" (order.donhang_id gets appended)
-        # rather than erroring, since nothing actually went wrong.
+        # Already-cancelled orders do not count as new cancellations.
         assert result["errors"] == []

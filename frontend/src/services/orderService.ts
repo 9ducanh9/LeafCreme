@@ -1,5 +1,6 @@
 // Order service for creating orders
 import { apiClient } from './api'
+import type { SePayPaymentInfo } from './paymentService'
 
 export interface OrderItemCreate {
   bienthe_id?: number
@@ -16,6 +17,20 @@ export interface OrderCreate {
   dia_chi_giao_hang?: string
   ngay_giao_du_kien?: string // ISO datetime string
   ghi_chu?: string
+}
+
+export interface CheckoutCreate extends OrderCreate {
+  payment_method: 'pay_later' | 'sepay_qr'
+}
+
+export interface CheckoutResponse {
+  order: OrderResponse
+  payment_info: SePayPaymentInfo | null
+  payment_status: 'paid' | 'pending' | 'unpaid'
+}
+
+export function checkoutOrder(payload: CheckoutCreate, key: string): Promise<CheckoutResponse> {
+  return apiClient.post<CheckoutResponse>('/orders/checkout', payload, { headers: { 'Idempotency-Key': key } })
 }
 
 export interface OrderItemResponse {
@@ -101,4 +116,3 @@ export async function listOrders(): Promise<OrderListItem[]> {
     throw error
   }
 }
-

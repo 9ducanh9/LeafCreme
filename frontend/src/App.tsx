@@ -24,6 +24,7 @@ const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const OrderSuccessPage = lazy(() => import('./pages/OrderSuccessPage'))
 const PaymentQRPage = lazy(() => import('./pages/PaymentQRPage'))
+const AdminPaymentReconciliationPage = lazy(() => import('./pages/admin/AdminPaymentReconciliationPage'))
 const CategoryListingPage = lazy(() => import('./pages/CategoryListingPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const GiftBoxListPage = lazy(() => import('./pages/GiftBoxListPage'))
@@ -155,6 +156,7 @@ const router = createBrowserRouter(
             { path: 'gift-boxes/:id/bom', element: <AdminCapabilityRoute capability="bom.write"><AdminGiftBoxBomPage /></AdminCapabilityRoute> },
             { path: 'vouchers', element: <AdminCapabilityRoute capability="vouchers.read"><AdminVoucherPage /></AdminCapabilityRoute> },
             { path: 'orders', element: <AdminCapabilityRoute capability="orders.read.own_created"><AdminOrdersPage /></AdminCapabilityRoute> },
+            { path: 'payment-reconciliation', element: <AdminCapabilityRoute capability="payments.verify"><AdminPaymentReconciliationPage /></AdminCapabilityRoute> },
             { path: 'orders/:id', element: <AdminCapabilityRoute capability="orders.read.own_created"><AdminOrderDetailPage /></AdminCapabilityRoute> },
             // Trang "Đơn đặt trước" + "Bán tại quầy" đã gộp thành "Đơn hàng"
             // (/admin/orders) — giữ redirect để link/bookmark cũ không vỡ.

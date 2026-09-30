@@ -2,6 +2,7 @@
 // tiếp tại quầy. Gọi thẳng POST /orders (đã có sẵn ở backend, trước đây
 // không có UI nào gọi tới).
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Select, MenuItem,
   FormControl, InputLabel, Box, Typography, Alert, IconButton, ToggleButtonGroup, ToggleButton,
@@ -15,12 +16,14 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { getProductVariants } from '../../../services/admin/productService'
 import { parseAdminEntityId } from '../../../types/admin'
 import { getGiftBoxes } from '../../../services/admin/giftBoxService'
-import { createOrder, type CreateOrderLineItem } from '../../../services/admin/adminOrderService'
+import { checkoutPreorder, createOrder, getOrderById, type CreateOrderLineItem } from '../../../services/admin/adminOrderService'
 import type { Order } from '../../../types/admin'
 import type { ApiError } from '../../../services/api'
 import { formatPrice } from '../../../utils/formatPrice'
 import { useToast } from '../../../contexts/ToastContext'
 import { useUnsavedChanges } from '../../../hooks/admin/useUnsavedChanges'
+import { useAuth } from '../../../contexts/AuthContext'
+import { clearPreorderAttempt, getOrCreatePreorderAttempt, readPreorderAttempt, type PreorderAttempt } from '../../../services/preorderAttempt'
 
 interface PickableItem {
   key: string
@@ -42,13 +45,16 @@ interface ManualOrderFormProps {
 
 export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrderFormProps) {
   const { showSuccess, showError } = useToast()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const userId = user?.nguoidung_id
+  const [pendingPreorder, setPendingPreorder] = useState<PreorderAttempt | null>(null)
   const [loaiDon, setLoaiDon] = useState<'pos' | 'dat_truoc'>('pos')
   const [customerName, setCustomerName] = useState('')
   const [phone, setPhone] = useState('')
   const [fulfillment, setFulfillment] = useState<'pickup' | 'delivery'>('pickup')
   const [address, setAddress] = useState('')
   const [expectedDate, setExpectedDate] = useState<Dayjs | null>(null)
-  const [deposit, setDeposit] = useState('')
   const [voucherCode, setVoucherCode] = useState('')
   const [notes, setNotes] = useState('')
   const [lineItems, setLineItems] = useState<LineItem[]>([])
@@ -58,6 +64,17 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
   const [loadingPickables, setLoadingPickables] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open || !userId) return
+    try {
+      const attempt = readPreorderAttempt(userId)
+      setPendingPreorder(attempt)
+      if (attempt) setLoaiDon('dat_truoc')
+    } catch (storageError) {
+      setError(storageError instanceof Error ? storageError.message : 'Không đọc được lần đặt trước đang chờ.')
+    }
+  }, [open, userId])
 
   useEffect(() => {
     if (!open) return
@@ -84,7 +101,7 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
 
   const resetForm = () => {
     setLoaiDon('pos'); setCustomerName(''); setPhone(''); setFulfillment('pickup'); setAddress('')
-    setExpectedDate(null); setDeposit(''); setVoucherCode(''); setNotes(''); setLineItems([]); setPickerValue(null)
+    setExpectedDate(null); setVoucherCode(''); setNotes(''); setLineItems([]); setPickerValue(null)
     setError(null)
   }
 
@@ -114,39 +131,75 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
 
   // Đơn thủ công có thể có nhiều dòng sản phẩm — bấm sai backdrop/Escape
   // giữa chừng không được mất dữ liệu (spec 11 §4-§5).
-  const isDirty = Boolean(customerName || phone || address || notes || voucherCode || deposit || lineItems.length > 0)
+  const isDirty = Boolean(pendingPreorder || customerName || phone || address || notes || voucherCode || lineItems.length > 0)
   useUnsavedChanges(open && isDirty && !submitting)
 
   const handleSubmit = async () => {
     setError(null)
-    if (lineItems.length === 0) { setError('Thêm ít nhất 1 sản phẩm vào đơn.'); return }
-    if (fulfillment === 'delivery' && !address.trim()) { setError('Nhập địa chỉ giao hàng.'); return }
+    if (!pendingPreorder && lineItems.length === 0) { setError('Thêm ít nhất 1 sản phẩm vào đơn.'); return }
+    if (!pendingPreorder && fulfillment === 'delivery' && !address.trim()) { setError('Nhập địa chỉ giao hàng.'); return }
 
     setSubmitting(true)
+    let activeAttempt: PreorderAttempt | null = null
     try {
       const items: CreateOrderLineItem[] = lineItems.map((li) => ({
         bienthe_id: li.bienthe_id,
         hop_qua_id: li.hop_qua_id,
         so_luong: li.quantity,
       }))
-      const order = await createOrder({
-        loai_don: loaiDon,
+      const orderPayload = {
         items,
         ten_khach_hang: customerName.trim() || undefined,
         so_dien_thoai_khach: phone.trim() || undefined,
         dia_chi_giao_hang: fulfillment === 'delivery' ? address.trim() : undefined,
         ngay_giao_du_kien: expectedDate ? expectedDate.toISOString() : undefined,
-        tien_dat_coc: loaiDon === 'dat_truoc' && deposit ? Number(deposit) : undefined,
         ghi_chu: notes.trim() || undefined,
         phieu_giam_gia_codes: voucherCode.trim() ? [voucherCode.trim()] : undefined,
-      })
-      showSuccess(`Đã tạo đơn ${order.orderCode}`)
-      onCreated(order)
-      resetForm()
-      onClose()
+      }
+      if (loaiDon === 'dat_truoc') {
+        if (!user) throw new Error('Phiên nhân viên chưa sẵn sàng. Đăng nhập lại rồi tiếp tục.')
+        activeAttempt = pendingPreorder || await getOrCreatePreorderAttempt(user.nguoidung_id, orderPayload)
+        if (!pendingPreorder && JSON.stringify(activeAttempt.payload) !== JSON.stringify(orderPayload)) {
+          setPendingPreorder(activeAttempt)
+          setError('Có một lần đặt trước đang chờ xác nhận. Bấm tiếp tục để khôi phục đúng đơn đó.')
+          return
+        }
+        setPendingPreorder(activeAttempt)
+        const result = await checkoutPreorder(activeAttempt.payload, activeAttempt.key)
+        if (result.payment_info) {
+          clearPreorderAttempt(user.nguoidung_id, activeAttempt.key)
+          setPendingPreorder(null)
+          showSuccess(`Đã tạo đơn ${result.order.ma_don_hang}. Thanh toán đủ qua QR SePay để xác nhận.`)
+          onClose()
+          navigate(`/orders/${result.order.donhang_id}/payment-qr`, { state: { paymentInfo: result.payment_info, adminReturn: true } })
+        } else if (result.payment_status === 'paid') {
+          const order = await getOrderById(String(result.order.donhang_id))
+          clearPreorderAttempt(user.nguoidung_id, activeAttempt.key)
+          setPendingPreorder(null)
+          const message = Number(result.order.tien_thanh_toan || 0) === 0
+            ? `Đã tạo đơn ${order.orderCode}; không phát sinh tiền thanh toán. Cần xác nhận bàn giao để hoàn thành.`
+            : `Đơn ${order.orderCode} đã được thanh toán đủ; đang chờ bàn giao để hoàn thành.`
+          showSuccess(message)
+          onCreated(order)
+          resetForm()
+          onClose()
+        } else {
+          setError('Checkout chưa trả về mã QR hoặc xác nhận đã thanh toán. Bấm thử lại để tiếp tục cùng mã checkout.')
+        }
+      } else {
+        const order = await createOrder({ ...orderPayload, loai_don: loaiDon })
+        showSuccess(`Đã tạo đơn ${order.orderCode}`)
+        onCreated(order)
+        resetForm()
+        onClose()
+      }
     } catch (err) {
       const apiError = err as ApiError
       const detail = apiError?.detail
+      if (activeAttempt && user && [400, 422].includes(Number(apiError?.status))) {
+        clearPreorderAttempt(user.nguoidung_id, activeAttempt.key)
+        setPendingPreorder(null)
+      }
       setError(Array.isArray(detail) ? detail.join(', ') : detail || apiError?.error || 'Không thể tạo đơn hàng')
     } finally {
       setSubmitting(false)
@@ -169,12 +222,14 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
         <DialogTitle>Tạo đơn thủ công</DialogTitle>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {pendingPreorder && <Alert severity="warning" sx={{ mb: 2 }}>Có đơn đặt trước đang chờ xác nhận. Bấm “Tiếp tục đặt trước” để gửi lại đúng nội dung đã lưu; không chỉnh sửa để tránh tạo trùng đơn.</Alert>}
+          <Box component="fieldset" disabled={Boolean(pendingPreorder)} sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 1 }}>
             <FormControl size="small">
               <InputLabel>Loại đơn</InputLabel>
               <Select value={loaiDon} label="Loại đơn" onChange={(e) => setLoaiDon(e.target.value as 'pos' | 'dat_truoc')}>
                 <MenuItem value="pos">Thủ công (tại quầy / nhắn tin)</MenuItem>
-                <MenuItem value="dat_truoc">Đặt trước (có cọc)</MenuItem>
+                <MenuItem value="dat_truoc">Đặt trước (thanh toán đủ qua QR SePay)</MenuItem>
               </Select>
             </FormControl>
             <Box />
@@ -200,10 +255,9 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
               slotProps={{ textField: { size: 'small' } }}
             />
             {loaiDon === 'dat_truoc' && (
-              <TextField
-                size="small" label="Tiền đặt cọc" type="number" value={deposit}
-                onChange={(e) => setDeposit(e.target.value)} inputProps={{ min: 0, step: 10000 }}
-              />
+              <Alert severity="info" sx={{ gridColumn: '1 / -1' }}>
+                Đơn đặt trước cần thanh toán đủ bằng QR SePay ngay khi tạo. Mã QR chỉ xác nhận đơn khi SePay gửi giao dịch khớp mã và số tiền.
+              </Alert>
             )}
 
             <Box sx={{ gridColumn: '1 / -1' }}>
@@ -261,11 +315,12 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
             <Box />
             <TextField sx={{ gridColumn: '1 / -1' }} size="small" multiline rows={2} label="Ghi chú" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Box>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} disabled={submitting}>Hủy</Button>
           <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Đang tạo...' : 'Tạo đơn hàng'}
+            {submitting ? 'Đang tạo...' : pendingPreorder ? 'Tiếp tục đặt trước' : 'Tạo đơn hàng'}
           </Button>
         </DialogActions>
       </LocalizationProvider>

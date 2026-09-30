@@ -10,15 +10,19 @@ when there are no sales in that period.
 import logging
 from datetime import date
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import BienTheSanPham, ChiTietDonHang, DonHang, LoHangSanPham, SanPham
+from app.models import BienTheSanPham, ChiTietDonHang, DonHang, LoHangSanPham, SanPham, ThanhToan
 
 
 class AnalyticsService:
     @staticmethod
     def get_best_sellers(db: Session, limit: int, from_date: date | None = None, to_date: date | None = None) -> list[dict]:
+        paid_total = select(func.coalesce(func.sum(ThanhToan.so_tien), 0)).where(
+            ThanhToan.donhang_id == DonHang.donhang_id,
+            ThanhToan.trang_thai == "thanh_cong",
+        ).scalar_subquery()
         try:
             subquery = (
                 db.query(
@@ -31,6 +35,7 @@ class AnalyticsService:
                 .join(BienTheSanPham, BienTheSanPham.bienthe_id == LoHangSanPham.bienthe_sanpham_id)
                 .filter(
                     DonHang.trang_thai == "hoan_thanh",
+                    paid_total >= func.coalesce(DonHang.tien_thanh_toan, 0),
                     ChiTietDonHang.lohang_sanpham_id.isnot(None),
                 )
                 .group_by(BienTheSanPham.sanpham_id)
@@ -59,7 +64,11 @@ class AnalyticsService:
                 LoHangSanPham, LoHangSanPham.lohang_id == ChiTietDonHang.lohang_sanpham_id,
             ).join(
                 BienTheSanPham, BienTheSanPham.bienthe_id == LoHangSanPham.bienthe_sanpham_id,
-            ).filter(DonHang.trang_thai == "hoan_thanh", ChiTietDonHang.lohang_sanpham_id.isnot(None))
+            ).filter(
+                DonHang.trang_thai == "hoan_thanh",
+                paid_total >= func.coalesce(DonHang.tien_thanh_toan, 0),
+                ChiTietDonHang.lohang_sanpham_id.isnot(None),
+            )
             if from_date is not None:
                 dated = dated.filter(func.date(DonHang.ngay_tao) >= from_date)
             if to_date is not None:

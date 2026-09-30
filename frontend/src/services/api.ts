@@ -200,7 +200,7 @@ class ApiClient {
     })
   }
 
-  async post<T>(endpoint: string, data?: unknown, options?: { params?: Record<string, string | number | boolean | null | undefined> }): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown, options?: { params?: Record<string, string | number | boolean | null | undefined>; headers?: Record<string, string> }): Promise<T> {
     let url = endpoint
     if (options?.params) {
       const queryString = new URLSearchParams(
@@ -212,6 +212,7 @@ class ApiClient {
     }
     return this.request<T>(url, {
       method: 'POST',
+      headers: options?.headers,
       body: data ? JSON.stringify(data) : undefined,
     })
   }
@@ -247,4 +248,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)
-

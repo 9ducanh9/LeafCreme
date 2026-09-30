@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.db import get_db
@@ -58,6 +58,7 @@ class PaymentVerifyRequest(BaseModel):
 
     ma_giao_dich: str = Field(..., description="Mã giao dịch từ gateway")
     trang_thai: str = Field(..., description="Trạng thái từ gateway")
+    so_tien: Optional[Decimal] = Field(None, gt=0, description="Số tiền thực tế từ gateway; bắt buộc khi xác nhận thành công")
     thong_tin_giao_dich: Optional[dict] = Field(None, description="Toàn bộ response từ gateway")
 
 
@@ -76,6 +77,8 @@ class PaymentResponse(BaseModel):
     # Order info
     ma_don_hang: Optional[str] = None
     tong_tien_don_hang: Optional[Decimal] = None
+    reconciliation_status: Literal["none", "refund_required", "refunded"] = "none"
+    order_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -105,11 +108,16 @@ class SePayWebhookPayload(BaseModel):
     content: Optional[str] = None
     transfer_type: str = Field(alias="transferType")
     description: Optional[str] = None
-    transfer_amount: Decimal = Field(alias="transferAmount")
+    transfer_amount: Decimal = Field(alias="transferAmount", gt=0, allow_inf_nan=False)
     accumulated: Optional[Decimal] = None
     reference_code: Optional[str] = Field(None, alias="referenceCode")
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class RefundConfirmation(BaseModel):
+    refund_reference: str = Field(min_length=1, max_length=100, pattern=r"\S")
+    refund_note: str = Field(min_length=1, max_length=2000, pattern=r"\S")
 
 
 # =========================================================
@@ -136,7 +144,7 @@ def list_payments(
 
 
 @router.get("/{payment_id}", response_model=PaymentResponse)
-def get_payment(payment_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(require_capability("payments.read"))):
+def get_payment(payment_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)):
     """Lấy thông tin chi tiết thanh toán"""
     try:
         return payment_service.get_payment(db, payment_id, current_user)
@@ -172,12 +180,38 @@ def sepay_webhook(
     expected = f"Apikey {settings.SEPAY_WEBHOOK_API_KEY}"
     if not authorization or not compare_digest(authorization, expected):
         raise HTTPException(status_code=401, detail="SePay webhook API key không hợp lệ")
-    return payment_service.handle_sepay_webhook(db, payload.model_dump(mode="json", by_alias=True))
+    try:
+        return payment_service.handle_sepay_webhook(db, payload.model_dump(mode="json", by_alias=True))
+    except DomainError as exc:
+        _raise_http(exc)
+
+
+@router.get("/sepay/reconciliation")
+def list_reconciliation(
+    skip: int = Query(0, ge=0), limit: int = Query(25, ge=1, le=100),
+    status_filter: Optional[Literal["refund_required", "refunded", "unmatched", "confirmed"]] = Query(None, alias="status"),
+    db: Session = Depends(get_db), current_user: NguoiDung = Depends(require_capability("payments.verify")),
+):
+    try:
+        return payment_service.list_reconciliation(db, current_user, skip, limit, status_filter)
+    except DomainError as exc:
+        _raise_http(exc)
+
+
+@router.post("/sepay/reconciliation/{transaction_id}/refund-confirmation")
+def confirm_refund(
+    transaction_id: str, payload: RefundConfirmation,
+    db: Session = Depends(get_db), current_user: NguoiDung = Depends(require_capability("payments.verify")),
+):
+    try:
+        return payment_service.confirm_refund(db, transaction_id, payload, current_user)
+    except DomainError as exc:
+        _raise_http(exc)
 
 
 @router.get("/orders/{order_id}", response_model=List[PaymentResponse])
 def get_order_payments(
-    order_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(require_capability("payments.read"))
+    order_id: int, db: Session = Depends(get_db), current_user: NguoiDung = Depends(get_current_user)
 ):
     """Lấy danh sách thanh toán của đơn hàng"""
     try:

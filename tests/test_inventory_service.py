@@ -9,10 +9,13 @@ import pytest
 from app.models import (
     BienTheSanPham,
     HopQua,
+    LinhKien,
     LoHangHopQua,
+    LoHangLinhKien,
     LoHangSanPham,
     SanPham,
     TonKhoHopQua,
+    TonKhoLinhKien,
     TonKhoSanPham,
 )
 from app.services.orders import DomainError
@@ -162,4 +165,31 @@ def test_expired_only_stock_is_unavailable(db_session):
             variant.bienthe_id,
             1,
             "Not enough product stock",
+        )
+
+
+def test_component_allocation_rejects_expired_bom_lot(db_session):
+    suffix = _suffix("inventory-component")
+    component = LinhKien(ten_linh_kien=f"Component {suffix}", sku=f"COMP-{suffix}", gia_don_vi=Decimal("1000"))
+    db_session.add(component)
+    db_session.flush()
+    lot = LoHangLinhKien(
+        linh_kien_id=component.linh_kien_id,
+        ma_lo=f"LOT-{suffix}",
+        ngay_het_han=_expiry(-1),
+        so_luong=2,
+        gia_don_vi=Decimal("1000"),
+        trang_thai="hoatdong",
+    )
+    db_session.add(lot)
+    db_session.flush()
+    db_session.add(TonKhoLinhKien(lohang_linhkien_id=lot.lohang_id, so_luong_hien_tai=2))
+    db_session.flush()
+
+    with pytest.raises(DomainError):
+        InventoryService().allocate_component_lot(
+            db_session,
+            lot.lohang_id,
+            1,
+            "Expired component lot is unavailable",
         )

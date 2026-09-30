@@ -45,4 +45,14 @@ export const ORDER_TERMINAL_STATUSES: OrderStatus[] = ['hoan_thanh', 'da_huy']
  * trừ. Trước đây UI cho đổi thẳng trạng thái sang "Đã hủy" qua ô select
  * chung, nghĩa là hủy đơn qua admin chưa bao giờ thực sự hoàn tồn kho.
  */
-export const ORDER_STATUS_OPTIONS: OrderStatus[] = ['cho', 'cho_coc', 'dang_xu_ly', 'dang_giao', 'hoan_thanh']
+export function getOrderStatusOptions(status: OrderStatus, hasDeliveryAddress: boolean, isPaid: boolean, hasSePayPayment: boolean): OrderStatus[] {
+  const next: Partial<Record<OrderStatus, OrderStatus[]>> = {
+    cho: isPaid ? ['dang_xu_ly'] : [],
+    cho_coc: isPaid ? ['dang_xu_ly'] : [],
+    dang_xu_ly: hasDeliveryAddress
+      ? (!hasSePayPayment || isPaid ? ['dang_giao'] : [])
+      : (isPaid ? ['hoan_thanh'] : []),
+    dang_giao: isPaid ? ['hoan_thanh'] : [],
+  }
+  return [status, ...(next[status] || [])]
+}

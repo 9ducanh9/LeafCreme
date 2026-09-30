@@ -77,7 +77,7 @@ def service() -> PaymentService:
 
 
 class TestCreatePayment:
-    def test_cash_payment_for_full_amount_completes_order(self, db_session, role_customer, role_staff, service):
+    def test_cash_payment_for_full_amount_does_not_claim_handover(self, db_session, role_customer, role_staff, service):
         customer = _make_user(db_session, role_customer, "buyer1")
         staff = _make_user(db_session, role_staff, "cashier1")
         order = _make_order(db_session, customer, Decimal("100000"), "cash-full", creator=staff)
@@ -93,7 +93,38 @@ class TestCreatePayment:
 
         assert result["trang_thai"] == "thanh_cong"
         db_session.refresh(order)
-        assert order.trang_thai == "hoan_thanh"
+        assert order.trang_thai == "cho"
+
+    def test_bank_transfer_cannot_be_created_as_manual_payment(self, db_session, role_customer, role_staff, service):
+        customer = _make_user(db_session, role_customer, "buyer-manual-bank")
+        staff = _make_user(db_session, role_staff, "cashier-manual-bank")
+        order = _make_order(db_session, customer, Decimal("100000"), "manual-bank", creator=staff)
+
+        class Payload:
+            donhang_id = order.donhang_id
+            phuong_thuc = "chuyen_khoan"
+            so_tien = Decimal("100000")
+            ma_giao_dich = "MANUAL-TRANSFER"
+            thong_tin_giao_dich = None
+
+        with pytest.raises(DomainError, match="QR SePay"):
+            service.create_payment(db_session, Payload(), staff)
+
+    def test_preorder_cannot_be_paid_through_manual_cash(self, db_session, role_customer, role_staff, service):
+        customer = _make_user(db_session, role_customer, "buyer-preorder-manual")
+        staff = _make_user(db_session, role_staff, "cashier-preorder-manual")
+        order = _make_order(db_session, customer, Decimal("100000"), "preorder-manual", creator=staff)
+        order.loai_don = "dat_truoc"
+
+        class Payload:
+            donhang_id = order.donhang_id
+            phuong_thuc = "tien_mat"
+            so_tien = Decimal("100000")
+            ma_giao_dich = None
+            thong_tin_giao_dich = None
+
+        with pytest.raises(DomainError, match="QR SePay"):
+            service.create_payment(db_session, Payload(), staff)
 
     def test_customer_cannot_create_manual_payment(self, db_session, role_customer, service):
         customer = _make_user(db_session, role_customer, "buyer-manual-forbidden")
@@ -209,13 +240,13 @@ class TestCreatePayment:
 
 
 class TestUpdatePaymentStatus:
-    def test_transition_to_success_completes_order_when_fully_paid(self, db_session, role_customer, role_manager, service):
+    def test_manual_payment_confirmation_does_not_complete_fulfillment(self, db_session, role_customer, role_manager, service):
         customer = _make_user(db_session, role_customer, "buyer4")
         manager = _make_user(db_session, role_manager, "manager1")
         order = _make_order(db_session, customer, Decimal("70000"), "status-transition")
         payment = ThanhToan(
             donhang_id=order.donhang_id,
-            phuong_thuc="chuyen_khoan",
+            phuong_thuc="the_tin_dung",
             so_tien=Decimal("70000"),
             trang_thai="dang_xu_ly",
         )
@@ -232,7 +263,7 @@ class TestUpdatePaymentStatus:
 
         assert result["trang_thai"] == "thanh_cong"
         db_session.refresh(order)
-        assert order.trang_thai == "hoan_thanh"
+        assert order.trang_thai == "cho"
 
     def test_rejects_invalid_status_value(self, db_session, role_customer, role_manager, service):
         customer = _make_user(db_session, role_customer, "buyer5")
@@ -261,6 +292,7 @@ class TestUpdatePaymentStatus:
 class TestSePay:
     @staticmethod
     def _configure(monkeypatch):
+        monkeypatch.setattr(settings, "SEPAY_WEBHOOK_API_KEY", "local-test-key")
         monkeypatch.setattr(settings, "SEPAY_BANK_ACCOUNT", "0123456789")
         monkeypatch.setattr(settings, "SEPAY_BANK_CODE", "MB")
         monkeypatch.setattr(settings, "SEPAY_ACCOUNT_NAME", "LAM CHI TAI")
@@ -355,7 +387,7 @@ class TestSePay:
         assert second["message"] == "Transaction already processed"
         assert payment.trang_thai == "thanh_cong"
         assert payment.ma_giao_dich == "SEPAY-91002"
-        assert order.trang_thai == "hoan_thanh"
+        assert order.trang_thai == "cho"
 
 
 class TestSePayWebhookRoute:

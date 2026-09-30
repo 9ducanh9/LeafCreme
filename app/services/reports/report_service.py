@@ -10,10 +10,10 @@ optimizing; flagged here rather than fixed unasked.
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from app.models import BienTheSanPham, ChiTietDonHang, DonHang, LoHangSanPham, SanPham
+from app.models import BienTheSanPham, ChiTietDonHang, DonHang, LoHangSanPham, SanPham, ThanhToan
 from app.services.errors import DomainError
 
 
@@ -22,11 +22,16 @@ class ReportService:
     def _completed_orders(db: Session, from_date: date, to_date: date) -> list[DonHang]:
         if to_date < from_date:
             raise DomainError(status_code=400, detail="Ngày kết thúc phải sau ngày bắt đầu")
+        paid_total = select(func.coalesce(func.sum(ThanhToan.so_tien), 0)).where(
+            ThanhToan.donhang_id == DonHang.donhang_id,
+            ThanhToan.trang_thai == "thanh_cong",
+        ).scalar_subquery()
         return db.query(DonHang).filter(
             and_(
                 func.date(DonHang.ngay_tao) >= from_date,
                 func.date(DonHang.ngay_tao) <= to_date,
                 DonHang.trang_thai == "hoan_thanh",
+                paid_total >= func.coalesce(DonHang.tien_thanh_toan, 0),
             )
         ).all()
 
@@ -45,7 +50,9 @@ class ReportService:
                 }
 
             daily_stats[order_date]["so_don_hang"] += 1
-            daily_stats[order_date]["tong_doanh_thu"] += order.tong_tien
+            # Net sales value after discounts; only fully paid, handed-over orders
+            # pass _completed_orders().
+            daily_stats[order_date]["tong_doanh_thu"] += order.tien_thanh_toan
 
             items = db.query(ChiTietDonHang).filter(
                 ChiTietDonHang.donhang_id == order.donhang_id

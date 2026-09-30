@@ -34,3 +34,6 @@ the SePay transaction ID stored in `thanhtoan.ma_giao_dich`.
 
 Before accepting real payments, use SePay's webhook test function and verify
 that the endpoint returns HTTP 200 with `{ "success": true }`.
+
+For checkout retries, late transfers, manual refund reconciliation and migration
+rollout, see [Checkout and payment recovery](CHECKOUT_PAYMENT_RECOVERY.md).

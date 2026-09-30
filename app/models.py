@@ -441,6 +441,38 @@ class ThanhToan(Base):
 # =========================================================
 # 20. ĐỔI TRẢ
 # =========================================================
+class CheckoutRequest(Base):
+    __tablename__ = "checkout_requests"
+
+    checkout_id: Mapped[int] = mapped_column(primary_key=True)
+    nguoidung_id: Mapped[int] = mapped_column(ForeignKey("nguoidung.nguoidung_id", ondelete="CASCADE"))
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    donhang_id: Mapped[int] = mapped_column(ForeignKey("donhang.donhang_id", ondelete="RESTRICT"))
+    ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("nguoidung_id", "idempotency_key", name="uq_checkout_user_key"),)
+
+
+class SePayTransaction(Base):
+    __tablename__ = "sepay_transactions"
+
+    transaction_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    thanhtoan_id: Mapped[int | None] = mapped_column(ForeignKey("thanhtoan.thanhtoan_id", ondelete="SET NULL"), nullable=True, index=True)
+    donhang_id: Mapped[int | None] = mapped_column(ForeignKey("donhang.donhang_id", ondelete="SET NULL"), nullable=True)
+    so_tien: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    payload: Mapped[dict] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    reason: Mapped[str] = mapped_column(String(100))
+    refund_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    refund_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("nguoidung.nguoidung_id", ondelete="SET NULL"), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ngay_tao: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    __table_args__ = (CheckConstraint("status IN ('confirmed', 'refund_required', 'refunded', 'unmatched', 'ignored')", name="ck_sepay_transaction_status"),)
+
+
 class DoiTra(Base):
     __tablename__ = "doitra"
     

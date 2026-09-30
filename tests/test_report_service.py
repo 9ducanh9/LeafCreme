@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.models import BienTheSanPham, ChiTietDonHang, DonHang, LoHangSanPham, SanPham
+from app.models import BienTheSanPham, ChiTietDonHang, DonHang, LoHangSanPham, SanPham, ThanhToan
 from app.services.reports import DomainError, ReportService
 
 
@@ -26,6 +26,12 @@ def _make_completed_order(db_session, ma_don_hang, ngay_tao, tong_tien, so_luong
     )
     db_session.add(order)
     db_session.flush()
+    db_session.add(ThanhToan(
+        donhang_id=order.donhang_id,
+        phuong_thuc="tien_mat",
+        so_tien=tong_tien,
+        trang_thai="thanh_cong",
+    ))
 
     item = ChiTietDonHang(
         donhang_id=order.donhang_id,
@@ -76,6 +82,12 @@ def _make_product_order(db_session, suffix: str, ngay_tao: datetime, amount: Dec
     )
     db_session.add(order)
     db_session.flush()
+    db_session.add(ThanhToan(
+        donhang_id=order.donhang_id,
+        phuong_thuc="tien_mat",
+        so_tien=amount,
+        trang_thai="thanh_cong",
+    ))
     db_session.add(
         ChiTietDonHang(
             donhang_id=order.donhang_id,

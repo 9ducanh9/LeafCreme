@@ -17,6 +17,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { key: 'overview', label: 'Tổng quan', path: '/admin/dashboard', icon: 'overview', capability: 'dashboard.read' },
       { key: 'orders', label: 'Đơn hàng', path: '/admin/orders', icon: 'sales', capability: 'orders.read.own_created' },
+      { key: 'payment-reconciliation', label: 'Đối soát thanh toán', path: '/admin/payment-reconciliation', icon: 'sales', capability: 'payments.verify' },
     ],
   },
   {

@@ -35,6 +35,14 @@ from .types import OrderItemInfo
 from .voucher_service import VoucherService
 
 _TERMINAL_ORDER_STATUSES = ("hoan_thanh", "da_huy")
+_ALLOWED_ORDER_TRANSITIONS = {
+    "cho": {"dang_xu_ly"},
+    "cho_coc": {"dang_xu_ly"},  # legacy pre-orders; new pre-orders require full payment through SePay
+    "dang_xu_ly": {"dang_giao", "hoan_thanh"},
+    "dang_giao": {"hoan_thanh"},
+    "hoan_thanh": set(),
+    "da_huy": set(),
+}
 
 # Legacy/alternate spellings accepted from clients, normalized to the real
 # DB enum values before ever touching a query or an insert. Previously only
@@ -256,12 +264,14 @@ class OrderService:
             )
         )
 
-    def create_order(self, db: Session, payload, loai_don: str, current_user: NguoiDung) -> dict:
+    def create_order(self, db: Session, payload, loai_don: str, current_user: NguoiDung, *, commit: bool = True) -> dict:
         loai_don = _ORDER_TYPE_ALIASES.get(loai_don, loai_don)
         if loai_don not in ["pos", "online", "dat_truoc"]:
             raise DomainError(status_code=400, detail="Loại đơn không hợp lệ. Chọn: pos, online, dattruoc")
         if loai_don == "pos" and role_name(current_user) not in BACK_OFFICE_ROLES:
             raise DomainError(status_code=403, detail="Chỉ nhân viên mới được tạo đơn bán tại quầy (POS).")
+        if loai_don == "dat_truoc" and (payload.tien_dat_coc or Decimal("0")) > 0:
+            raise DomainError(status_code=400, detail="Đơn đặt trước mới phải thanh toán đủ, không nhận đặt cọc.")
 
         for item in payload.items:
             if not item.bienthe_id and not item.hop_qua_id:
@@ -277,14 +287,10 @@ class OrderService:
                 tong_tien=Decimal("0"),
                 tien_giam_gia=Decimal("0"),
                 tien_thanh_toan=Decimal("0"),
-                tien_dat_coc=payload.tien_dat_coc or Decimal("0"),
-                # POS ("Thủ công") orders start "dang_xu_ly" just like online —
-                # this endpoint takes no payment, so marking them hoan_thanh at
-                # creation used to record a $0-paid order as fully completed.
-                # Staff advance it explicitly (PUT /orders/{id}/status) or it
-                # auto-completes via PaymentService._maybe_complete_order once a
-                # real payment covers tien_thanh_toan.
-                trang_thai="cho_coc" if loai_don == "dat_truoc" else "dang_xu_ly",
+                tien_dat_coc=Decimal("0"),
+                # Unpaid pre-orders wait for the required full SePay payment.
+                # Other orders can be prepared while COD is outstanding.
+                trang_thai="cho" if loai_don == "dat_truoc" else "dang_xu_ly",
                 ten_khach_hang=payload.ten_khach_hang,
                 so_dien_thoai_khach=payload.so_dien_thoai_khach,
                 dia_chi_giao_hang=payload.dia_chi_giao_hang,
@@ -457,11 +463,13 @@ class OrderService:
             # Finding #1.
             order.tien_thanh_toan = max(Decimal("0"), tong_tien - tien_giam)
 
-            db.commit()
-            db.refresh(order)
-            from app.services.alerts.runtime import safe_refresh_inventory_attention
+            db.flush()
+            if commit:
+                db.commit()
+                db.refresh(order)
+                from app.services.alerts.runtime import safe_refresh_inventory_attention
 
-            safe_refresh_inventory_attention(db)
+                safe_refresh_inventory_attention(db)
             return self.get_order(db=db, order_id=order.donhang_id, current_user=current_user)
         except DomainError:
             db.rollback()
@@ -479,7 +487,7 @@ class OrderService:
         new_status: Optional[str] = None,
         ghi_chu: Optional[str] = None,
     ) -> dict:
-        order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
+        order = db.query(DonHang).filter(DonHang.donhang_id == order_id).populate_existing().with_for_update().first()
         if not order:
             raise DomainError(status_code=404, detail="Đơn hàng không tồn tại")
 
@@ -513,6 +521,55 @@ class OrderService:
                 ),
             )
 
+        if trang_thai == "da_huy":
+            return self.cancel_order(db, order_id, note or "Hủy qua cập nhật trạng thái", current_user)
+
+        if trang_thai != order.trang_thai and trang_thai not in _ALLOWED_ORDER_TRANSITIONS.get(order.trang_thai, set()):
+            raise DomainError(
+                status_code=400,
+                detail=f"Không thể chuyển đơn từ '{order.trang_thai}' sang '{trang_thai}'.",
+            )
+
+        if order.trang_thai == "cho_coc" and trang_thai == "dang_xu_ly":
+            paid = db.query(func.coalesce(func.sum(ThanhToan.so_tien), 0)).filter(
+                ThanhToan.donhang_id == order_id,
+                ThanhToan.trang_thai == "thanh_cong",
+            ).scalar() or Decimal("0")
+            if paid < (order.tien_thanh_toan or Decimal("0")):
+                raise DomainError(400, "Đơn đặt trước phải được thanh toán đủ trước khi xử lý.")
+
+        if order.loai_don == "dat_truoc" and trang_thai == "dang_xu_ly":
+            paid = db.query(func.coalesce(func.sum(ThanhToan.so_tien), 0)).filter(
+                ThanhToan.donhang_id == order_id,
+                ThanhToan.trang_thai == "thanh_cong",
+            ).scalar() or Decimal("0")
+            if paid < (order.tien_thanh_toan or Decimal("0")):
+                raise DomainError(400, "Đơn đặt trước phải được thanh toán đủ qua SePay trước khi xử lý.")
+
+        if trang_thai == "dang_giao":
+            has_sepay_payment = db.query(ThanhToan).filter(
+                ThanhToan.donhang_id == order_id,
+                ThanhToan.phuong_thuc == "chuyen_khoan",
+            ).first() is not None
+            if has_sepay_payment:
+                paid = db.query(func.coalesce(func.sum(ThanhToan.so_tien), 0)).filter(
+                    ThanhToan.donhang_id == order_id,
+                    ThanhToan.trang_thai == "thanh_cong",
+                ).scalar() or Decimal("0")
+                if paid < (order.tien_thanh_toan or Decimal("0")):
+                    raise DomainError(400, "Đơn đã chọn SePay phải thanh toán đủ trước khi giao.")
+
+        if trang_thai == "hoan_thanh":
+            paid = db.query(func.coalesce(func.sum(ThanhToan.so_tien), 0)).filter(
+                ThanhToan.donhang_id == order_id,
+                ThanhToan.trang_thai == "thanh_cong",
+            ).scalar() or Decimal("0")
+            due = order.tien_thanh_toan or Decimal("0")
+            if paid < due:
+                raise DomainError(400, "Chỉ hoàn thành đơn sau khi đã thanh toán đủ.")
+            if order.dia_chi_giao_hang and order.trang_thai not in ("dang_giao", "hoan_thanh"):
+                raise DomainError(400, "Đơn giao tận nơi phải chuyển sang 'Đang giao' trước khi xác nhận đã nhận hàng.")
+
         order.trang_thai = trang_thai
         if note:
             order.ghi_chu = (order.ghi_chu or "") + f"\n[{utc_now().strftime('%Y-%m-%d %H:%M')}] {note}"
@@ -535,7 +592,7 @@ class OrderService:
         )
 
         if allocations:
-            for allocation in allocations:
+            for allocation in sorted(allocations, key=lambda row: (row.loai_lohang, row.lohang_sanpham_id or row.lohang_hopqua_id or row.lohang_linhkien_id or 0)):
                 if allocation.loai_lohang == "sanpham" and allocation.lohang_sanpham_id:
                     stock = (
                         db.query(TonKhoSanPham)
@@ -635,7 +692,7 @@ class OrderService:
         vouchers_by_id = (
             {
                 voucher.phieugiam_id: voucher
-                for voucher in db.query(PhieuGiamGia).filter(PhieuGiamGia.phieugiam_id.in_(voucher_ids)).all()
+                for voucher in db.query(PhieuGiamGia).filter(PhieuGiamGia.phieugiam_id.in_(voucher_ids)).order_by(PhieuGiamGia.phieugiam_id).populate_existing().with_for_update().all()
             }
             if voucher_ids
             else {}
@@ -645,25 +702,38 @@ class OrderService:
             if voucher:
                 voucher.so_lan_da_dung = max((voucher.so_lan_da_dung or 0) - 1, 0)
 
-    def fail_unpaid_order(self, db: Session, order_id: int, reason: str) -> None:
-        order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
-        if not order or order.trang_thai in ["da_huy", "huy"]:
-            return
-
-        successful_paid = db.query(func.sum(ThanhToan.so_tien)).filter(
-            ThanhToan.donhang_id == order_id,
-            ThanhToan.trang_thai == "thanh_cong",
-        ).scalar() or Decimal("0")
-        if successful_paid > 0:
-            return
-
-        self._restore_order_inventory(db, order, None, reason)
-        self._restore_voucher_usage(db, order_id)
+    def _cancel_locked(self, db: Session, order: DonHang, reason: str, current_user: Optional[NguoiDung]) -> bool:
+        """Caller holds the order lock; all cancellation paths share this boundary."""
+        if order.trang_thai == "da_huy":
+            return False
+        payments = db.query(ThanhToan).filter(ThanhToan.donhang_id == order.donhang_id).order_by(ThanhToan.thanhtoan_id).populate_existing().with_for_update().all()
+        if any(payment.trang_thai == "thanh_cong" for payment in payments):
+            raise DomainError(400, "Đơn đã nhận tiền; cần xử lý hoàn tiền trước khi hủy.")
+        if order.trang_thai in ("hoan_thanh", "dang_giao"):
+            raise DomainError(400, "Không thể hủy đơn đã hoàn thành hoặc đang giao.")
+        self._restore_order_inventory(db, order, current_user, reason)
+        self._restore_voucher_usage(db, order.donhang_id)
+        for payment in payments:
+            if payment.trang_thai == "dang_xu_ly":
+                payment.trang_thai = "that_bai"
         order.trang_thai = "da_huy"
-        order.ghi_chu = (order.ghi_chu or "") + f"\n[PAYMENT FAILED - {utc_now().strftime('%Y-%m-%d %H:%M')}] {reason}"
+        order.ghi_chu = (order.ghi_chu or "") + f"\n[HỦY ĐƠN - {utc_now().strftime('%Y-%m-%d %H:%M')}] {reason}"
+        db.flush()
+        return True
+
+    def fail_unpaid_order(self, db: Session, order_id: int, reason: str) -> bool:
+        order = db.query(DonHang).filter(DonHang.donhang_id == order_id).populate_existing().with_for_update().first()
+        if not order:
+            return False
+        try:
+            return self._cancel_locked(db, order, reason, None)
+        except DomainError as exc:
+            if exc.status_code == 400:
+                return False
+            raise
 
     def cancel_order(self, db: Session, order_id: int, ly_do: str, current_user: NguoiDung) -> dict:
-        order = db.query(DonHang).filter(DonHang.donhang_id == order_id).first()
+        order = db.query(DonHang).filter(DonHang.donhang_id == order_id).populate_existing().with_for_update().first()
         if not order:
             raise DomainError(status_code=404, detail="Đơn hàng không tồn tại")
 
@@ -678,15 +748,15 @@ class OrderService:
             raise DomainError(status_code=400, detail="Đơn hàng đã bị hủy")
 
         try:
-            self._restore_order_inventory(db, order, current_user, f"Order cancellation: {ly_do}")
-            self._restore_voucher_usage(db, order_id)
-            order.trang_thai = "da_huy"
-            order.ghi_chu = (order.ghi_chu or "") + f"\n[HỦY ĐƠN - {utc_now().strftime('%Y-%m-%d %H:%M')}] {ly_do}"
+            self._cancel_locked(db, order, ly_do, current_user)
             db.commit()
             db.refresh(order)
             from app.services.alerts.runtime import safe_refresh_inventory_attention
 
             safe_refresh_inventory_attention(db)
+        except DomainError:
+            db.rollback()
+            raise
         except Exception as e:
             db.rollback()
             raise DomainError(status_code=500, detail=f"Lỗi khi hủy đơn hàng: {str(e)}")

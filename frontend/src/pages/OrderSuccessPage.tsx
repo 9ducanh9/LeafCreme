@@ -11,7 +11,8 @@ import Alert from '../components/ui/Alert'
 import Skeleton from '../components/ui/Skeleton'
 
 const statusLabels: Record<string, string> = {
-  cho: 'Chờ xử lý', dang_xu_ly: 'Đang xử lý', thanh_toan: 'Đã thanh toán', dang_giao: 'Đang giao', da_nhan: 'Đã nhận hàng',
+  cho: 'Chờ xử lý', cho_coc: 'Chờ thanh toán đủ', dang_xu_ly: 'Đang xử lý', dang_giao: 'Đang giao',
+  hoan_thanh: 'Đã giao / khách nhận', da_huy: 'Đã hủy',
 }
 
 export default function OrderSuccessPage() {
@@ -32,7 +33,19 @@ export default function OrderSuccessPage() {
   if (loading) return <Section tone="canvas"><Container className="max-w-3xl space-y-4"><Skeleton className="h-48" /><Skeleton className="h-64" /><Skeleton className="h-40" /></Container></Section>
   if (error || !order) return <Section tone="canvas"><Container className="max-w-3xl"><Alert variant="danger" title="Không tải được đơn hàng">{error || 'Đơn hàng không tồn tại.'}</Alert><Button href="/" className="mt-6">Về trang chủ</Button></Container></Section>
 
-  const paymentMessage = paymentStatus === 'success' ? 'Thanh toán chuyển khoản đã được SePay xác nhận.' : paymentStatus === 'failed' ? 'Thanh toán thất bại hoặc bị hủy.' : paymentStatus === 'checking' || paymentStatus === 'pending' ? 'Đang chờ SePay xác nhận thanh toán.' : paymentStatus ? `Trạng thái thanh toán: ${paymentStatus}` : null
+  const paymentMessage = paymentStatus === 'success'
+    ? 'SePay đã xác nhận thanh toán. Đơn chỉ chuyển sang hoàn thành sau khi hàng được bàn giao và khách nhận.'
+    : paymentStatus === 'failed'
+      ? 'Thanh toán thất bại hoặc bị hủy.'
+      : paymentStatus === 'checking' || paymentStatus === 'pending'
+        ? 'Đang chờ SePay xác nhận thanh toán.'
+        : paymentStatus === 'unpaid'
+          ? 'Đơn đã tạo và sẽ được thanh toán khi nhận hàng. Đơn chỉ hoàn thành sau khi đã thu đủ tiền và bàn giao.'
+          : paymentStatus === 'paid'
+            ? 'Đơn đã thanh toán đủ. Đơn chỉ hoàn thành sau khi hàng được bàn giao và khách nhận.'
+            : Number(order?.tien_thanh_toan || 0) === 0
+              ? 'Đơn không phát sinh tiền thanh toán; trạng thái chỉ hoàn thành sau khi bàn giao.'
+              : null
 
   return (
     <Section tone="canvas">

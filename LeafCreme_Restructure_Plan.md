@@ -1,197 +1,74 @@
-# LeafCreme — Kế hoạch tái cấu trúc (RIPER: SPEC → PLAN)
+# LeafCreme — Kế hoạch hoàn thiện
 
-**Repo:** github.com/9ducanh9/LeafCreme · **Ngày:** 2026-08-06
-**Mục tiêu đã chốt với bạn:** production thật cho tiệm bánh + dùng làm sân tập kiến trúc hiện đại · scope backend + DevOps toàn diện · được đổi schema tự do · ưu tiên tất cả (test/CI, kiến trúc layer, security/observability, AI-native).
+**Cập nhật:** 2026-09-27
+**Cơ sở đối chiếu:** code ở `main` tại `cd046ff`, tài liệu trong repository và kiểm tra production ngày 2026-09-27. Health check của backend và kết nối PostgreSQL đã được xác nhận; webhook thật từ SePay và luồng thanh toán thật chưa được xác nhận.
 
----
+## Mục tiêu
 
-## TL;DR
+Hoàn thiện LeafCreme như một modular monolith có luồng bán hàng và vận hành đáng tin cậy. Không coi việc đổi toàn bộ cấu trúc thư mục, chuyển async, hay thêm một cổng thanh toán khác là điều kiện hoàn thành nếu chưa có nhu cầu vận hành chứng minh.
 
-Giữ **modular monolith**, không microservices/Kafka/K8s — quy mô 1 tiệm bánh không biện minh được chi phí vận hành đó. Việc cần làm theo đúng thứ tự: **(1) test + CI + Alembic migration** (nền móng bắt buộc trước khi đổi bất cứ gì) → **(2) tách layer router/service/domain** → **(3) security & observability** → **(4) async hoá + cổng thanh toán thật (VNPay/MoMo)** → **(5) AI-native: dự báo tồn kho & gợi ý nhập hàng** → **(6) Docker + CI/CD deploy**. Redis/Celery/Kubernetes: **chưa cần**, lý do bên dưới. Tổng cộng ước lượng 6 phase, có thể làm phase 0–2 trước rồi review lại.
+## Đã có trong codebase
 
----
-
-## 1. Đánh giá hiện trạng
-
-| Hạng mục | Hiện trạng | Rủi ro |
-|---|---|---|
-| Schema | 30 bảng SQLAlchemy, domain rõ (FEFO batch, orders, payments...) | Quản lý tay ngoài code, không Alembic → không rollback, dễ lệch giữa môi trường |
-| Testing | 1 script `test_api.py` thủ công | Không CI, không coverage — sửa code không biết vỡ chỗ nào |
-| Kiến trúc | Router gọi thẳng ORM; business logic dồn vào `helpers.py` (770 dòng, ~60 hàm không phân domain) | Khó test, khó mở rộng, khó review |
-| Async | 100% sync SQLAlchemy dưới FastAPI async | Nghẽn khi nhiều request I/O đồng thời (thanh toán, webhook) |
-| Bảo mật | `SECRET_KEY` có default hardcode, CORS mặc định `*`, không rate-limit, không revoke token | Không an toàn cho production thật |
-| Thanh toán | `payments` router chỉ ghi nhận nội bộ + endpoint `verify` dạng callback stub | Chưa nối cổng thanh toán thật (VNPay/MoMo) — thiếu tính năng lõi nếu khách trả tiền online |
-| Cảnh báo tồn kho | Có bảng `canhbaotonkho` nhưng không có job nào tự sinh cảnh báo | Tính năng tồn tại trên schema nhưng chưa hoạt động |
-| Observability | `prometheus-client` có trong requirements nhưng không wire `/metrics`; logging chưa có correlation ID | Không biết hệ thống đang chạy ra sao khi lên production |
-| DevOps | `docker-compose.yml` chỉ chạy Postgres + Adminer, không có Dockerfile cho API | Chưa deploy được nhất quán giữa máy dev và server |
-
----
-
-## 2. Kiến trúc mục tiêu
-
-### 2.1 Modular monolith — không microservices
-
-**Chọn:** một service FastAPI duy nhất, tổ chức theo domain module.
-**Vì sao:** 1 tiệm bánh không có nhiều team độc lập cần deploy riêng, traffic không đủ lớn để cần scale từng phần riêng biệt. Microservices thêm chi phí vận hành (network, tracing phân tán, nhiều pipeline CI/CD) mà không tạo giá trị tương xứng.
-**Trade-off chấp nhận:** khi thật sự cần tách (ví dụ module báo cáo/BI cần scale riêng), module hoá rõ ràng ngay từ đầu giúp tách sau này rẻ hơn.
-
-Cấu trúc thư mục đề xuất:
-
-```
-app/
-  domains/
-    catalog/      (sanpham, bienthe, hopqua, congthuc)
-    inventory/     (lohang*, tonkho*, lichsukho*, canhbaotonkho, fefo)
-    orders/        (donhang, chitietdonhang, giohang, doitra)
-    payments/       (thanhtoan, tích hợp VNPay/MoMo)
-    identity/       (nguoidung, vaitro, auth)
-    reporting/      (thongke, danhgia)
-    each domain/: router.py, service.py, schemas.py, models.py
-  core/            config (pydantic-settings), security, dependencies, logging, metrics
-  infra/           db session, migrations (alembic/), job scheduler
-  main.py          chỉ include_router + middleware, không chứa logic
-```
-
-**Vì sao tách theo domain thay vì giữ `models.py`/`routers/` phẳng:** ở quy mô 30 bảng, file phẳng đã khó điều hướng; tách theo domain giúp mỗi module tự giải thích (đúng nguyên tắc Explainability trong Leaf Creme guide) và review PR theo domain thay vì theo loại file.
-
-### 2.2 Service layer, bỏ repository layer riêng
-
-**Chọn:** router (mỏng, chỉ validate + gọi service) → service (business logic, transaction boundary) → SQLAlchemy Session trực tiếp.
-**Vì sao rejected repository pattern riêng:** SQLAlchemy 2.0 Session đã là abstraction đủ tốt; thêm repository layer chỉ tạo indirection không cần thiết cho một team nhỏ. Test dùng Postgres thật (xem mục 2.4) nên không cần mock repository để unit test.
-**helpers.py 770 dòng** → chia theo domain: hàm tính giá/giảm giá vào `orders/service.py`, hàm tồn kho/FEFO vào `inventory/service.py`, hàm format/validate dùng chung (ngày tháng, currency, slugify) giữ ở `core/formatting.py`.
-
-### 2.3 Migrations: Alembic bắt buộc
-
-Đây là việc **ưu tiên số 1**, làm trước mọi thứ khác. Không có migration = không thể deploy an toàn, không rollback được khi lỗi. Baseline từ schema hiện tại rồi mọi thay đổi sau đi qua migration file có review.
-
-Vì được phép đổi schema tự do, tận dụng luôn để sửa các điểm yếu:
-- Thêm index trên `lohang*.ngay_het_han`, `tonkho*.so_luong_hien_tai` (FEFO query hiện quét theo ngày hết hạn không có index — chậm dần khi data lớn).
-- Đổi cột `datetime` sang `timestamptz` (hiện tại naive datetime — rủi ro khi có nhiều timezone hoặc deploy multi-region sau này).
-- Thêm bảng `revoked_tokens` (id, jti, expires_at) để hỗ trợ logout/revoke JWT — xem mục 2.5.
-
-**Cân nhắc đã loại:** hợp nhất 3 bộ bảng lô hàng/tồn kho song song (SanPham/LinhKien/HopQua) thành 1 bảng polymorphic dùng `item_type` discriminator. **Quyết định: giữ nguyên tách riêng.** Lý do: mỗi loại có business rule khác nhau (BOM chỉ áp dụng LinhKien, FEFO chỉ áp dụng SanPham/HopQua), gộp lại sẽ cần nhiều cột nullable + logic rẽ nhánh runtime — vi phạm nguyên tắc "tránh tối ưu sớm" và làm code khó đọc hơn để đổi lấy DRY không thực sự cần thiết ở quy mô này.
-
-### 2.4 Testing & CI/CD
-
-- `pytest` + `pytest-asyncio` + `httpx.AsyncClient`, chạy trên **Postgres thật** (qua `docker-compose` service hoặc testcontainers) — không dùng SQLite vì code phụ thuộc JSONB/ENUM đặc thù Postgres, SQLite sẽ che giấu bug.
-- GitHub Actions: lint (ruff) → type-check (mypy, tối thiểu ở core/service) → test (với Postgres service container) → check Alembic migration không bị thiếu (`alembic check`) → build Docker image.
-- Coverage target thực tế: ưu tiên bao phủ `services/` (business logic) trước, không ép 100%.
-
-### 2.5 Bảo mật (bắt buộc cho production thật)
-
-| Vấn đề hiện tại | Đề xuất |
+| Hạng mục | Tình trạng đã xác nhận |
 |---|---|
-| `SECRET_KEY` có default hardcode | `pydantic-settings`, fail-fast nếu thiếu env — không bao giờ chạy với secret mặc định |
-| CORS `*` mặc định | Whitelist domain thật (storefront + admin) qua env, không dùng `*` khi có credentials |
-| Không revoke được JWT khi logout | Bảng `revoked_tokens` (Postgres, không cần Redis) — check khi decode token, dọn định kỳ token hết hạn |
-| Không rate-limit | `slowapi` (in-memory, single-instance) trên `/auth/*` và `/payments/*` — đủ cho 1 instance; nếu sau này scale ngang nhiều instance mới cần Redis-backed limiter |
-| RBAC chỉ check tên role dạng string | Giữ bảng `vaitro` (đã có JSONB quyền_xem/thêm/sửa/xoá) nhưng enforce theo resource thực tế thay vì chỉ so tên role |
+| Schema và migrations | Alembic quản lý schema; CI chạy migrations trên PostgreSQL. |
+| Chất lượng code | Có pytest, lint backend, frontend lint/unit/build và browser smoke tests trong GitHub Actions. |
+| Nghiệp vụ chính | Có catalog, orders, inventory/FEFO, vouchers, reports, SePay/VietQR và Leafie. |
+| Backend structure | Có các service theo nghiệp vụ dưới `app/services/`; router vẫn được nhóm riêng dưới `app/routers/`. |
+| Jobs | APScheduler chạy quét cảnh báo tồn kho và xử lý thanh toán chờ quá hạn. |
+| Frontend | Có design tokens, mobile navigation, ErrorBoundary, theme MUI cho admin và component DataTable dùng chung. |
+| Build/deploy | CI build Docker image backend; pipeline deploy frontend lên Vercel khi push `main`. README đang ghi cấu hình Railway cần chuyển sang định dạng mới. |
 
-**Vì sao chưa dùng Redis:** cả revoke-token và rate-limit đều giải quyết được trong phạm vi 1 Postgres + 1 instance. Thêm Redis bây giờ là thêm 1 stateful service phải vận hành/backup/monitor mà chưa có nhu cầu thật — đúng cảnh báo "không dùng Redis nếu không có lý do rõ ràng" trong guide của bạn. Sẽ revisit khi thật sự scale ngang.
+Các mục trên xác nhận sự hiện diện trong repository, không xác nhận dịch vụ production đang chạy đúng cấu hình.
 
-### 2.6 Observability
+## Trạng thái production đã kiểm tra
 
-- Structured JSON logging (mở rộng `services/logging.py` hiện có) + middleware gắn `request_id`/`correlation_id` xuyên suốt 1 request.
-- Wire `prometheus-client` đã có sẵn trong requirements → expose `/metrics` thật (request count, latency, error rate theo route).
-- Sentry (free tier đủ dùng cho quy mô này) để bắt exception production — rẻ, giá trị cao, không cần tự vận hành ELK/Grafana stack ngay từ đầu.
-- Healthcheck `/health` và `/health/db` đã có — giữ nguyên, tách thêm readiness vs liveness khi containerize.
+- Backend đang chạy trên Railway tại `https://api-production-3f93.up.railway.app`.
+- `GET /health/db` trả `healthy`, PostgreSQL `connected` vào ngày 2026-09-27.
+- Railway báo deployment API ở trạng thái `SLEEPING`; request health có thể đánh thức service và có thể có cold start.
+- POST thử webhook không có API key bị từ chối `401`; API key đã được cấu hình ở backend và auth gate hoạt động. Chưa xác nhận key có khớp với SePay hoặc SePay gửi callback thành công.
+- Railway Postgres PITR đang tắt. Chưa có backup/restore rehearsal được ghi nhận.
+- Chưa xác nhận cấu hình webhook phía SePay hoặc đã nhận callback thanh toán thật.
 
-### 2.7 Async hoá
+## Việc còn lại
 
-Chuyển `sqlalchemy` sang async engine (`asyncpg`), router `async def`, service layer async. **Vì sao cần:** thanh toán thật (webhook cổng thanh toán), gửi email/notification là I/O-bound — sync blocking dưới FastAPI hiện tại giới hạn throughput theo số thread pool worker. **Trade-off:** cần rewrite toàn bộ router/service — nên làm sau khi đã có test suite (mục 2.4) để refactor an toàn, không phải làm ngay từ đầu.
+### P1 — Xác minh vận hành production
 
-### 2.8 Thanh toán thật
+- Chuyển cấu hình Railway khỏi `railway.toml` legacy sang `.railway/railway.ts` nếu Railway vẫn là nơi chạy backend.
+- Xác nhận cấu hình webhook phía SePay bằng công cụ test của SePay; đối chiếu callback với payment/order trên môi trường kiểm thử trước khi nhận thanh toán thật.
+- Diễn tập backup/restore PostgreSQL trên database cô lập và viết runbook khôi phục ngắn. Cân nhắc bật PITR sau khi chốt nhu cầu và mức chi phí Railway.
+- Bổ sung luồng kiểm thử browser có đăng nhập trên database cô lập, đã seed dữ liệu. Hiện E2E CI là smoke test public routes với API giả lập.
 
-Router `payments` hiện chỉ ghi nhận nội bộ. Production thật cho tiệm bánh cần nối **VNPay hoặc MoMo** (2 cổng phổ biến nhất VN cho SME) — đây là tính năng lõi tạo giá trị kinh doanh thật (khách trả được tiền online), không phải "nice to have".
+### P2 — Bảo mật và quan sát ứng dụng
 
-### 2.9 Scheduled jobs (cảnh báo tồn kho, hết hạn)
+- Đánh giá nhu cầu và triển khai rate limit cho đăng nhập và webhook/payment nếu chưa được lớp hạ tầng bảo vệ.
+- Quyết định có cần thu hồi JWT trước hạn không; hiện chưa thấy cơ chế revoked-token trong code.
+- Bổ sung request ID/correlation ID cho HTTP request và metrics cơ bản. Agent có observability riêng; không đồng nghĩa API đã có `/metrics` hoặc Sentry.
+- Rà soát RBAC theo từng thao tác tài nguyên; hiện có dependency kiểm tra role/capability.
 
-Bảng `canhbaotonkho` đã tồn tại nhưng không ai populate. Đề xuất: **APScheduler chạy in-process** (job nightly quét `ngay_het_han` sắp tới + tồn kho thấp → insert cảnh báo), **không dùng Celery+broker**. Vì sao: khối lượng job thấp (vài lần/ngày, 1 tiệm bánh), Celery cần thêm Redis/RabbitMQ — chi phí vận hành không tương xứng lợi ích ở quy mô này.
+### P3 — Hoàn tất backlog sản phẩm có giá trị
 
-### 2.10 AI-native — có giá trị thật, không phải AI-washing
+- Soát phân trang/sắp xếp ở từng trang admin và endpoint; đã có hook trạng thái bảng, URL state và component DataTable, nhưng cần kiểm tra độ phủ toàn bộ màn hình.
+- Xác minh luồng lỗi sau khi tạo đơn nhưng tạo QR SePay thất bại, cùng hành vi submit lại để tránh đơn trùng. Chỉ bổ sung idempotency nếu xác nhận backend chưa xử lý trường hợp này.
+- Dự báo nhu cầu và gợi ý nhập hàng là tính năng tương lai. Đã có insight vận hành chủ động, nhưng không coi đó là dự báo nhu cầu đã hoàn thành.
+- Cập nhật audit UI cũ bằng code hiện tại, kiểm tra trực quan/mobile và screen reader trước khi chọn thêm việc giao diện.
 
-Loại bỏ ngay ý tưởng "thêm chatbot cho có" — không giải quyết pain point cụ thể nào ở đây. Hai tính năng AI thật sự đáng làm, bám vào dữ liệu FEFO/order đã có sẵn:
+## Không còn là việc cần làm theo plan cũ
 
-1. **Dự báo hết hàng & gợi ý nhập hàng** — kết hợp tốc độ bán (từ `chitietdonhang`) + tồn kho theo lô (FEFO) để dự đoán ngày hết hàng từng biến thể, tự sinh gợi ý số lượng cần nhập cho nhà cung cấp. Giá trị: giảm thời gian nhân viên tự theo dõi Excel, giảm thất thoát do hết hạn (bánh là hàng dễ hỏng — đây là ROI đo được trực tiếp).
-2. **Dự báo nhu cầu sản xuất theo sản phẩm** — time-series đơn giản (moving average / Prophet, không cần hạ tầng ML nặng) trên lịch sử đơn hàng để hỗ trợ quyết định "hôm nay nướng bao nhiêu" — hỗ trợ ra quyết định đúng nguyên tắc AI-Native.
+- **Alembic, test + CI và Dockerfile backend** đã có; không lập lại Phase 0 như việc chưa bắt đầu.
+- **Thanh toán thật** đã có luồng SePay/VietQR; không cần chọn giữa VNPay và MoMo để tiếp tục.
+- **APScheduler và sinh cảnh báo định kỳ** đã có; không thêm scheduler lần nữa.
+- **Async hoá toàn bộ backend** không phải điều kiện bắt buộc. Chỉ xem xét khi số liệu tải hoặc độ trễ cho thấy cách hiện tại không đáp ứng.
+- Không yêu cầu chuyển cả ứng dụng sang `app/domains/` chỉ để khớp sơ đồ cũ. Tiếp tục tách service theo nghiệp vụ từng phần.
 
-Cả hai chạy như 1 job định kỳ (dùng chung APScheduler ở mục 2.9) ghi kết quả vào bảng mới `goi_y_nhap_hang` — không cần thêm service/vector DB/LLM nào, vẫn đúng tinh thần "AI-native không phải AI-washed": vấn đề kinh doanh thật, giải pháp đơn giản nhất giải quyết đúng vấn đề.
+## Thứ tự đề xuất
 
-### 2.11 DevOps / triển khai
+1. Backend/Railway và health check đã xác nhận; còn chốt cấu hình webhook SePay và callback test.
+2. Thực hiện backup/restore rehearsal và kiểm thử browser có đăng nhập trên môi trường cô lập.
+3. Đóng các lỗ hổng vận hành được xác nhận: retry tạo đơn, rate limit, quan sát HTTP.
+4. Kiểm tra độ phủ phân trang admin và làm mới backlog UI từ code hiện tại.
+5. Chỉ sau đó mới quyết định có đầu tư vào dự báo nhu cầu/tồn kho hay không.
 
-- **Dockerfile multi-stage** cho API (hiện chưa có — chỉ Postgres được container hoá).
-- **CI/CD:** GitHub Actions build → push image → deploy.
-- **Hosting:** với ngân sách 1 tiệm bánh, **không Kubernetes**. Đề xuất Fly.io / Render / một VPS nhỏ chạy Docker Compose (API + Postgres managed hoặc self-host) — đủ tin cậy, chi phí thấp, vận hành đơn giản. IaC ở mức này = docker-compose + 1 file cấu hình deploy (Fly `fly.toml` hoặc Render `render.yaml`) là đủ, không cần Terraform cho một service duy nhất.
+## Ghi chú
 
----
-
-## 3. Lộ trình theo phase
-
-| Phase | Nội dung | Vì sao ở vị trí này |
-|---|---|---|
-| **0. Nền móng** | Alembic baseline, pytest + Postgres CI, Dockerfile cho API | Bắt buộc trước — không có cái này thì mọi refactor sau đều rủi ro không kiểm chứng được |
-| **1. Kiến trúc** | Tách `domains/`, chuyển `helpers.py` vào service theo domain | Cần làm trước khi thêm tính năng mới, tránh nợ kỹ thuật chồng thêm |
-| **2. Bảo mật & Observability** | pydantic-settings, revoked_tokens, rate-limit, `/metrics`, Sentry, structured logging | Bắt buộc trước khi có traffic thật/thanh toán thật |
-| **3. Async + Thanh toán thật** | asyncpg, tích hợp VNPay/MoMo | Tính năng lõi kinh doanh — cần nền tảng ổn định từ phase 0–2 trước |
-| **4. Scheduled jobs + AI-native** | APScheduler, cảnh báo tồn kho tự động, dự báo hết hàng/nhu cầu | Phụ thuộc dữ liệu order/inventory đã chạy ổn định qua các phase trước |
-| **5. Deploy production** | Docker Compose/Fly.io, CI/CD deploy pipeline, healthcheck/monitoring dashboard | Chốt hạ sau khi mọi thứ đã kiểm chứng |
-
-Đề xuất: duyệt lại kế hoạch sau mỗi phase (đúng tinh thần RIPER — VALIDATE trước khi qua phase kế) thay vì cam kết toàn bộ 6 phase cùng lúc.
-
----
-
-## 4. Việc không làm (và vì sao)
-
-| Từ chối | Lý do |
-|---|---|
-| Microservices | Không có nhiều team/traffic đủ lớn để biện minh chi phí vận hành phân tán |
-| Kubernetes | 1 service, traffic nhỏ — Docker Compose/PaaS đơn giản hơn nhiều mà vẫn đạt mục tiêu |
-| Redis (ngay bây giờ) | Revoke token + rate-limit giải quyết được bằng Postgres + in-memory ở quy mô 1 instance |
-| Celery + broker | Khối lượng job thấp, APScheduler in-process đủ dùng |
-| Kafka/ClickHouse | Không có nhu cầu event-streaming hay OLAP quy mô lớn |
-| Chatbot AI chung chung | Không giải quyết pain point cụ thể — vi phạm nguyên tắc AI-native |
-| Repository pattern riêng | SQLAlchemy Session đã đủ abstraction, thêm layer chỉ tăng indirection |
-
----
-
-## 5. Câu hỏi cần bạn xác nhận trước khi EXECUTE
-
-1. Đã có data thật trong DB hiện tại chưa, hay có thể baseline Alembic từ schema hiện tại mà không cần migrate data cũ?
-2. Chọn cổng thanh toán nào trước: VNPay hay MoMo (ảnh hưởng phase 3)?
-3. Hosting mục tiêu: bạn đã có VPS/tài khoản cloud nào sẵn, hay cần đề xuất cụ thể (Fly.io/Render/VPS)?
-4. Bắt đầu ngay từ Phase 0 (test + CI + Alembic), hay muốn tôi detail hoá task-level cho Phase 0–1 trước để duyệt?
-
----
-
-## Addendum (2026-08-07): base branch corrected
-
-Phase 0 was originally built against `main` (`fb55fde`), which turned out to
-be a stripped-down "portfolio" snapshot with an unrelated git history from
-the real working branch `UpdateT5` (`91c5d6e`) — the actual current state of
-the project, with the event system, split order/inventory/voucher services,
-MoMo/VNPay config, and the Leafie/n8n assistant already built.
-
-Per your direction, `UpdateT5` is now adopted as the canonical base (commit
-`0856aa6`, "Merge UpdateT5 into main as canonical baseline" — see commit
-message for the reasoning on why this was a tree-adoption rather than a real
-`git merge --allow-unrelated-histories`). Phase 0 (`8b80acc`) is rebuilt on
-top of that, matching the real 32-table schema instead of the stale 30-table
-one this doc was originally written against.
-
-Two things worth flagging that weren't visible when this plan was first
-written:
-
-- **MoMo payment integration already exists** (`app/services/momo.py`,
-  `momo_qr.py`) — Phase 3 ("thanh toán thật") in the roadmap above is
-  further along than assumed. VNPay config exists too but no VNPay service
-  file yet — worth confirming whether VNPay is still wanted or MoMo alone is
-  sufficient.
-- **Leafie (n8n-backed chat assistant) already exists** — this sits somewhat
-  against this doc's "reject generic chatbot" stance in section 2.10. Not a
-  contradiction to fix retroactively; just worth an honest look later at
-  whether Leafie is solving a real pain point in practice or is a nice-to-have,
-  now that it's shipped rather than hypothetical.
-
-The rest of the roadmap (sections 2–4) still holds — architecture layering,
-security/observability, async, and AI-native inventory forecasting are still
-not done and still sequenced the same way.
+Tài liệu này thay thế các nhận định hiện trạng và câu hỏi mở cũ trong bản kế hoạch ban đầu. Tiêu chí cụ thể cho mỗi việc cần được ghi nhận cùng PR hoặc issue khi bắt đầu triển khai; không dùng lại số liệu audit UI cũ như số liệu hiện tại.

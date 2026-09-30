@@ -9,20 +9,32 @@ import { getOrderById, updateOrderStatus, cancelOrder } from '../../services/adm
 import type { Order, OrderStatus } from '../../types/admin'
 import { useToast } from '../../contexts/ToastContext'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { createSePayPayment, getOrderPayments, recordCashPayment, type PaymentStatus } from '../../services/paymentService'
+
+function apiErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === 'object' && 'detail' in error) {
+    const detail = (error as { detail?: unknown }).detail
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail)) return detail.map((item) => typeof item === 'object' && item && 'msg' in item ? String(item.msg) : String(item)).join(', ')
+  }
+  return fallback
+}
 
 export default function AdminOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { showSuccess, showError } = useToast()
   const [order, setOrder] = useState<Order | null>(null)
+  const [payments, setPayments] = useState<PaymentStatus[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadOrder = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
-      const data = await getOrderById(id)
-      setOrder(data)
+      const [orderData, paymentData] = await Promise.all([getOrderById(id), getOrderPayments(Number(id))])
+      setOrder(orderData)
+      setPayments(paymentData)
     } catch (error) {
       showError('Không thể tải chi tiết đơn hàng')
     } finally {
@@ -41,7 +53,7 @@ export default function AdminOrderDetailPage() {
       setOrder(updated)
       showSuccess('Cập nhật trạng thái thành công')
     } catch (error) {
-      showError('Không thể cập nhật trạng thái')
+      showError(apiErrorMessage(error, 'Không thể cập nhật trạng thái'))
     }
   }
 
@@ -52,7 +64,30 @@ export default function AdminOrderDetailPage() {
       setOrder(updated)
       showSuccess('Đã hủy đơn hàng')
     } catch (error) {
-      showError('Không thể hủy đơn hàng')
+      showError(apiErrorMessage(error, 'Không thể hủy đơn hàng'))
+    }
+  }
+
+  const handleRecordCash = async (amount: number): Promise<boolean> => {
+    if (!id) return false
+    try {
+      await recordCashPayment(Number(id), amount)
+      showSuccess('Đã ghi nhận khoản tiền mặt thực nhận')
+      await loadOrder()
+      return true
+    } catch (error) {
+      showError(apiErrorMessage(error, 'Không thể ghi nhận khoản tiền mặt'))
+      return false
+    }
+  }
+
+  const handleCreateSePay = async () => {
+    if (!id) return
+    try {
+      const paymentInfo = await createSePayPayment(Number(id))
+      navigate(`/orders/${id}/payment-qr`, { state: { paymentInfo, adminReturn: true } })
+    } catch (error) {
+      showError(apiErrorMessage(error, 'Không thể tạo QR SePay'))
     }
   }
 
@@ -72,7 +107,14 @@ export default function AdminOrderDetailPage() {
       ) : !order ? (
         <Typography variant="h6" color="text.secondary">Không tìm thấy đơn hàng</Typography>
       ) : (
-        <OrderDetailCard order={order} onStatusChange={handleStatusChange} onCancel={handleCancel} />
+        <OrderDetailCard
+          order={order}
+          payments={payments}
+          onStatusChange={handleStatusChange}
+          onCancel={handleCancel}
+          onRecordCash={handleRecordCash}
+          onCreateSePay={handleCreateSePay}
+        />
       )}
     </AdminPage>
   )
