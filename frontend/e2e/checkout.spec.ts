@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import type { CheckoutResponse } from '../src/services/orderService'
 
 const order = {
   donhang_id: 42, ma_don_hang: 'ONL-BROWSER-TEST', nguoidung_id: 7, loai_don: 'online',
@@ -27,7 +28,12 @@ async function setup(page: Page, options: { loseFirstResponse?: boolean; termina
       attempts.push({ key, body })
       committed.add(key)
       if (options.loseFirstResponse && attempts.length === 1) return route.abort('failed')
-      return route.fulfill({ status: 201, json: { order, payment_info: body.payment_method === 'sepay_qr' ? payment : null } })
+      const response: CheckoutResponse = {
+        order,
+        payment_info: body.payment_method === 'sepay_qr' ? payment : null,
+        payment_status: body.payment_method === 'sepay_qr' ? 'pending' : 'unpaid',
+      }
+      return route.fulfill({ status: 201, json: response })
     }
     if (path === '/payments/1') {
       polls++
@@ -52,7 +58,7 @@ test('COD checkout creates one order and clears the cart after confirmation', as
   const state = await setup(page)
   await fillCheckout(page, false)
   await page.getByRole('button', { name: 'Đặt hàng', exact: true }).click()
-  await expect(page).toHaveURL(/\/orders\/42\/success$/)
+  await expect(page).toHaveURL(/\/orders\/42\/success\?payment_status=unpaid$/)
   await expect(page.getByRole('heading', { name: 'Đặt hàng thành công' })).toBeVisible()
   expect(state.committed.size).toBe(1)
   expect(state.attempts[0].key).toBeTruthy()
