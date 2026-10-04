@@ -135,6 +135,26 @@ def test_history_sent_once_and_contacts_credentials_redacted(provider, catalog):
     assert response["prompt_version"] == "leafie-sales-v1"
 
 
+def test_assistant_history_uses_json_mode_wire_format(provider, catalog):
+    payload = leafie.LeafieRequest(message="Bánh đó size nhỏ nhất còn không?", conversationHistory=[
+        {"role": "user", "content": "Mình đang chọn Chocolate."},
+        {"role": "assistant", "content": "Chocolate có size 18cm. Email test@example.com, 0912345678 sk-testcredential"},
+    ])
+    asyncio.run(leafie.generate_reply(payload, catalog))
+    request = provider.call_args.kwargs
+    assert request["response_format"] == {"type": "json_object"}
+    assert len(request["messages"]) == 4
+    assistant = json.loads(request["messages"][2]["content"])
+    assert assistant == {
+        "output": leafie.clean_text(payload.conversationHistory[1].content),
+        "product_ids": [], "gift_box_ids": [], "suggestions": [],
+    }
+    assert assistant["output"].startswith("Chocolate có size 18cm.")
+    for private in ["test@example.com", "0912345678", "sk-testcredential"]:
+        assert private not in request["messages"][2]["content"]
+    assert request["messages"][-1] == {"role": "user", "content": payload.message}
+
+
 @pytest.mark.parametrize("content,finish", [
     ('{"output":"Invented cake","product_ids":[999]}', "stop"),
     ("not json", "stop"), ('{"output":" "}', "stop"),

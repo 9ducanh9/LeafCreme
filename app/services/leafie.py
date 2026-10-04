@@ -100,7 +100,14 @@ async def generate_reply(payload: LeafieRequest, catalog: dict) -> dict:
     if history and history[-1] == {"role": "user", "content": payload.message}:
         history.pop()
     messages = [{"role": "system", "content": SYSTEM_PROMPT + "\nCATALOG_SERVER:\n" + json.dumps(catalog, ensure_ascii=False)}]
-    messages.extend({"role": t["role"], "content": clean_text(t["content"])} for t in history)
+    # JSON mode needs prior assistant turns in the same wire format, not UI text.
+    for turn in history:
+        content = clean_text(turn["content"])
+        if turn["role"] == "assistant":
+            content = json.dumps({
+                "output": content, "product_ids": [], "gift_box_ids": [], "suggestions": [],
+            }, ensure_ascii=False)
+        messages.append({"role": turn["role"], "content": content})
     messages.append({"role": "user", "content": clean_text(payload.message)})
     try:
         async with openai.AsyncOpenAI(
