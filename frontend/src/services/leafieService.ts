@@ -1,57 +1,37 @@
-import type { LeafieContext } from '../types/leafie'
-import { LEAFIE_BACKEND_URL } from '../config/runtimeConfig'
-
-export interface AskLeafieParams {
-  message: string
-  context: LeafieContext
-  conversationHistory: {
-    role: 'user' | 'assistant'
-    content: string
-  }[]
-}
+import type { LeafieMessage, LeafieProduct } from '../types/leafie'
+import { API_BASE_URL } from '../config/runtimeConfig'
 
 export interface AskLeafieResponse {
   message: string
-  suggestions?: string[]
+  suggestions: string[]
+  products: LeafieProduct[]
 }
 
 export async function askLeafie(
   message: string,
-  context: LeafieContext,
-  conversationHistory: AskLeafieParams['conversationHistory']
+  conversationHistory: Pick<LeafieMessage, 'role' | 'content'>[],
 ): Promise<AskLeafieResponse> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 40000)
   try {
-    const res = await fetch(LEAFIE_BACKEND_URL, {
+    const res = await fetch(`${API_BASE_URL}/leafie/ask`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        context,
-        conversationHistory,
-        sessionId: context.sessionId,
-      }),
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, conversationHistory }),
     })
-
     if (!res.ok) {
-      const text = await res.text()
-      throw new Error(`Backend error ${res.status}: ${text}`)
+      if (res.status === 429) throw new Error('Leafie đang bận. Bạn chờ một phút rồi thử lại nhé.')
+      if (res.status === 503) throw new Error('Leafie chưa sẵn sàng. Bạn thử lại sau hoặc liên hệ cửa hàng nhé.')
+      throw new Error('Chưa nhận được câu trả lời. Bạn thử gửi lại nhé.')
     }
-
     const data = await res.json()
-    return {
-      message: data.output ?? 'Leafie chưa trả lời được lúc này.',
-      suggestions: data.suggestions ?? [],
-    }
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Leafie backend proxy error:', error)
-    }
-
-    return {
-      message: 'Xin lỗi bạn, Leafie đang gặp trục trặc kỹ thuật. Bạn thử lại sau một chút nhé.',
-      suggestions: [],
-    }
+    if (typeof data.output !== 'string' || !data.output.trim()) throw new Error('Leafie chưa trả lời được. Bạn thử lại nhé.')
+    return { message: data.output, suggestions: data.suggestions ?? [], products: data.products ?? [] }
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') throw new Error('Leafie trả lời hơi lâu. Bạn thử gửi lại nhé.')
+    throw err
+  } finally {
+    clearTimeout(timeout)
   }
 }

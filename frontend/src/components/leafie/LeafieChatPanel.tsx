@@ -10,6 +10,8 @@ interface LeafieChatPanelProps {
   isOpen: boolean
   messages: LeafieMessage[]
   loading: boolean
+  error: string | null
+  onRetry: () => void
   onClose: () => void
   onSendMessage: (message: string) => void
   onSuggestionSelect: (suggestion: string) => void
@@ -20,6 +22,8 @@ export default function LeafieChatPanel({
   isOpen,
   messages,
   loading,
+  error,
+  onRetry,
   onClose,
   onSendMessage,
   onSuggestionSelect,
@@ -63,14 +67,14 @@ export default function LeafieChatPanel({
       return
     }
 
-    if (shouldAutoScrollRef.current && isNearBottom()) {
+    if (shouldAutoScrollRef.current) {
       setTimeout(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
         }
       }, 100)
     }
-  }, [messages])
+  }, [messages, loading, error])
 
   // Track scroll position
   useEffect(() => {
@@ -170,7 +174,7 @@ export default function LeafieChatPanel({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`fixed right-0 top-0 bottom-0 w-full max-w-md bg-bg-surface z-modal flex flex-col shadow-xl outline-none transition-[transform,visibility] duration-slow ${
+        className={`fixed right-0 top-0 bottom-0 w-full max-w-[400px] bg-bg-surface z-modal flex flex-col shadow-xl outline-none transition-[transform,visibility] duration-slow ${
           isOpen ? 'visible translate-x-0' : 'invisible translate-x-full'
         }`}
       >
@@ -225,7 +229,7 @@ export default function LeafieChatPanel({
         </div>
 
         {/* Messages - Discord style container */}
-        <div className="flex-1 overflow-hidden bg-bg-inset">
+        <div className="min-h-0 flex-1 overflow-hidden bg-bg-canvas">
           <div 
             className="h-full overflow-y-auto overscroll-contain px-2 md:px-4" 
             ref={scrollContainerRef}
@@ -236,6 +240,10 @@ export default function LeafieChatPanel({
               loading={loading}
               onSuggestionSelect={onSuggestionSelect}
             />
+            {error && <div role="alert" className="mx-2 mb-4 rounded-lg border border-danger bg-danger-bg p-3 text-sm text-danger">
+              <p>{error}</p>
+              <button type="button" onClick={onRetry} disabled={loading} className="mt-2 rounded-md border border-current px-3 py-1.5 font-medium disabled:opacity-50">Thử lại</button>
+            </div>}
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -249,11 +257,14 @@ export default function LeafieChatPanel({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Nhập câu hỏi của bạn..."
+              aria-label="Câu hỏi cho Leafie"
+              maxLength={2000}
               disabled={loading}
-              className="flex-1 rounded-md border border-interactive bg-bg-inset px-4 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none transition-all focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-w-0 flex-1 rounded-md border border-interactive bg-bg-inset px-4 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none transition-all focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
               type="submit"
+              aria-label="Gửi câu hỏi"
               disabled={!inputValue.trim() || loading}
               className="flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-fg-on-brand shadow-sm transition-all hover:bg-brand-hover hover:shadow-md focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             >

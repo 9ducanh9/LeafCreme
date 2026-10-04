@@ -31,7 +31,7 @@ LeafCreme addresses that by treating inventory as batches with expiry dates and 
 - Payment flows for:
   - cash / manual payment records
   - SePay/VietQR bank transfers with automatic webhook confirmation
-- Leafie AI assistant proxy flow via backend to n8n
+- Leafie sales assistant via backend to DeepSeek, using the public server-side catalog
 
 ### Admin / operations
 - Product and variant management
@@ -61,7 +61,7 @@ LeafCreme addresses that by treating inventory as batches with expiry dates and 
 
 ### External / integration points
 - SePay/VietQR payment integration
-- n8n webhook integration for Leafie assistant
+- DeepSeek chat integration for Leafie assistant
 - Docker Compose for local PostgreSQL + Adminer
 
 ## Key Business Logic
@@ -117,9 +117,10 @@ never authoritative.
 
 Categories intentionally remain a product attribute rather than a separate
 catalog table. Admins manage them while editing products, and category filters
-are derived from active product data. Leafie remains an integration boundary:
-the backend proxies to the configured n8n workflow and returns `503` when that
-external workflow is not configured.
+are derived from active product data. Leafie reads active products, variant
+prices and sellable availability from the backend on each question. Client
+catalog/session fields are ignored. Only public catalog data and bounded chat
+history reach DeepSeek; Leafie cannot access orders or execute business actions.
 
 ## Repository Structure
 
@@ -178,7 +179,9 @@ BACKEND_BASE_URL=http://localhost:8000
 Optional integrations:
 
 ```env
-N8N_WEBHOOK_URL=https://your-n8n-webhook
+DEEPSEEK_API_KEY=
+# Optional Leafie model override; defaults to deepseek-chat.
+LEAFIE_MODEL=deepseek-chat
 SEPAY_BANK_ACCOUNT=
 SEPAY_BANK_CODE=
 SEPAY_ACCOUNT_NAME=
@@ -225,11 +228,28 @@ Create `frontend/.env`:
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-Optional frontend integration:
+Leafie uses `VITE_API_BASE_URL/leafie/ask`. Set `DEEPSEEK_API_KEY` only in
+the backend environment (local `.env` or Railway variables); never in `VITE_*`.
+No n8n instance or webhook URL is required. Existing `N8N_WEBHOOK_URL` and
+`VITE_LEAFIE_BACKEND_URL` values are unused.
 
-```env
-VITE_LEAFIE_BACKEND_URL=http://localhost:8000/leafie/ask
-```
+Leafie uses a separate, code-versioned `leafie-sales-v1` prompt. Changing it
+does not change the admin Operations Agent. The server reads a fresh public
+catalog for each question and selects cards by validated catalog IDs. It has
+no customer/order lookup or mutation tools. Guest history lasts for the browser
+session; signed-in history is scoped to the local account. Restored chat does
+not restore old stock/price cards. Common email/phone/credential patterns in
+chat text are masked before the provider call; arbitrary names/addresses in
+free text are not guaranteed to be detected. Do not enter sensitive data.
+
+Verification: `tests/test_leafie.py` covers catalog visibility, expiry, input
+validation, context, redaction, privacy guards, limits and provider failures.
+`frontend/e2e/leafie.spec.ts` covers desktop/mobile, cards and retry with mocked
+API replies. These are not evidence of model quality: verify real Vietnamese
+conversations separately with a valid key (recommendation, a unique prior
+reference, an ambiguous reference, sold-out products, allergy questions,
+private-data requests and instruction injection). An invalid provider key
+returns a safe HTTP 503; it does not silently fall back to a fake answer.
 
 Run frontend:
 
@@ -295,7 +315,12 @@ Suggested assets:
 
 ## Current Limitations
 
-- Leafie depends on the external n8n workflow configured by `N8N_WEBHOOK_URL`.
+- Leafie requires `DEEPSEEK_API_KEY`; provider failures return explicit retryable errors.
+  Price/size cards are server-owned. Advice is model-generated, so prompt rules are
+  not a proof against every hallucination. Only variant availability is verified;
+  simple products/gift boxes show availability as unknown. Leafie does not verify
+  ingredients, allergens or delivery promises. The public endpoint has bounded
+  input and per-process rate/concurrency limits; multiple replicas do not share them.
 - SePay confirmation depends on a correctly configured provider webhook and a
   real incoming bank transaction; automated tests cover QR construction,
   authentication, amount/account matching, and idempotency without moving money.

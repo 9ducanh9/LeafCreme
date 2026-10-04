@@ -1,9 +1,10 @@
 import { useRef, type FormEvent } from 'react'
-import { Gift, Home, Menu, Search, User, X } from 'lucide-react'
+import { Gift, Home, Menu, MessageCircle, Search, User, X } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 import type { User as AuthUser } from '../../types/user'
 import Button from '../ui/Button'
 import { useOverlayA11y } from '../../hooks/useOverlayA11y'
+import { useLeafieContext } from '../../contexts/LeafieContext'
 
 const navItems = [
   { to: '/', label: 'Trang chủ', icon: Home },
@@ -24,6 +25,7 @@ export function MobileNavTrigger({ open, onOpen }: { open: boolean; onOpen: () =
 
 export default function MobileNav({ open, user, onClose, onSearch }: MobileNavProps) {
   const drawerRef = useRef<HTMLElement>(null)
+  const { openChat } = useLeafieContext()
 
   // inert khi đóng + focus trap khi mở + trả focus về nút hamburger.
   // Escape do Header xử lý (nó đóng cả product menu và user menu cùng lúc).
@@ -72,6 +74,9 @@ export default function MobileNav({ open, user, onClose, onSearch }: MobileNavPr
             </NavLink>
           )
         })}
+        <button type="button" onClick={() => { onClose(); openChat() }} className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-medium text-fg-muted hover:bg-bg-subtle">
+          <span className="grid size-8 place-items-center rounded-full bg-bg-subtle"><MessageCircle className="size-4" /></span>Trò chuyện với Leafie
+        </button>
       </nav>
       {!user && <div className="grid gap-2 border-t border-border-subtle p-5"><Button href="/login" variant="outline" className="w-full">Đăng nhập</Button><Button href="/register" variant="primary" className="w-full">Tạo tài khoản</Button></div>}
       {user && <div className="border-t border-border-subtle p-5"><Link to="/profile" onClick={onClose} className="flex min-h-11 items-center gap-2 text-sm font-medium text-brand-fg"><User className="size-4" />Tài khoản của tôi</Link></div>}

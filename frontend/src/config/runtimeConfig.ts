@@ -18,9 +18,3 @@ function resolveApiBaseUrl(): string {
 }
 
 export const API_BASE_URL = resolveApiBaseUrl()
-
-export const LEAFIE_BACKEND_URL =
-  (typeof import.meta.env.VITE_LEAFIE_BACKEND_URL === 'string' &&
-    import.meta.env.VITE_LEAFIE_BACKEND_URL.trim())
-    ? import.meta.env.VITE_LEAFIE_BACKEND_URL.trim()
-    : `${API_BASE_URL}/leafie/ask`

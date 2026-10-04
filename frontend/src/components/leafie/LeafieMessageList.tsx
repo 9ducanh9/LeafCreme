@@ -1,7 +1,9 @@
 // Message list component - Discord style
 import { useState, useEffect } from 'react'
 import { User } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { getImageUrl } from '../../utils/getImageUrl'
 import type { LeafieMessage } from '../../types/leafie'
 
 interface LeafieMessageListProps {
@@ -15,7 +17,6 @@ export default function LeafieMessageList({
   loading,
   onSuggestionSelect,
 }: LeafieMessageListProps) {
-  void onSuggestionSelect
   const { user } = useAuth()
   const [avatarError, setAvatarError] = useState(false)
 
@@ -26,6 +27,13 @@ export default function LeafieMessageList({
   // Discord style: All messages left-aligned with avatar
   return (
     <div className="py-4 space-y-1">
+      {messages.length === 0 && !loading && <div className="px-3 py-5">
+        <h4 className="text-lg font-semibold text-fg-strong">Mình giúp bạn chọn bánh nhé?</h4>
+        <p className="mt-2 text-sm leading-relaxed text-fg-muted">Bạn đang chọn cho dịp gì, bao nhiêu người và khoảng ngân sách nào?</p>
+        <div className="mt-5 flex flex-col items-start gap-2">
+          {['Chọn bánh cho sinh nhật 4 người', 'Gợi ý hộp quà dưới 300.000đ', 'Bánh nào đang còn hàng?'].map((suggestion) => <button key={suggestion} type="button" onClick={() => onSuggestionSelect(suggestion)} className="rounded-lg border border-border bg-bg-surface px-3 py-2 text-left text-sm text-fg hover:border-brand">{suggestion}</button>)}
+        </div>
+      </div>}
       {messages.map((message, index) => {
         const isUser = message.role === 'user'
         const showAvatar = index === 0 || messages[index - 1].role !== message.role
@@ -47,14 +55,7 @@ export default function LeafieMessageList({
                 {isUser ? (
                   user?.avatar_url && user.avatar_url.trim() && !avatarError ? (
                     <img
-                      src={
-                        user.avatar_url.startsWith('http')
-                          ? user.avatar_url
-                          : `${
-                              import.meta.env.VITE_API_BASE_URL ||
-                              'http://localhost:8000'
-                            }${user.avatar_url}`
-                      }
+                      src={getImageUrl(user.avatar_url)}
                       alt={user.ho_ten || 'User'}
                       className="w-full h-full object-cover"
                       onError={() => {
@@ -109,6 +110,14 @@ export default function LeafieMessageList({
                   {message.content}
                 </p>
               </div>
+              {!isUser && (message.products ?? []).length > 0 && <div className="mt-2 w-full space-y-2">
+                {message.products?.map((product) => <div key={`${product.kind}-${product.id}`} className="rounded-lg border border-border bg-bg-surface p-3 text-sm">
+                  <Link to={product.kind === 'gift_box' ? `/gift-boxes/${product.id}` : `/products/${product.id}`} className="font-semibold text-fg-strong hover:underline">{product.name}</Link>
+                  <p className="mt-1 font-medium text-brand-fg">{product.variants.length > 1 ? 'Từ ' : ''}{new Intl.NumberFormat('vi-VN').format(product.price)} đ</p>
+                  {product.variants.length ? <ul className="mt-2 space-y-1 text-xs text-fg-muted">{product.variants.map((variant) => <li key={variant.id} className="flex flex-wrap justify-between gap-x-2"><span>{variant.size || 'Tiêu chuẩn'} · {new Intl.NumberFormat('vi-VN').format(variant.price)} đ</span><span>{variant.available ? 'Còn hàng' : 'Hết hàng'}</span></li>)}</ul> : <p className="mt-1 text-xs text-fg-muted">Cần xác nhận tình trạng còn hàng</p>}
+                </div>)}
+              </div>}
+              {!isUser && index === messages.length - 1 && !loading && <div className="mt-2 flex flex-wrap gap-2">{message.suggestions?.map((suggestion) => <button key={suggestion} type="button" onClick={() => onSuggestionSelect(suggestion)} className="rounded-md border border-border px-2 py-1.5 text-left text-xs text-fg-muted hover:border-brand">{suggestion}</button>)}</div>}
             </div>
           </div>
         )

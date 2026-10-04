@@ -15,7 +15,7 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
   const location = useLocation()
   const mainRef = useRef<HTMLElement>(null)
   const isAdminRoute = location.pathname.startsWith('/admin')
-  const { isOpen, messages, loading, closeChat, sendMessage, clearHistory } = useLeafieContext()
+  const { isOpen, messages, loading, error, retryMessage, closeChat, sendMessage, clearHistory } = useLeafieContext()
   const { isCartDrawerOpen, closeCartDrawer } = useCart()
   const [hasOpenedLeafie, setHasOpenedLeafie] = useState(isOpen)
   const [hasOpenedCart, setHasOpenedCart] = useState(isCartDrawerOpen)
@@ -44,7 +44,7 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
     {showFooter && <Footer />}
     {hasOpenedLeafie && (
       <Suspense fallback={null}>
-        <LeafieChatPanel isOpen={isOpen} messages={messages} loading={loading} onClose={closeChat} onSendMessage={sendMessage} onSuggestionSelect={sendMessage} onClearHistory={clearHistory} />
+        <LeafieChatPanel isOpen={isOpen} messages={messages} loading={loading} error={error} onRetry={retryMessage} onClose={closeChat} onSendMessage={sendMessage} onSuggestionSelect={sendMessage} onClearHistory={clearHistory} />
       </Suspense>
     )}
     {hasOpenedCart && (

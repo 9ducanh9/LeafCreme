@@ -8,19 +8,20 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from fastapi.responses import JSONResponse
-from sqlalchemy import Date, and_, cast, func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 from typing import Literal, Optional, List, Union
 from enum import Enum
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import datetime
 
 from ..db import get_db
 from ..core.capabilities import require_capability
 from ..core.dependencies import get_optional_user
-from ..models import BienTheSanPham, LoHangSanPham, NguoiDung, SanPham, TonKhoSanPham
+from ..models import BienTheSanPham, NguoiDung, SanPham
 from ..services.products import ProductService, DomainError
 from ..services.products.product_service import CropRect
+from ..services.products.availability import sellable_stock
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from ..schemas import Page
 
@@ -402,23 +403,7 @@ def get_product_availability(
     if not variants:
         return []
 
-    today = date.today()
-    rows = db.execute(
-        select(
-            LoHangSanPham.bienthe_sanpham_id,
-            func.coalesce(func.sum(TonKhoSanPham.so_luong_hien_tai), 0),
-            func.min(LoHangSanPham.ngay_het_han),
-        )
-        .join(TonKhoSanPham, TonKhoSanPham.lohang_sanpham_id == LoHangSanPham.lohang_id)
-        .where(
-            LoHangSanPham.bienthe_sanpham_id.in_([variant.bienthe_id for variant in variants]),
-            LoHangSanPham.trang_thai == "hoatdong",
-            cast(LoHangSanPham.ngay_het_han, Date) >= today,
-            TonKhoSanPham.so_luong_hien_tai > 0,
-        )
-        .group_by(LoHangSanPham.bienthe_sanpham_id)
-    ).all()
-    stock_by_variant = {variant_id: (int(quantity or 0), earliest_expiry) for variant_id, quantity, earliest_expiry in rows}
+    stock_by_variant = sellable_stock(db, [variant.bienthe_id for variant in variants])
     return [
         ProductAvailabilityResponse(
             bienthe_id=variant.bienthe_id,
