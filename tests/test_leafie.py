@@ -132,7 +132,25 @@ def test_history_sent_once_and_contacts_credentials_redacted(provider, catalog):
     for private in ["test@example.com", "0912345678", "sk-testcredential"]:
         assert private not in serialized
     assert response["products"] == catalog["products"]
-    assert response["prompt_version"] == "leafie-sales-v1"
+    assert response["prompt_version"] == "leafie-sales-v2"
+
+
+@pytest.mark.parametrize("history", [
+    [{"role": "user", "content": "Tôi chọn Chocolate."},
+     {"role": "assistant", "content": "Bạn đang chọn Chocolate."}],
+    [{"role": "user", "content": "Tôi xem Chocolate và Oreo."},
+     {"role": "assistant", "content": "Bạn đang cân nhắc hai bánh."}],
+])
+def test_reference_context_and_v2_rules_reach_provider(provider, catalog, history):
+    payload = leafie.LeafieRequest(message="Bánh đó còn không?", conversationHistory=history)
+    asyncio.run(leafie.generate_reply(payload, catalog))
+    messages = provider.call_args.kwargs["messages"]
+    assert messages[1]["content"] == history[0]["content"]
+    assert json.loads(messages[2]["content"])["output"] == history[1]["content"]
+    assert "trả lời trực tiếp, không yêu cầu xác nhận lại" in messages[0]["content"]
+    assert "Chỉ hỏi lại khi chưa có đối tượng hoặc có nhiều sản phẩm" in messages[0]["content"]
+    assert "/orders chỉ xem các đơn đã tạo" in messages[0]["content"]
+    assert "thêm vào /cart rồi tới /checkout" in messages[0]["content"]
 
 
 def test_assistant_history_uses_json_mode_wire_format(provider, catalog):

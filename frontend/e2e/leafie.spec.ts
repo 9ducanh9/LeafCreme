@@ -8,6 +8,14 @@ for (const mobile of [false, true]) {
     const requests: { message: string; conversationHistory: { role: string; content: string }[] }[] = []
     await page.route('http://localhost:8000/**', async (route) => {
       const path = new URL(route.request().url()).pathname
+      if (path === '/branding/liceria.png') {
+        await route.fulfill({ path: 'public/branding/liceria.png', contentType: 'image/png' })
+        return
+      }
+      if (path === '/products/7') {
+        await route.fulfill({ json: { hinh_anh_url: '/branding/liceria.png' } })
+        return
+      }
       if (path === '/leafie/ask') {
         requests.push(route.request().postDataJSON())
         if (requests.length === 2) {
@@ -16,7 +24,7 @@ for (const mobile of [false, true]) {
         }
         await route.fulfill({ json: {
           output: 'Mình gợi ý bánh chocolate trên thẻ nhé.', suggestions: ['Bánh đó còn không?'],
-          products: [{ id: 7, kind: 'product', name: 'Chocolate test', price: 260000, available: true, href: '/products/7', variants: [{ id: 8, size: '20cm', price: 260000, available: true }] }],
+          products: [{ id: 7, kind: 'product', name: 'Chocolate test', price: 190000, available: true, href: '/products/7', variants: [{ id: 8, size: '20cm', price: 260000, available: true }, { id: 9, size: '18cm', price: 190000, available: false }] }],
         } })
         return
       }
@@ -34,8 +42,12 @@ for (const mobile of [false, true]) {
     await dialog.getByRole('button', { name: 'Chọn bánh cho sinh nhật 4 người' }).click()
     await expect(dialog.getByRole('link', { name: 'Chocolate test' })).toBeVisible()
     await expect(dialog.getByText('Còn hàng', { exact: true })).toBeVisible()
+    await expect(dialog.getByRole('img', { name: 'Chocolate test' })).toBeVisible()
+    await dialog.getByRole('button', { name: '18cm', exact: true }).click()
+    await expect(dialog.getByText('Hết hàng', { exact: true })).toBeVisible()
+    await expect(dialog.getByText('190.000 đ', { exact: false })).toBeVisible()
     expect(requests[0].conversationHistory).toEqual([])
-    expect(Object.keys(requests[0]).sort()).toEqual(['conversationHistory', 'message'])
+    expect(Object.keys(requests[0]).sort()).toEqual(['conversationHistory', 'conversation_id', 'message'])
     await dialog.getByRole('button', { name: 'Bánh đó còn không?' }).click()
     await expect(dialog.getByRole('alert')).toBeVisible()
     await dialog.getByRole('button', { name: 'Thử lại' }).click()

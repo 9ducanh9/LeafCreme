@@ -1,4 +1,3 @@
-// Leafie chat panel - Discord style
 import { useState, useRef, useEffect, useId } from 'react'
 import { useOverlayA11y } from '../../hooks/useOverlayA11y'
 import { X, Send, Trash2, MoreVertical } from 'lucide-react'
@@ -174,16 +173,14 @@ export default function LeafieChatPanel({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`fixed right-0 top-0 bottom-0 w-full max-w-[400px] bg-bg-surface z-modal flex flex-col shadow-xl outline-none transition-[transform,visibility] duration-slow ${
+        className={`fixed right-0 top-0 h-[100dvh] w-full max-w-[400px] bg-[#fff] z-modal flex flex-col border-l border-[#dce1dd] shadow-xl outline-none transition-[transform,visibility] duration-slow sm:right-4 sm:top-4 sm:h-[min(650px,calc(100dvh-32px))] sm:rounded-[8px] sm:border ${
           isOpen ? 'visible translate-x-0' : 'invisible translate-x-full'
         }`}
       >
         {/* Header - Discord style */}
-        <div className="flex-shrink-0 flex items-center justify-between px-4 md:px-6 py-3 border-b border-border-subtle bg-bg-subtle">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-subtle flex items-center justify-center shadow-sm border-2 border-brand-border-subtle relative overflow-hidden">
-              {/* Subtle shimmer effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent animate-pulse" />
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-[#edf0ed] bg-[#fff]">
+          <div className="flex items-center gap-2.5">
+            <div className="size-9 rounded-full bg-brand-subtle overflow-hidden">
               <img
                 src="/branding/liceria.png"
                 alt="Leafie"
@@ -191,8 +188,8 @@ export default function LeafieChatPanel({
               />
             </div>
             <div>
-              <h3 id={titleId} className="font-semibold text-fg-strong text-base md:text-lg">Leafie</h3>
-              <p className="text-xs text-fg-muted">Trợ lý của Leaf Creme</p>
+              <h3 id={titleId} className="font-semibold text-[#28362c] text-[15px]">Leafie</h3>
+              <p className="mt-0.5 text-[11px] text-[#727b75]">Tư vấn bánh · Leaf Creme</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -202,6 +199,8 @@ export default function LeafieChatPanel({
                   onClick={() => setShowMenu(!showMenu)}
                   className="rounded-md p-2 text-fg-muted transition-colors hover:bg-bg-subtle hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
                   aria-label="Menu"
+                  title="Tùy chọn"
+                  aria-expanded={showMenu}
                 >
                   <MoreVertical className="w-5 h-5" />
                 </button>
@@ -222,6 +221,7 @@ export default function LeafieChatPanel({
               onClick={onClose}
               className="rounded-md p-2 text-fg-muted transition-colors hover:bg-bg-subtle hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
               aria-label="Đóng"
+              title="Đóng"
             >
               <X className="w-5 h-5" />
             </button>
@@ -229,9 +229,9 @@ export default function LeafieChatPanel({
         </div>
 
         {/* Messages - Discord style container */}
-        <div className="min-h-0 flex-1 overflow-hidden bg-bg-canvas">
+        <div className="min-h-0 flex-1 overflow-hidden bg-[#fafbf9]">
           <div 
-            className="h-full overflow-y-auto overscroll-contain px-2 md:px-4" 
+            className="h-full overflow-y-auto overscroll-contain px-4"
             ref={scrollContainerRef}
             style={{ scrollBehavior: 'smooth' }}
           >
@@ -240,7 +240,7 @@ export default function LeafieChatPanel({
               loading={loading}
               onSuggestionSelect={onSuggestionSelect}
             />
-            {error && <div role="alert" className="mx-2 mb-4 rounded-lg border border-danger bg-danger-bg p-3 text-sm text-danger">
+            {error && <div role="alert" className="mb-4 rounded-md border border-[#efcfca] bg-[#fff7f5] p-3 text-xs leading-5 text-[#985146]">
               <p>{error}</p>
               <button type="button" onClick={onRetry} disabled={loading} className="mt-2 rounded-md border border-current px-3 py-1.5 font-medium disabled:opacity-50">Thử lại</button>
             </div>}
@@ -249,24 +249,25 @@ export default function LeafieChatPanel({
         </div>
 
         {/* Input - Discord style */}
-        <div className="flex-shrink-0 border-t border-border-subtle bg-bg-surface px-3 py-3 md:px-4 md:py-4">
+        <div className="flex-shrink-0 border-t border-[#e9eee8] bg-[#fff] px-3.5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <input
               ref={inputRef}
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Nhập câu hỏi của bạn..."
+              placeholder="Bạn muốn tìm bánh gì?"
               aria-label="Câu hỏi cho Leafie"
               maxLength={2000}
               disabled={loading}
-              className="min-w-0 flex-1 rounded-md border border-interactive bg-bg-inset px-4 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none transition-all focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-w-0 flex-1 rounded-md border border-[#e6ebe4] bg-[#f6f8f5] px-3 py-2.5 text-xs text-[#344236] placeholder:text-[#8a938b] outline-none transition-colors focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
               type="submit"
               aria-label="Gửi câu hỏi"
+              title="Gửi câu hỏi"
               disabled={!inputValue.trim() || loading}
-              className="flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-fg-on-brand shadow-sm transition-all hover:bg-brand-hover hover:shadow-md focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+              className="grid size-10 shrink-0 place-items-center rounded-md bg-brand text-fg-on-brand transition-colors hover:bg-brand-hover focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
             </button>
