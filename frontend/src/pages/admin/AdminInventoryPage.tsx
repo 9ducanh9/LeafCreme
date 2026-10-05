@@ -9,7 +9,7 @@ import DataTableToolbar, { ADMIN_SEARCH_FIELD_ID } from '../../components/admin/
 import ExpiryCell from '../../components/admin/ui/expiry-cell'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import { useDebouncedCallback } from '../../hooks/admin/useDebouncedCallback'
-import { disposeExpiredBatch, getBatchPage, type BatchListKind, type BatchPageItem } from '../../services/admin/batchService'
+import { disposeExpiredBatch, getBatchPage, pauseBatch, type BatchListKind, type BatchPageItem } from '../../services/admin/batchService'
 import { downloadCsv } from '../../utils/admin/exportCsv'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -54,6 +54,7 @@ export default function AdminInventoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string | number>>(new Set())
   const [disposal, setDisposal] = useState<BatchPageItem | null>(null)
+  const [pauseMode, setPauseMode] = useState(false)
   const [reason, setReason] = useState('Xuất hủy do hết hạn sử dụng')
   const [saving, setSaving] = useState(false)
   const [disposalError, setDisposalError] = useState<string | null>(null)
@@ -107,7 +108,8 @@ export default function AdminInventoryPage() {
     setSaving(true)
     setDisposalError(null)
     try {
-      await disposeExpiredBatch(tabs[activeTab].kind, disposal, reason.trim())
+      if (pauseMode) await pauseBatch(tabs[activeTab].kind, disposal)
+      else await disposeExpiredBatch(tabs[activeTab].kind, disposal, reason.trim())
       setDisposal(null)
       setSelected(new Set())
       await loadInventory()
@@ -162,27 +164,35 @@ export default function AdminInventoryPage() {
         bulkActions={<>
           <Button size="small" startIcon={<FileDownloadIcon />} onClick={exportSelected}>Xuất CSV</Button>
           {canReceiveStock && <Button size="small" color="error" disabled={!canDispose} onClick={() => {
+            setPauseMode(false)
             setDisposal(selectedBatch ?? null)
             setReason('Xuất hủy do hết hạn sử dụng')
             setDisposalError(null)
           }}>Xuất hủy lô hết hạn</Button>}
+          {canReceiveStock && <Button size="small" disabled={!selectedBatch || selectedBatch.trang_thai !== 'hoatdong'} onClick={() => {
+            setPauseMode(true)
+            setDisposal(selectedBatch ?? null)
+            setDisposalError(null)
+          }}>Tạm ngừng lô</Button>}
         </>}
         // Lô hàng phải audit được — không có bulk delete ở bảng này (spec 10 §4.4).
       />
       <Dialog open={disposal !== null} onClose={() => { if (!saving) setDisposal(null) }} fullWidth maxWidth="sm">
-        <DialogTitle>Xuất hủy lô hết hạn</DialogTitle>
+        <DialogTitle>{pauseMode ? 'Tạm ngừng lô' : 'Xuất hủy lô hết hạn'}</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Lô {disposal?.ma_lo}: xuất hủy toàn bộ {disposal?.so_luong_hien_tai ?? 0} đơn vị còn lại. Bản ghi lô và lịch sử kho được giữ nguyên.
+            {pauseMode
+              ? `Lô ${disposal?.ma_lo}: ngừng sử dụng cho bán hàng. Số lượng tồn và lịch sử được giữ nguyên.`
+              : `Lô ${disposal?.ma_lo}: xuất hủy toàn bộ ${disposal?.so_luong_hien_tai ?? 0} đơn vị còn lại. Bản ghi lô và lịch sử kho được giữ nguyên.`}
           </Alert>
           {disposalError && <Alert severity="error" sx={{ mb: 2 }}>{disposalError}</Alert>}
-          <TextField fullWidth size="small" label="Lý do xuất hủy" value={reason} disabled={saving}
-            onChange={(event) => setReason(event.target.value)} slotProps={{ htmlInput: { maxLength: 500 } }} />
+          {!pauseMode && <TextField fullWidth size="small" label="Lý do xuất hủy" value={reason} disabled={saving}
+            onChange={(event) => setReason(event.target.value)} slotProps={{ htmlInput: { maxLength: 500 } }} />}
         </DialogContent>
         <DialogActions>
           <Button disabled={saving} onClick={() => setDisposal(null)}>Đóng</Button>
-          <Button color="error" variant="contained" disabled={saving || !reason.trim()} onClick={() => void confirmDisposal()}>
-            {saving ? 'Đang xử lý...' : 'Xác nhận xuất hủy'}
+          <Button color="error" variant="contained" disabled={saving || (!pauseMode && !reason.trim())} onClick={() => void confirmDisposal()}>
+            {saving ? 'Đang xử lý...' : pauseMode ? 'Xác nhận tạm ngừng' : 'Xác nhận xuất hủy'}
           </Button>
         </DialogActions>
       </Dialog>

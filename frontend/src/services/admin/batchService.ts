@@ -19,6 +19,10 @@ export interface BatchPageItem {
 export type BatchListKind = 'products' | 'components' | 'gift-boxes'
 export type BatchCodeKind = 'products' | 'components' | 'gift_boxes'
 
+export async function pauseBatch(kind: BatchListKind, batch: BatchPageItem) {
+  return apiClient.put<BatchPageItem>(`/batches/${kind}/${batch.lohang_id}`, { trang_thai: 'tamdung' })
+}
+
 export async function disposeExpiredBatch(kind: BatchListKind, batch: BatchPageItem, reason: string) {
   return apiClient.post<BatchPageItem>(`/batches/${kind}/${batch.lohang_id}/dispose-expired`, {
     expected_quantity: batch.so_luong_hien_tai,
