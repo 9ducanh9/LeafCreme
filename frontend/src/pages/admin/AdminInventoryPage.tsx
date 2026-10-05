@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Button, Chip, MenuItem, Tab, Tabs, TextField } from '@mui/material'
+import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Tab, Tabs, TextField } from '@mui/material'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import AddBusinessIcon from '@mui/icons-material/AddBusiness'
 import { useNavigate } from 'react-router-dom'
@@ -9,7 +9,7 @@ import DataTableToolbar, { ADMIN_SEARCH_FIELD_ID } from '../../components/admin/
 import ExpiryCell from '../../components/admin/ui/expiry-cell'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import { useDebouncedCallback } from '../../hooks/admin/useDebouncedCallback'
-import { getBatchPage, type BatchListKind, type BatchPageItem } from '../../services/admin/batchService'
+import { disposeExpiredBatch, getBatchPage, type BatchListKind, type BatchPageItem } from '../../services/admin/batchService'
 import { downloadCsv } from '../../utils/admin/exportCsv'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -53,10 +53,17 @@ export default function AdminInventoryPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string | number>>(new Set())
+  const [disposal, setDisposal] = useState<BatchPageItem | null>(null)
+  const [reason, setReason] = useState('Xuất hủy do hết hạn sử dụng')
+  const [saving, setSaving] = useState(false)
+  const [disposalError, setDisposalError] = useState<string | null>(null)
+  const selectedBatch = selected.size === 1 ? rows.find((row) => selected.has(row.lohang_id)) : undefined
+  const canDispose = selectedBatch && (selectedBatch.so_luong_hien_tai ?? 0) > 0
+    && selectedBatch.ngay_het_han.slice(0, 10) < new Date().toLocaleDateString('en-CA')
   const filtersKey = JSON.stringify(table.filters)
   // Selection reset khi đổi filter/sort/tab — chọn 5 dòng rồi đổi filter mà vẫn
   // giữ selection thì thao tác hàng loạt sẽ chạy trên dữ liệu người dùng không còn thấy.
-  useEffect(() => { setSelected(new Set()) }, [activeTab, table.sortBy, table.sortDir, filtersKey])
+  useEffect(() => { setSelected(new Set()) }, [activeTab, table.sortBy, table.sortDir, table.page, table.pageSize, filtersKey])
 
   const loadInventory = useCallback(async () => {
     setStatus('loading')
@@ -93,6 +100,23 @@ export default function AdminInventoryPage() {
       ['Mã lô', 'Mã hệ thống', 'Ngày nhập', 'Hạn dùng', 'Số lượng nhập', 'Tồn hiện tại', 'Trạng thái'],
       selectedRows.map((row) => [row.ma_lo, row.lohang_id, row.ngay_nhap, row.ngay_het_han, row.so_luong, row.so_luong_hien_tai ?? 0, row.trang_thai]),
     )
+  }
+
+  const confirmDisposal = async () => {
+    if (!disposal || saving) return
+    setSaving(true)
+    setDisposalError(null)
+    try {
+      await disposeExpiredBatch(tabs[activeTab].kind, disposal, reason.trim())
+      setDisposal(null)
+      setSelected(new Set())
+      await loadInventory()
+    } catch (err) {
+      const detail = (err as { detail?: unknown }).detail
+      setDisposalError(typeof detail === 'string' ? detail : 'Không thể xuất hủy. Vui lòng tải lại tồn kho rồi thử lại.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -135,9 +159,33 @@ export default function AdminInventoryPage() {
         onClearFilters={() => table.patch({ filters: {} })}
         selectedIds={selected}
         onSelectionChange={setSelected}
-        bulkActions={<Button size="small" startIcon={<FileDownloadIcon />} onClick={exportSelected}>Xuất CSV</Button>}
+        bulkActions={<>
+          <Button size="small" startIcon={<FileDownloadIcon />} onClick={exportSelected}>Xuất CSV</Button>
+          {canReceiveStock && <Button size="small" color="error" disabled={!canDispose} onClick={() => {
+            setDisposal(selectedBatch ?? null)
+            setReason('Xuất hủy do hết hạn sử dụng')
+            setDisposalError(null)
+          }}>Xuất hủy lô hết hạn</Button>}
+        </>}
         // Lô hàng phải audit được — không có bulk delete ở bảng này (spec 10 §4.4).
       />
+      <Dialog open={disposal !== null} onClose={() => { if (!saving) setDisposal(null) }} fullWidth maxWidth="sm">
+        <DialogTitle>Xuất hủy lô hết hạn</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Lô {disposal?.ma_lo}: xuất hủy toàn bộ {disposal?.so_luong_hien_tai ?? 0} đơn vị còn lại. Bản ghi lô và lịch sử kho được giữ nguyên.
+          </Alert>
+          {disposalError && <Alert severity="error" sx={{ mb: 2 }}>{disposalError}</Alert>}
+          <TextField fullWidth size="small" label="Lý do xuất hủy" value={reason} disabled={saving}
+            onChange={(event) => setReason(event.target.value)} slotProps={{ htmlInput: { maxLength: 500 } }} />
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={saving} onClick={() => setDisposal(null)}>Đóng</Button>
+          <Button color="error" variant="contained" disabled={saving || !reason.trim()} onClick={() => void confirmDisposal()}>
+            {saving ? 'Đang xử lý...' : 'Xác nhận xuất hủy'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </AdminPage>
   )
 }

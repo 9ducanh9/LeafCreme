@@ -376,6 +376,43 @@ class BatchService:
         )
         return self._to_response(cfg, batch, self._get_inventory(db, cfg, batch.lohang_id))
 
+    def dispose_expired(self, db: Session, kind: str, batch_id: int,
+                        expected_quantity: int, reason: str, current_user: NguoiDung) -> dict:
+        cfg = self._kind(kind)
+        reason = reason.strip()
+        if not reason:
+            raise DomainError(status_code=400, detail="Vui lòng nhập lý do xuất hủy")
+        try:
+            batch = db.query(cfg.batch_model).filter(
+                cfg.batch_model.lohang_id == batch_id,
+            ).with_for_update().populate_existing().first()
+            if batch is None:
+                raise DomainError(status_code=404, detail="Lô hàng không tồn tại")
+            # Match the existing stock allocation rule: expiry day is still usable.
+            if batch.ngay_het_han.date() >= date.today():
+                raise DomainError(status_code=400, detail="Chỉ được xuất hủy lô đã hết hạn")
+            inventory = db.query(cfg.inventory_model).filter(
+                getattr(cfg.inventory_model, cfg.inventory_fk_field) == batch_id,
+            ).with_for_update().populate_existing().first()
+            before = inventory.so_luong_hien_tai if inventory else 0
+            if before <= 0 or before != expected_quantity:
+                raise DomainError(status_code=409, detail="Tồn kho đã thay đổi; vui lòng tải lại và xác nhận")
+            inventory.so_luong_hien_tai = 0
+            batch.trang_thai = "hethan"
+            cfg.ledger_log(
+                db, **{cfg.ledger_fk_kwarg: batch_id}, loai_giao_dich="xuat_huy",
+                so_luong=before, so_luong_truoc=before, so_luong_sau=0,
+                ly_do=reason, nguoidung_id=current_user.nguoidung_id,
+                gia_tri=batch.gia_don_vi * before,
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        result = self._to_response(cfg, batch, inventory)
+        _refresh_proactive_expiry_insights(db)
+        return result
+
     def update_batch(self, db: Session, kind: str, batch_id: int, payload: Any) -> dict:
         cfg = self._kind(kind)
         batch = self._get_or_404(

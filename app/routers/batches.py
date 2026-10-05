@@ -55,6 +55,28 @@ def _raise_http(exc: DomainError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
+class ExpiredBatchDisposal(BaseModel):
+    expected_quantity: int = Field(..., gt=0)
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
+@router.post("/{kind}/{batch_id}/dispose-expired")
+def dispose_expired_batch(
+    kind: Literal["products", "components", "gift-boxes"],
+    batch_id: int,
+    payload: ExpiredBatchDisposal,
+    db: Session = Depends(get_db),
+    current_user: NguoiDung = Depends(require_capability("batches.write")),
+):
+    try:
+        return batch_service.dispose_expired(
+            db, kind.replace("-", "_"), batch_id,
+            payload.expected_quantity, payload.reason, current_user,
+        )
+    except DomainError as exc:
+        _raise_http(exc)
+
+
 # =========================================================
 # Pydantic Schemas - Product Batch
 # =========================================================

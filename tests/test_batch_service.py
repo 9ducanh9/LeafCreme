@@ -94,6 +94,70 @@ def _past(days=1) -> datetime:
     return datetime.now() - timedelta(days=days)
 
 
+def test_disposal_endpoint_requires_stock_permission(client, db_session):
+    from app.core.security import create_access_token
+    role = db_session.query(VaiTro).filter(VaiTro.ten_vai_tro == "customer").one()
+    user = NguoiDung(ten_dang_nhap="disposal_customer", email="disposal@example.com",
+        mat_khau_ma_hoa="hashed", vaitro_id=role.vaitro_id, ho_ten="Customer")
+    db_session.add(user)
+    db_session.flush()
+    payload = {"expected_quantity": 1, "reason": "Expired stock"}
+    response = client.post("/batches/products/1/dispose-expired", json=payload,
+        headers={"Authorization": f"Bearer {create_access_token({'sub': user.nguoidung_id})}"})
+    assert response.status_code == 403
+    assert client.post("/batches/products/1/dispose-expired", json=payload).status_code == 401
+
+
+@pytest.mark.parametrize("kind", ["products", "components", "gift_boxes"])
+def test_disposal_preserves_batch_and_logs_once(db_session, service, staff_user, variant, component, gift_box, kind, monkeypatch):
+    from app.models import LichSuKhoSanPham, LichSuKhoLinhKien, LichSuKhoHopQua
+    monkeypatch.setattr("app.services.batches.batch_service._refresh_proactive_expiry_insights", lambda db: None)
+    cfg = service._kind(kind)
+    item = {"products": variant, "components": component, "gift_boxes": gift_box}[kind]
+    batch = cfg.batch_model(**{
+        cfg.item_fk_field: getattr(item, cfg.item_pk_field), "ma_lo": "DISPOSE-TEST",
+        "ngay_het_han": _past(2), "so_luong": 10, "gia_don_vi": Decimal("1000"),
+        "trang_thai": "hoatdong",
+    })
+    db_session.add(batch)
+    db_session.flush()
+    inventory = cfg.inventory_model(**{cfg.inventory_fk_field: batch.lohang_id,
+        "so_luong_hien_tai": 7, cfg.sold_field: 3})
+    db_session.add(inventory)
+    db_session.flush()
+    result = service.dispose_expired(db_session, kind, batch.lohang_id, 7, "Expired stock", staff_user)
+    assert result["so_luong_hien_tai"] == 0
+    assert result["so_luong"] == 10
+    assert result[cfg.sold_field] == 3
+    assert result["trang_thai"] == "hethan"
+    ledger_model = {"products": LichSuKhoSanPham, "components": LichSuKhoLinhKien, "gift_boxes": LichSuKhoHopQua}[kind]
+    entry = db_session.query(ledger_model).one()
+    assert (entry.loai_giao_dich, entry.so_luong, entry.so_luong_truoc, entry.so_luong_sau) == ("xuat_huy", 7, 7, 0)
+    assert entry.nguoidung_id == staff_user.nguoidung_id
+    with pytest.raises(DomainError) as exc:
+        service.dispose_expired(db_session, kind, batch.lohang_id, 7, "Expired stock", staff_user)
+    assert exc.value.status_code == 409
+    assert db_session.query(ledger_model).count() == 1
+
+
+@pytest.mark.parametrize("days,quantity,reason,status", [(2, 7, "Expired", 400), (0, 7, "Expired", 400), (-2, 6, "Expired", 409), (-2, 7, "   ", 400)])
+def test_disposal_rejects_unsafe_requests(db_session, service, staff_user, variant, days, quantity, reason, status):
+    from app.models import LoHangSanPham, LichSuKhoSanPham
+    batch = LoHangSanPham(bienthe_sanpham_id=variant.bienthe_id, ma_lo="SAFE-TEST",
+        ngay_het_han=datetime.now() + timedelta(days=days), so_luong=10, gia_don_vi=Decimal("1000"))
+    db_session.add(batch)
+    db_session.flush()
+    inventory = TonKhoSanPham(lohang_sanpham_id=batch.lohang_id, so_luong_hien_tai=7, so_luong_da_ban=3)
+    db_session.add(inventory)
+    db_session.commit()
+    batch_id = batch.lohang_id
+    with pytest.raises(DomainError) as exc:
+        service.dispose_expired(db_session, "products", batch_id, quantity, reason, staff_user)
+    assert exc.value.status_code == status
+    assert service.get_batch(db_session, "products", batch_id)["so_luong_hien_tai"] == 7
+    assert db_session.query(LichSuKhoSanPham).count() == 0
+
+
 class _ProductBatchPayload:
     def __init__(
         self,
