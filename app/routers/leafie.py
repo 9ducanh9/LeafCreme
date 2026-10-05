@@ -11,6 +11,8 @@ from starlette.concurrency import run_in_threadpool
 from app.db import get_db
 from app.services.errors import DomainError
 from app.services.leafie import LeafieRequest, build_catalog, generate_reply, policy_reply
+from app.services.leafie_prompt import PROMPT_VERSION
+from app.services import leafie_observability as telemetry
 
 router = APIRouter(prefix="/leafie", tags=["leafie"])
 # Bounded per-process limits. No client-supplied session/forwarded IP is trusted.
@@ -33,15 +35,25 @@ def check_rate_limit(client_ip: str) -> None:
 
 @router.post("/ask")
 async def ask_leafie(payload: LeafieRequest, request: Request, db: Session = Depends(get_db)):
+    with telemetry.conversation(payload, PROMPT_VERSION) as span:
+        result = await _ask_leafie(payload, request, db, span)
+        telemetry.tracing.safe_update(span, output=telemetry.reply_summary(result))
+        return result
+
+
+async def _ask_leafie(payload, request, db, span):
     check_rate_limit(request.client.host if request.client else "unknown")
     guarded = policy_reply(payload.message)
     if guarded is not None:
+        telemetry.tracing.safe_update(span, metadata={"mode": "policy_guard"})
         return guarded
     if _slots.locked():
         raise HTTPException(status_code=429, detail="Leafie đang bận. Bạn thử lại sau một chút nhé.")
     async with _slots:
         try:
-            catalog = await run_in_threadpool(build_catalog, db)
+            with telemetry.observation("leafie-public-catalog", kind="retriever") as retrieval:
+                catalog = await run_in_threadpool(build_catalog, db)
+                telemetry.tracing.safe_update(retrieval, output=catalog)
             return await generate_reply(payload, catalog)
         except DomainError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc

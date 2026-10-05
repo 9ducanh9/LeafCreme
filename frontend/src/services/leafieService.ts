@@ -1,6 +1,8 @@
 import type { LeafieMessage, LeafieProduct } from '../types/leafie'
 import { API_BASE_URL } from '../config/runtimeConfig'
 
+let conversationId: string | undefined
+
 export interface AskLeafieResponse {
   message: string
   suggestions: string[]
@@ -11,6 +13,7 @@ export async function askLeafie(
   message: string,
   conversationHistory: Pick<LeafieMessage, 'role' | 'content'>[],
 ): Promise<AskLeafieResponse> {
+  if (!conversationId || conversationHistory.length === 0) conversationId = globalThis.crypto?.randomUUID?.()
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 40000)
   try {
@@ -18,7 +21,7 @@ export async function askLeafie(
       method: 'POST',
       signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, conversationHistory }),
+      body: JSON.stringify({ message, conversationHistory, conversation_id: conversationId }),
     })
     if (!res.ok) {
       if (res.status === 429) throw new Error('Leafie đang bận. Bạn chờ một phút rồi thử lại nhé.')

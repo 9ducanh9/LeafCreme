@@ -95,7 +95,7 @@ def test_catalog_filters_inactive_and_expired_stock(db_session, client):
 
 def test_context_is_bounded_and_client_catalog_is_ignored():
     payload = leafie.LeafieRequest.model_validate({"message": "  Bánh đó còn không?  ", "context": {"price": 1}, "sessionId": "attacker"})
-    assert payload.model_dump() == {"message": "Bánh đó còn không?", "conversationHistory": []}
+    assert payload.model_dump() == {"message": "Bánh đó còn không?", "conversationHistory": [], "conversation_id": None}
 
 
 @pytest.mark.parametrize("bad", [

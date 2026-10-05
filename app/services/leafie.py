@@ -6,6 +6,7 @@ import os
 import re
 import unicodedata
 from typing import Literal
+from uuid import UUID
 
 import openai
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.models import BienTheSanPham
 from app.services.agent.redaction import redact
+from app.services import leafie_observability as telemetry
 from app.services.errors import DomainError
 from app.services.gift_boxes import GiftBoxService
 from app.services.leafie_prompt import PROMPT_VERSION, SYSTEM_PROMPT
@@ -33,6 +35,7 @@ class LeafieRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
     message: str = Field(min_length=1, max_length=2000)
     conversationHistory: list[HistoryTurn] = Field(default_factory=list, max_length=10)
+    conversation_id: UUID | None = None
 
 
 class ModelReply(BaseModel):
@@ -114,10 +117,20 @@ async def generate_reply(payload: LeafieRequest, catalog: dict) -> dict:
             api_key=api_key, base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com",
             timeout=30.0, max_retries=0,
         ) as client:
-            response = await client.chat.completions.create(
-                model=os.getenv("LEAFIE_MODEL") or "deepseek-chat", messages=messages,
-                temperature=0.3, max_tokens=1000, response_format={"type": "json_object"},
-            )
+            model = os.getenv("LEAFIE_MODEL") or "deepseek-chat"
+            with telemetry.observation("leafie-model-call", kind="generation", model=model,
+                                       input={"system_prompt": SYSTEM_PROMPT, "catalog": catalog},
+                                       metadata={"prompt_version": PROMPT_VERSION,
+                                                 "customer_text_capture": False}) as generation:
+                response = await client.chat.completions.create(
+                    model=model, messages=messages,
+                    temperature=0.3, max_tokens=1000, response_format={"type": "json_object"},
+                )
+                usage = getattr(response, "usage", None)
+                telemetry.tracing.safe_update(generation, output={
+                    "finish_reason": response.choices[0].finish_reason if response.choices else None,
+                }, usage_details={"input": usage.prompt_tokens, "output": usage.completion_tokens}
+                   if usage is not None else {})
         if not response.choices or response.choices[0].finish_reason != "stop":
             raise ValueError("Incomplete reply")
         reply = ModelReply.model_validate_json(response.choices[0].message.content or "")
