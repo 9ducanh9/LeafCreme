@@ -27,7 +27,7 @@ import PriceCheckOutlinedIcon from '@mui/icons-material/PriceCheckOutlined'
 import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
 import AdminPage from '../../components/admin/ui/admin-page'
 import { useUnsavedChanges } from '../../hooks/admin/useUnsavedChanges'
-import { validateBatch, validateBatchSoft } from '../../utils/admin/validateBatch'
+import { batchCalendarDateTime, validateBatch, validateBatchSoft } from '../../utils/admin/validateBatch'
 import { getProductVariants } from '../../services/admin/productService'
 import { getGiftBoxes } from '../../services/admin/giftBoxService'
 import { getSuppliers } from '../../services/admin/supplierService'
@@ -277,7 +277,7 @@ export default function AdminBatchCreatePage() {
       const common = {
         ncc_id: values.ncc_id ? Number(values.ncc_id) : null,
         ma_lo: lotCodeManuallyEdited ? values.ma_lo.trim() : null,
-        ngay_het_han: new Date(`${values.ngay_het_han}T23:59:59`).toISOString(),
+        ngay_het_han: batchCalendarDateTime(values.ngay_het_han, true),
         so_luong: Number(values.so_luong),
         gia_don_vi: Number(values.gia_don_vi),
         ghi_chu: values.ghi_chu.trim() || null,
@@ -286,7 +286,7 @@ export default function AdminBatchCreatePage() {
       if (kind === 'product') {
         const entity = parseAdminEntityId(selectedId)
         if (entity.kind !== 'variant') throw new Error('Biến thể sản phẩm không hợp lệ')
-        await createProductBatch({ ...common, bienthe_sanpham_id: entity.id, ngay_san_xuat: new Date(`${values.ngay_san_xuat}T00:00:00`).toISOString(), ngay_het_han: manualExpiry ? common.ngay_het_han : null })
+        await createProductBatch({ ...common, bienthe_sanpham_id: entity.id, ngay_san_xuat: batchCalendarDateTime(values.ngay_san_xuat), ngay_het_han: manualExpiry ? common.ngay_het_han : null })
       } else if (kind === 'component') {
         await createComponentBatch({ ...common, linh_kien_id: Number(selectedId) })
       } else {

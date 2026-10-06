@@ -6,6 +6,12 @@ export interface BatchValues {
   gia_don_vi?: number | string
 }
 
+export function batchCalendarDateTime(date: string, endOfDay = false): string {
+  // Batch dates are calendar values stored in timezone-naive database columns.
+  // Converting local midnight to UTC can change the selected production day.
+  return `${date}T${endOfDay ? '23:59:59' : '00:00:00'}`
+}
+
 export function isBefore(left: string, right: string): boolean {
   return new Date(left).getTime() < new Date(right).getTime()
 }
