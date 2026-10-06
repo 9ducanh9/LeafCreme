@@ -1,10 +1,12 @@
 import { apiClient } from '../api'
 import type { Page } from '../../types/page'
+import { batchCalendarDateTime } from '../../utils/admin/validateBatch'
 
 export interface BatchPageItem {
   lohang_id: number
   ma_lo: string
   ngay_nhap: string
+  ngay_san_xuat?: string
   ngay_het_han: string
   so_luong: number
   so_luong_hien_tai?: number | null
@@ -18,6 +20,21 @@ export interface BatchPageItem {
 
 export type BatchListKind = 'products' | 'components' | 'gift-boxes'
 export type BatchCodeKind = 'products' | 'components' | 'gift_boxes'
+
+export async function getProductBatch(batchId: number) {
+  return apiClient.get<BatchPageItem>(`/batches/products/${batchId}`)
+}
+
+export async function updateProductBatchDates(batchId: number, produced: string, expires: string, restore = false) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(produced) || !/^\d{4}-\d{2}-\d{2}$/.test(expires) || expires <= produced) {
+    throw new Error('Ngày hết hạn phải sau ngày sản xuất')
+  }
+  return apiClient.put<BatchPageItem>(`/batches/products/${batchId}`, {
+    ngay_san_xuat: batchCalendarDateTime(produced),
+    ngay_het_han: batchCalendarDateTime(expires),
+    ...(restore ? { trang_thai: 'hoatdong' } : {}),
+  })
+}
 
 export async function pauseBatch(kind: BatchListKind, batch: BatchPageItem) {
   return apiClient.put<BatchPageItem>(`/batches/${kind}/${batch.lohang_id}`, { trang_thai: 'tamdung' })

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Tab, Tabs, TextField } from '@mui/material'
+import { Alert, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Tab, Tabs, TextField } from '@mui/material'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import AddBusinessIcon from '@mui/icons-material/AddBusiness'
 import { useNavigate } from 'react-router-dom'
@@ -9,7 +9,7 @@ import DataTableToolbar, { ADMIN_SEARCH_FIELD_ID } from '../../components/admin/
 import ExpiryCell from '../../components/admin/ui/expiry-cell'
 import { useDataTableState } from '../../hooks/admin/useDataTableState'
 import { useDebouncedCallback } from '../../hooks/admin/useDebouncedCallback'
-import { disposeExpiredBatch, getBatchPage, pauseBatch, type BatchListKind, type BatchPageItem } from '../../services/admin/batchService'
+import { disposeExpiredBatch, getBatchPage, getProductBatch, pauseBatch, updateProductBatchDates, type BatchListKind, type BatchPageItem } from '../../services/admin/batchService'
 import { downloadCsv } from '../../utils/admin/exportCsv'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -58,6 +58,12 @@ export default function AdminInventoryPage() {
   const [reason, setReason] = useState('Xuất hủy do hết hạn sử dụng')
   const [saving, setSaving] = useState(false)
   const [disposalError, setDisposalError] = useState<string | null>(null)
+  const [dateBatch, setDateBatch] = useState<BatchPageItem | null>(null)
+  const [producedDate, setProducedDate] = useState('')
+  const [expiryDate, setExpiryDate] = useState('')
+  const [restoreBatch, setRestoreBatch] = useState(false)
+  const [dateLoading, setDateLoading] = useState(false)
+  const [dateError, setDateError] = useState<string | null>(null)
   const selectedBatch = selected.size === 1 ? rows.find((row) => selected.has(row.lohang_id)) : undefined
   const canDispose = selectedBatch && (selectedBatch.so_luong_hien_tai ?? 0) > 0
     && selectedBatch.ngay_het_han.slice(0, 10) < new Date().toLocaleDateString('en-CA')
@@ -121,6 +127,43 @@ export default function AdminInventoryPage() {
     }
   }
 
+  const openDateEditor = async () => {
+    if (!selectedBatch || tabs[activeTab].kind !== 'products') return
+    setDateBatch(selectedBatch)
+    setProducedDate('')
+    setExpiryDate('')
+    setRestoreBatch(false)
+    setDateError(null)
+    setDateLoading(true)
+    try {
+      const detail = await getProductBatch(selectedBatch.lohang_id)
+      setDateBatch(detail)
+      setProducedDate(detail.ngay_san_xuat?.slice(0, 10) ?? '')
+      setExpiryDate(detail.ngay_het_han.slice(0, 10))
+    } catch {
+      setDateError('Không thể tải thông tin lô. Đóng rồi thử lại.')
+    } finally {
+      setDateLoading(false)
+    }
+  }
+
+  const saveDates = async () => {
+    if (!dateBatch || saving || dateLoading || !canReceiveStock) return
+    setSaving(true)
+    setDateError(null)
+    try {
+      await updateProductBatchDates(dateBatch.lohang_id, producedDate, expiryDate, restoreBatch)
+      setDateBatch(null)
+      setSelected(new Set())
+      await loadInventory()
+    } catch (err) {
+      const detail = (err as { detail?: unknown }).detail
+      setDateError(typeof detail === 'string' ? detail : err instanceof Error ? err.message : 'Không thể cập nhật ngày của lô.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <AdminPage
       title="Tồn kho"
@@ -163,6 +206,7 @@ export default function AdminInventoryPage() {
         onSelectionChange={setSelected}
         bulkActions={<>
           <Button size="small" startIcon={<FileDownloadIcon />} onClick={exportSelected}>Xuất CSV</Button>
+          {canReceiveStock && activeTab === 0 && <Button size="small" disabled={!selectedBatch || saving} onClick={() => void openDateEditor()}>Sửa ngày lô</Button>}
           {canReceiveStock && <Button size="small" color="error" disabled={!canDispose} onClick={() => {
             setPauseMode(false)
             setDisposal(selectedBatch ?? null)
@@ -177,6 +221,24 @@ export default function AdminInventoryPage() {
         </>}
         // Lô hàng phải audit được — không có bulk delete ở bảng này (spec 10 §4.4).
       />
+      <Dialog open={dateBatch !== null} onClose={() => { if (!saving && !dateLoading) setDateBatch(null) }} fullWidth maxWidth="sm">
+        <DialogTitle>Sửa ngày lô</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>Lô {dateBatch?.ma_lo}: giữ nguyên mã lô, số lượng và lịch sử kho.</Alert>
+          {dateError && <Alert severity="error" sx={{ mb: 2 }}>{dateError}</Alert>}
+          <TextField fullWidth required type="date" label="Ngày sản xuất" value={producedDate} disabled={saving || dateLoading}
+            onChange={(event) => setProducedDate(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ mb: 2 }} />
+          <TextField fullWidth required type="date" label="Ngày hết hạn" value={expiryDate} disabled={saving || dateLoading}
+            onChange={(event) => setExpiryDate(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+          {dateBatch?.trang_thai === 'tamdung' && <FormControlLabel control={<Checkbox checked={restoreBatch} disabled={saving || dateLoading}
+            onChange={(event) => setRestoreBatch(event.target.checked)} />} label="Khôi phục lô hoạt động sau khi sửa ngày" />}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={saving || dateLoading} onClick={() => setDateBatch(null)}>Đóng</Button>
+          <Button variant="contained" disabled={saving || dateLoading || !producedDate || !expiryDate || expiryDate <= producedDate}
+            onClick={() => void saveDates()}>{saving ? 'Đang lưu...' : 'Lưu ngày lô'}</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={disposal !== null} onClose={() => { if (!saving) setDisposal(null) }} fullWidth maxWidth="sm">
         <DialogTitle>{pauseMode ? 'Tạm ngừng lô' : 'Xuất hủy lô hết hạn'}</DialogTitle>
         <DialogContent>
