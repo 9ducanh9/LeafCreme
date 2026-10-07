@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { formatPrice } from '../utils/formatPrice'
 import { checkoutOrder, type CheckoutCreate } from '../services/orderService'
-import { clearCheckoutAttempt, getOrCreateCheckoutAttempt, readCheckoutAttempt, type CheckoutAttempt } from '../services/checkoutAttempt'
+import { clearCheckoutAttempt, getOrCreateCheckoutAttempt, readCheckoutAttempt, isDefinitiveCheckoutRejection, type CheckoutAttempt } from '../services/checkoutAttempt'
 import GiftBoxInfo from '../components/cart/GiftBoxInfo'
 import { parseGiftBoxMetadata } from '../utils/giftBoxHelpers'
 import { FALLBACK_IMAGE } from '../constants/images'
@@ -138,7 +138,7 @@ export default function CheckoutPage() {
     } catch (err: unknown) {
       const detail = err && typeof err === 'object' && 'detail' in err ? (err as { detail?: unknown }).detail : undefined
       const status = err && typeof err === 'object' && 'status' in err ? Number(err.status) : 0
-      if (attempt && [400, 422, 503].includes(status)) {
+      if (attempt && isDefinitiveCheckoutRejection(status)) {
         clearCheckoutAttempt(user.nguoidung_id, attempt.key)
         setPendingAttempt(null)
       }

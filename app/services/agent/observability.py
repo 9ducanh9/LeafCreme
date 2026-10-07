@@ -18,8 +18,8 @@ no manual parent-id plumbing.
 """
 import logging
 import os
-import sys
 from contextlib import contextmanager
+from threading import Lock, Thread
 from typing import Any, Iterator, Optional
 
 from app.services.agent.redaction import redact
@@ -28,6 +28,7 @@ logger = logging.getLogger("bakeryonl.agent.observability")
 
 _client: Optional[Any] = None
 _client_checked = False
+_flush_lock = Lock()
 
 
 def _tracing_environment() -> str:
@@ -100,9 +101,11 @@ def _best_effort_context(factory: Any) -> Iterator[Optional[Any]]:
 
     try:
         yield value
-    except BaseException:
+    except BaseException as error:
+        # SDK automatic exception events/status can bypass payload redaction.
+        safe_update(value, level="ERROR", status_message=type(error).__name__)
         try:
-            context.__exit__(*sys.exc_info())
+            context.__exit__(None, None, None)
         except Exception:
             logger.debug("Langfuse context teardown failed", exc_info=True)
         raise
@@ -270,6 +273,18 @@ def trace_tool_call(tool_name: str, tool_input: dict) -> Iterator[Optional[Any]]
             raise
 
 
+def token_usage_details(usage: Optional[Any]) -> Optional[dict[str, int]]:
+    """Use canonical metric keys without weakening token/secret redaction."""
+    try:
+        counts = {key: getattr(usage, attribute, None) for key, attribute in
+                  (("input", "prompt_tokens"), ("output", "completion_tokens"))}
+        valid = {key: count for key, count in counts.items()
+                 if isinstance(count, int) and not isinstance(count, bool) and count >= 0}
+        return valid or None
+    except Exception:
+        return None
+
+
 def safe_update(observation: Optional[Any], **kwargs: Any) -> None:
     """Updates an observation returned by one of the trace_* context
     managers above. No-op if tracing is disabled (`observation is None`)
@@ -282,13 +297,33 @@ def safe_update(observation: Optional[Any], **kwargs: Any) -> None:
         logger.debug("Langfuse observation update failed", exc_info=True)
 
 
-def flush() -> None:
-    """Best-effort flush at the end of a request so traces aren't stuck
-    in an in-memory batch if the process exits or the worker recycles."""
+def _flush_background(client: Any, lock: Any) -> None:
     try:
-        client = _get_client()
-        if client is None:
-            return
         client.flush()
     except Exception:
-        logger.debug("Langfuse flush failed", exc_info=True)
+        logger.debug("Langfuse background flush failed", exc_info=True)
+    finally:
+        lock.release()
+
+
+def flush() -> None:
+    """Request a coalesced background flush; never wait for export in chat.
+
+    At most one daemon worker is active. The SDK's normal batch processor
+    still exports spans added while a flush is in flight. This is not a
+    synchronous delivery guarantee on process termination.
+    """
+    try:
+        client = _get_client_safely()
+        if client is None:
+            return
+        lock = _flush_lock
+        if not lock.acquire(blocking=False):
+            return
+        try:
+            Thread(target=_flush_background, args=(client, lock), name="langfuse-flush", daemon=True).start()
+        except Exception:
+            lock.release()
+            raise
+    except Exception:
+        logger.debug("Langfuse flush scheduling failed", exc_info=True)

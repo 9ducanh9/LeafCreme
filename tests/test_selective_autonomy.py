@@ -139,6 +139,67 @@ class TestActionPolicy:
 
 
 class TestSelectiveAutonomyExecution:
+    @pytest.mark.parametrize("exhausted,changed", [(False, False), (True, False), (False, True)])
+    def test_missing_stale_notification_uses_bounded_revalidated_retry(self, db_session, monkeypatch, exhausted, changed):
+        alert, batch = _make_high_expiry_alert(db_session)
+        condition = build_alert_condition(AlertService().get_alert(db_session, alert.canhbao_id))
+        original = get_tool("create_proactive_notification")
+
+        def fail_before_notification(*args, **kwargs):
+            raise RuntimeError("Synthetic missing notification")
+
+        params = _notification_params(condition)
+        key = automation_idempotency_key(condition)
+        kwargs = {"idempotency_key": key, "trigger_context": {"source": "test"},
+                  "reasoning_reference": "test:missing-notification", "preconditions": condition}
+        with monkeypatch.context() as patch:
+            patch.setitem(TOOL_REGISTRY, original.name, replace(original, execute=fail_before_notification))
+            agent_service.execute_automated_action(db_session, original.name, params, **kwargs)
+        action = db_session.query(AgentAction).filter_by(idempotency_key=key).one()
+        action.trang_thai = "dang_xu_ly"
+        action.ngay_bat_dau_xu_ly = datetime.now() - timedelta(days=1)
+        action.execution_attempts = 2 if exhausted else 1
+        if changed:
+            batch.ngay_het_han = datetime.now() + timedelta(days=30)
+        db_session.commit()
+        agent_service.reconcile_stale_notification_actions(db_session)
+        result = agent_service.execute_automated_action(db_session, original.name, params, **kwargs)
+        db_session.refresh(action)
+        assert result["executed"] is (not exhausted and not changed)
+        assert action.execution_attempts == 2
+        assert db_session.query(ProactiveInsight).count() == (0 if exhausted or changed else 1)
+        if exhausted or changed:
+            assert action.trang_thai == "that_bai"
+        if changed:
+            assert "ACTION_STALE" in action.loi
+
+    def test_persisted_in_progress_action_is_not_blindly_reexecuted(self, db_session):
+        _make_high_expiry_alert(db_session)
+        proactive_service.refresh_expiring_batch_insights(db_session)
+        action = db_session.query(AgentAction).filter_by(loai_hanh_dong="create_proactive_notification").one()
+        action.trang_thai = "dang_xu_ly"
+        action.ngay_bat_dau_xu_ly = datetime.now() - timedelta(days=1)
+        action.ngay_xu_ly = None
+        db_session.commit()
+        attempts = action.execution_attempts
+        result = agent_service.execute_automated_action(
+            db_session, action.loai_hanh_dong, action.tham_so,
+            idempotency_key=action.idempotency_key, trigger_context=action.trigger_context,
+            reasoning_reference=action.reasoning_reference,
+        )
+        assert result["deduplicated"] is True
+        assert result["executed"] is False
+        db_session.refresh(action)
+        assert action.trang_thai == "dang_xu_ly"
+        assert action.execution_attempts == attempts
+        assert db_session.query(ProactiveInsight).count() == 1
+        assert agent_service.reconcile_stale_notification_actions(db_session) == 1
+        db_session.refresh(action)
+        assert action.trang_thai == "hoan_thanh"
+        assert action.ket_qua["reconciled"] is True
+        assert action.execution_attempts == attempts
+        assert agent_service.reconcile_stale_notification_actions(db_session) == 0
+
     def test_expiry_scenario_executes_once_and_records_full_audit(self, db_session, monkeypatch):
         alert, _ = _make_high_expiry_alert(db_session)
 

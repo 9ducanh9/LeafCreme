@@ -8,6 +8,11 @@ export interface CheckoutAttempt {
 
 const storageKey = (userId: number) => `leaf_creme_checkout_v1_${userId}`
 
+export function isDefinitiveCheckoutRejection(status: number): boolean {
+  // A server/proxy failure does not prove that checkout was rolled back.
+  return status === 400 || status === 422
+}
+
 export function readCheckoutAttempt(userId: number): CheckoutAttempt | null {
   const stored = localStorage.getItem(storageKey(userId))
   if (!stored) return null

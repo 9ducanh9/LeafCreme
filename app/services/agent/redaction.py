@@ -24,6 +24,9 @@ _SENSITIVE_KEYS = {
 _SECRET_KEY_PARTS = ("secret", "token", "password", "api_key", "apikey")
 _PHONE = re.compile(r"(?<!\d)(?:0|\+84)\d{8,10}(?!\d)")
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_CREDENTIAL = re.compile(r"\b(?:sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._-]{8,})", re.IGNORECASE)
+_JWT = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
+_CONNECTION_STRING = re.compile(r"(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp)://[^\s'\"<>]+", re.IGNORECASE)
 
 
 def _is_sensitive_key(key: object) -> bool:
@@ -41,7 +44,8 @@ def _redact_text(value: str) -> str:
         parsed = None
     if isinstance(parsed, (Mapping, list, tuple)):
         return json.dumps(redact(parsed), ensure_ascii=False, default=str)
-    return _EMAIL.sub(REDACTED, _PHONE.sub(REDACTED, value))
+    return _EMAIL.sub(REDACTED, _PHONE.sub(REDACTED,
+        _CREDENTIAL.sub(REDACTED, _JWT.sub(REDACTED, _CONNECTION_STRING.sub(REDACTED, value)))))
 
 
 def redact(value: Any, *, _key: object | None = None) -> Any:

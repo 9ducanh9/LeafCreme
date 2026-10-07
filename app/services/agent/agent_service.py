@@ -45,13 +45,14 @@ import os
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any, Optional
 
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import AgentAction, NguoiDung
+from app.models import AgentAction, NguoiDung, ProactiveInsight
 from app.services.agent import observability, state_service, tools as tool_registry
 from app.services.agent.action_policy import (
     OUTCOME_APPROVAL,
@@ -320,6 +321,40 @@ def propose_action(
     db.commit()
     db.refresh(action)
     return {"executed": False, "pending": True, "action": _serialize_action(action)}
+
+
+def reconcile_stale_notification_actions(db: Session) -> int:
+    """Reconcile persisted notifications; route missing outcomes to governed retry."""
+    actions = db.query(AgentAction).filter(
+        AgentAction.loai_hanh_dong == "create_proactive_notification",
+        AgentAction.execution_mode == "automatic",
+        AgentAction.trang_thai == "dang_xu_ly",
+        AgentAction.ngay_bat_dau_xu_ly <= utc_now() - timedelta(minutes=STALE_ACTION_MINUTES),
+    ).with_for_update(skip_locked=True).all()
+    recovered = 0
+    for action in actions:
+        params = action.tham_so or {}
+        fingerprint = params.get("fingerprint")
+        source_id = params.get("source_alert_id")
+        if not fingerprint or source_id is None:
+            continue
+        insight = db.query(ProactiveInsight).filter_by(
+            fingerprint=fingerprint, source_alert_id=source_id,
+        ).first()
+        if insight is None:
+            action.trang_thai = "that_bai"
+            action.ket_qua = {"outcome": "failed", "error_type": "StaleNotificationMissingInsight"}
+            action.loi = "Stale internal notification has no persisted matching insight"
+            action.ngay_xu_ly = utc_now()
+            continue
+        action.trang_thai = "hoan_thanh"
+        action.proactive_insight_id = insight.insight_id
+        action.ket_qua = {"insight_id": insight.insight_id, "created": False, "reconciled": True}
+        action.loi = None
+        action.ngay_xu_ly = utc_now()
+        recovered += 1
+    db.commit()
+    return recovered
 
 
 def execute_automated_action(
@@ -755,14 +790,7 @@ def _run_agent_loop(
                             for tc in (choice.message.tool_calls or [])
                         ],
                     },
-                    usage_details=(
-                        {
-                            "input_tokens": getattr(usage, "prompt_tokens", None),
-                            "output_tokens": getattr(usage, "completion_tokens", None),
-                        }
-                        if usage
-                        else None
-                    ),
+                    usage_details=observability.token_usage_details(usage),
                     metadata={"latency_ms": round((time.monotonic() - start) * 1000)},
                 )
 

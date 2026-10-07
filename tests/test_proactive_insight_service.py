@@ -146,3 +146,48 @@ class TestProactiveProductStockDigest:
         assert insight.bang_chung["affected_size_count"] == 2
         assert insight.bang_chung["products"][0]["missing_sizes"] == ["18cm", "20cm"]
         assert "Chưa đủ dữ liệu" in insight.khuyen_nghi
+
+
+def test_proactive_llm_budget_keeps_all_notifications(db_session, monkeypatch):
+    for _ in range(6):
+        _make_expiring_batch(db_session)
+    AlertService().generate_alerts(db_session)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "synthetic-not-a-provider-key")
+    original = proactive_service._run_llm_evaluation
+    calls = []
+
+    def evaluate(db, condition, *, allow_llm=True):
+        calls.append(allow_llm)
+        return original(db, condition, allow_llm=False)
+
+    monkeypatch.setattr(proactive_service, "_run_llm_evaluation", evaluate)
+    result = proactive_service.refresh_expiring_batch_insights(db_session)
+    assert result["created"] == 6
+    assert calls == [True] * 5 + [False]
+
+
+def test_proactive_provider_timeout_returns_grounded_fallback(db_session, monkeypatch):
+    import openai
+    from types import SimpleNamespace
+
+    _make_expiring_batch(db_session)
+    AlertService().generate_alerts(db_session)
+    alert = AlertService().list_alerts(db_session, loai_canh_bao="sap_het_han")[0]
+    condition = proactive_service.build_alert_condition(alert)
+    options = {}
+
+    def unavailable(**kwargs):
+        raise TimeoutError("synthetic provider timeout")
+
+    def client(**kwargs):
+        options.update(kwargs)
+        return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=unavailable)))
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "synthetic-not-a-provider-key")
+    monkeypatch.setattr(openai, "OpenAI", client)
+    recommendation, trace, used_llm, _ = proactive_service._run_llm_evaluation(db_session, condition)
+    assert options["timeout"] == 10.0
+    assert options["max_retries"] == 0
+    assert recommendation == proactive_service._deterministic_recommendation(condition)
+    assert trace == []
+    assert used_llm is False

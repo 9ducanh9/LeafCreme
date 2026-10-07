@@ -46,6 +46,7 @@ PROACTIVE_PROMPT_VERSION = "operations-agent-proactive-v1"
 PRODUCT_STOCK_PROMPT_VERSION = "operations-agent-product-stock-v1"
 PROACTIVE_MODEL = "deepseek-chat"
 PROACTIVE_MAX_TOOL_ITERATIONS = 3
+PROACTIVE_MAX_LLM_EVALUATIONS_PER_SCAN = 5
 
 # This is an execution boundary, not a prompt convention.  Keeping this
 # explicit and small makes a review of unattended capabilities trivial.
@@ -134,6 +135,8 @@ def _deterministic_recommendation(condition: dict[str, Any]) -> str:
 def _run_llm_evaluation(
     db: Session,
     condition: dict[str, Any],
+    *,
+    allow_llm: bool = True,
 ) -> tuple[str, list[dict[str, Any]], bool, Optional[str]]:
     """Run a bounded tool-use loop. Failure deliberately returns fallback."""
     scenario = str(condition.get("scenario") or PROACTIVE_SCENARIO)
@@ -148,7 +151,7 @@ def _run_llm_evaluation(
     ) as span:
         trace_id = observability.get_trace_id(span)
         api_key = os.getenv("DEEPSEEK_API_KEY")
-        if not api_key:
+        if not api_key or not allow_llm:
             fallback = _deterministic_recommendation(condition)
             observability.safe_update(span, output=fallback, metadata={"mode": "deterministic_fallback"})
             observability.flush()
@@ -160,6 +163,8 @@ def _run_llm_evaluation(
             client = openai.OpenAI(
                 api_key=api_key,
                 base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com",
+                timeout=10.0,
+                max_retries=0,
             )
             messages: list[dict[str, Any]] = [
                 {"role": "system", "content": _PROMPT},
@@ -188,13 +193,7 @@ def _run_llm_evaluation(
                                 for call in (choice.message.tool_calls or [])
                             ],
                         },
-                        usage_details=(
-                            {
-                                "input_tokens": getattr(usage, "prompt_tokens", None),
-                                "output_tokens": getattr(usage, "completion_tokens", None),
-                            }
-                            if usage else None
-                        ),
+                        usage_details=observability.token_usage_details(usage),
                         metadata={"latency_ms": round((time.monotonic() - started) * 1000)},
                     )
 
@@ -269,24 +268,31 @@ def refresh_proactive_insights(
     scenarios: frozenset[str] = frozenset({PROACTIVE_SCENARIO, PRODUCT_STOCK_SCENARIO}),
 ) -> dict[str, Any]:
     """Persist current expiry and catalog stock recommendations."""
+    agent_service.reconcile_stale_notification_actions(db)
     alert_service = AlertService()
+
+    def all_alerts(**filters):
+        offset = 0
+        while True:
+            page = alert_service.list_alerts(db, skip=offset, limit=200, **filters)
+            yield from page
+            if len(page) < 200:
+                break
+            offset += len(page)
+
     candidates: list[dict[str, Any]] = []
     if PROACTIVE_SCENARIO in scenarios:
         for alert_type in sorted(_EXPIRY_ALERT_TYPES):
-            candidates.extend(alert_service.list_alerts(
-                db,
+            candidates.extend(all_alerts(
                 loai_canh_bao=alert_type,
                 muc_do="cao",
                 trang_thai="chua_xu_ly",
-                limit=200,
             ))
         candidates = [alert for alert in candidates if is_current_high_expiry_alert(alert)]
     if PRODUCT_STOCK_SCENARIO in scenarios:
-        stock_candidates = alert_service.list_alerts(
-            db,
+        stock_candidates = all_alerts(
             loai_canh_bao=PRODUCT_STOCK_ALERT_TYPE,
             trang_thai="chua_xu_ly",
-            limit=10,
         )
         candidates.extend(
             alert for alert in stock_candidates
@@ -298,6 +304,7 @@ def refresh_proactive_insights(
     skipped = 0
     failed = 0
     proposed = 0
+    llm_evaluations = 0
     superseded = _supersede_noncurrent_insights(
         db,
         {int(alert["canhbao_id"]) for alert in candidates},
@@ -326,7 +333,10 @@ def refresh_proactive_insights(
             ProactiveInsight.trang_thai.in_(_OPEN_INSIGHT_STATUSES),
         ).all()
 
-        recommendation, trace, used_llm, trace_id = _run_llm_evaluation(db, condition)
+        allow_llm = llm_evaluations < PROACTIVE_MAX_LLM_EVALUATIONS_PER_SCAN
+        if allow_llm and os.getenv("DEEPSEEK_API_KEY"):
+            llm_evaluations += 1
+        recommendation, trace, used_llm, trace_id = _run_llm_evaluation(db, condition, allow_llm=allow_llm)
         if scenario == PRODUCT_STOCK_SCENARIO:
             title = f"{condition['product_count']} sản phẩm cần bổ sung hàng"
         else:

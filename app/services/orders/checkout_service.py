@@ -85,7 +85,7 @@ class CheckoutService:
         except Exception:
             db.rollback()
             raise
-        from app.services.alerts.runtime import safe_refresh_inventory_attention
+        from app.scheduler import request_inventory_attention_refresh
 
-        safe_refresh_inventory_attention(db)
+        request_inventory_attention_refresh()
         return response

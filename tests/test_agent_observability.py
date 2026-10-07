@@ -1,7 +1,11 @@
 """Behavioral guarantees for optional Operations Agent observability."""
 from contextlib import contextmanager
+import json
+from types import SimpleNamespace
 
 import pytest
+from threading import Event, Lock, Thread
+from langfuse._client.attributes import create_generation_attributes
 
 from app.services.agent import observability
 from app.services.agent.redaction import REDACTED
@@ -13,6 +17,111 @@ class _Observation:
 
     def update(self, **kwargs):
         self.updates.append(kwargs)
+
+
+def test_flush_does_not_block_caller_and_coalesces_while_exporter_waits(monkeypatch):
+    started, release, finished, returned = Event(), Event(), Event(), Event()
+    calls = []
+
+    class Client:
+        def flush(self):
+            calls.append(1)
+            started.set()
+            release.wait(2)
+            finished.set()
+
+    monkeypatch.setattr(observability, "_get_client", lambda: Client())
+
+    def request():
+        observability.flush()
+        returned.set()
+
+    caller = Thread(target=request)
+    caller.start()
+    try:
+        assert started.wait(1)
+        assert returned.wait(0.2), "Request caller is waiting for SDK export"
+        for _ in range(20):
+            observability.flush()
+        assert len(calls) == 1
+    finally:
+        release.set()
+        caller.join(1)
+        assert finished.wait(1)
+
+
+def test_flush_worker_failure_releases_slot():
+    lock = Lock()
+    lock.acquire()
+
+    class Client:
+        def flush(self):
+            raise RuntimeError("Synthetic SDK failure")
+
+    observability._flush_background(Client(), lock)
+    assert not lock.locked()
+
+
+def test_flush_thread_start_failure_releases_slot(monkeypatch):
+    lock = Lock()
+
+    class BrokenThread:
+        def __init__(self, **kwargs):
+            pass
+
+        def start(self):
+            raise RuntimeError("Synthetic thread start failure")
+
+    monkeypatch.setattr(observability, "_flush_lock", lock)
+    monkeypatch.setattr(observability, "_get_client", lambda: _Client())
+    monkeypatch.setattr(observability, "Thread", BrokenThread)
+    observability.flush()
+    assert not lock.locked()
+
+
+def test_body_exception_is_not_given_to_sdk_automatic_recording():
+    observation = _Observation()
+    exits = []
+
+    class Context:
+        def __enter__(self):
+            return observation
+
+        def __exit__(self, *args):
+            exits.append(args)
+
+    error = RuntimeError("Synthetic private error")
+    with pytest.raises(RuntimeError) as raised:
+        with observability._best_effort_context(Context):
+            raise error
+    assert raised.value is error
+    assert exits == [(None, None, None)]
+    assert observation.updates == [{"level": "ERROR", "status_message": "RuntimeError"}]
+
+
+@pytest.mark.parametrize("input_count,output_count,expected", [
+    (120, 30, {"input": 120, "output": 30}),
+    (0, 0, {"input": 0, "output": 0}),
+    (None, 4, {"output": 4}),
+    ("120", True, None),
+    (-1, None, None),
+])
+def test_usage_metrics_survive_redaction_without_unmasking_secrets(input_count, output_count, expected):
+    observation = _Observation()
+    usage = SimpleNamespace(prompt_tokens=input_count, completion_tokens=output_count)
+    observability.safe_update(observation,
+                              usage_details=observability.token_usage_details(usage),
+                              metadata={"access_token": "synthetic-secret", "email": "synthetic@example.test"})
+    assert observation.updates[0]["usage_details"] == expected
+    assert observation.updates[0]["metadata"]["access_token"] == REDACTED
+    assert observation.updates[0]["metadata"]["email"] == REDACTED
+    attributes = create_generation_attributes(**observation.updates[0])
+    usage_attributes = {key: value for key, value in attributes.items() if "usage" in key}
+    if expected is None:
+        assert not usage_attributes
+    else:
+        assert len(usage_attributes) == 1
+        assert json.loads(next(iter(usage_attributes.values()))) == expected
 
 
 class _Client:

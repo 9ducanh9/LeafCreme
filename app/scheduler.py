@@ -19,17 +19,20 @@ inside a test" without threading a flag through every caller.
 """
 import logging
 import os
+from datetime import datetime, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import text
 
-from app.db import SessionLocal
+from app.db import SessionLocal, engine
 from app.services.maintenance import MaintenanceService
 
 logger = logging.getLogger("bakeryonl.scheduler")
 
 _STALE_PAYMENT_SWEEP_INTERVAL_MINUTES = 15
 _STALE_PAYMENT_THRESHOLD_MINUTES = 30
-_ALERT_SCAN_INTERVAL_MINUTES = 15
+_ALERT_SCAN_INTERVAL_MINUTES = 1
+_INVENTORY_SCAN_LOCK = 74190321
 
 _maintenance_service = MaintenanceService()
 _scheduler: BackgroundScheduler | None = None
@@ -50,14 +53,28 @@ def _sweep_stale_payments_job() -> None:
 
 
 def _inventory_alert_scan_job() -> None:
-    db = SessionLocal()
     try:
-        result = _maintenance_service.run_daily_alert_scan(db)
-        logger.info("Inventory alert scan: %s", result)
+        # Hold a dedicated connection: domain services commit independently.
+        with engine.connect() as lock_connection:
+            acquired = lock_connection.execute(
+                text("SELECT pg_try_advisory_lock(:key)"), {"key": _INVENTORY_SCAN_LOCK}
+            ).scalar()
+            if not acquired:
+                return
+            try:
+                with SessionLocal() as db:
+                    result = _maintenance_service.run_daily_alert_scan(db)
+                    logger.info("Inventory alert scan: %s", result)
+            finally:
+                try:
+                    lock_connection.execute(
+                        text("SELECT pg_advisory_unlock(:key)"), {"key": _INVENTORY_SCAN_LOCK}
+                    )
+                except Exception:
+                    lock_connection.invalidate()
+                    raise
     except Exception:
         logger.exception("Inventory alert scan job crashed")
-    finally:
-        db.close()
 
 
 def start_scheduler() -> None:
@@ -89,6 +106,7 @@ def start_scheduler() -> None:
         id="inventory_alert_scan",
         coalesce=True,
         max_instances=1,
+        next_run_time=datetime.now(timezone.utc),
     )
     _scheduler.start()
     logger.info(
@@ -96,6 +114,22 @@ def start_scheduler() -> None:
         _STALE_PAYMENT_SWEEP_INTERVAL_MINUTES,
         _ALERT_SCAN_INTERVAL_MINUTES,
     )
+
+
+def request_inventory_attention_refresh() -> bool:
+    """Wake the existing scanner; periodic/startup scans recover persisted conditions.
+
+    This is deliberately not an in-memory event queue. Missed wakeups cannot
+    erase inventory state; the next scan re-evaluates current DB conditions.
+    """
+    if _scheduler is None or not _scheduler.running:
+        return False
+    try:
+        _scheduler.modify_job("inventory_alert_scan", next_run_time=datetime.now(timezone.utc))
+        return True
+    except Exception:
+        logger.exception("Unable to request inventory attention scan")
+        return False
 
 
 def shutdown_scheduler() -> None:

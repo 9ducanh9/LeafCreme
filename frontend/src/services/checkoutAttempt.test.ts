@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearCheckoutAttempt, getOrCreateCheckoutAttempt, readCheckoutAttempt } from './checkoutAttempt'
+import { clearCheckoutAttempt, getOrCreateCheckoutAttempt, readCheckoutAttempt, isDefinitiveCheckoutRejection } from './checkoutAttempt'
 
 const payload = { items: [{ bienthe_id: 1, so_luong: 2 }], payment_method: 'sepay_qr' as const }
 
@@ -10,6 +10,12 @@ beforeEach(() => {
 })
 
 describe('durable checkout attempt', () => {
+  it.each([0, 500, 502, 503, 504, 401, 409])('retains the attempt for uncertain response %s', (status) => {
+    expect(isDefinitiveCheckoutRejection(status)).toBe(false)
+  })
+  it.each([400, 422])('allows correction after definitive rejection %s', (status) => {
+    expect(isDefinitiveCheckoutRejection(status)).toBe(true)
+  })
   it('retries the same key and exact payload even after form edits', async () => {
     const first = await getOrCreateCheckoutAttempt(7, payload)
     const retry = await getOrCreateCheckoutAttempt(7, { ...payload, items: [{ bienthe_id: 2, so_luong: 1 }] })

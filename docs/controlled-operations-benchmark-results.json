@@ -1,0 +1,1261 @@
+{
+  "classification": "controlled synthetic service experiment",
+  "started_at": "2026-10-06T08:38:46.178288+00:00",
+  "head": "1a6b59f0ee255854f946f899089c2ae0f619593d",
+  "environment": "isolated PostgreSQL; current schema and shared current dependencies",
+  "postgres_version": "PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+  "historical_sources": [
+    {
+      "ref": "627d4483c63ed934848fd9d2f4d8093356c61fce",
+      "path": "app/services/orders/inventory_service.py",
+      "sha256": "87c093df940d3a9f2313e669c94490e4921ebe393eaf1f44aa30aca69967375e"
+    },
+    {
+      "ref": "c8eb684cda2ce427dbfdde274f52912863f832ca",
+      "path": "app/services/orders/order_service.py",
+      "sha256": "32964191813c978a12abada88412d2cdf76114e8ee4ccc742a07d34c0766edc7"
+    },
+    {
+      "ref": "c8eb684cda2ce427dbfdde274f52912863f832ca",
+      "path": "app/services/reports/report_service.py",
+      "sha256": "71fcf824ec1e52f7b838730b45e615cca785374097a903a0486fde3337cebed3"
+    }
+  ],
+  "limitations": [
+    "Not a full historical runtime",
+    "Not production customer data",
+    "No human timing, provider timing, concurrency, or business-impact measurement",
+    "Repeated deterministic cases are not independent customer samples"
+  ],
+  "expiry": [
+    {
+      "case": 0,
+      "requested_units": 1,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 1,
+      "requested_units": 2,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 2,
+      "requested_units": 3,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 3
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "case": 3,
+      "requested_units": 4,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 4
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ]
+      }
+    },
+    {
+      "case": 4,
+      "requested_units": 1,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 5,
+      "requested_units": 2,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 6,
+      "requested_units": 3,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 3
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "case": 7,
+      "requested_units": 4,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 4
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ]
+      }
+    },
+    {
+      "case": 8,
+      "requested_units": 1,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 9,
+      "requested_units": 2,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 10,
+      "requested_units": 3,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 3
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "case": 11,
+      "requested_units": 4,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 4
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ]
+      }
+    },
+    {
+      "case": 12,
+      "requested_units": 1,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 13,
+      "requested_units": 2,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 14,
+      "requested_units": 3,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 3
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "case": 15,
+      "requested_units": 4,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 4
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ]
+      }
+    },
+    {
+      "case": 16,
+      "requested_units": 1,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 17,
+      "requested_units": 2,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 18,
+      "requested_units": 3,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 3
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "case": 19,
+      "requested_units": 4,
+      "sides": {
+        "before": [
+          {
+            "label": "expired",
+            "quantity": 4
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ]
+      }
+    },
+    {
+      "case": 20,
+      "requested_units": 1,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 21,
+      "requested_units": 2,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 22,
+      "requested_units": 3,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "case": 23,
+      "requested_units": 4,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ]
+      }
+    },
+    {
+      "case": 24,
+      "requested_units": 1,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 25,
+      "requested_units": 2,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 26,
+      "requested_units": 3,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "case": 27,
+      "requested_units": 4,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 3
+          }
+        ]
+      }
+    },
+    {
+      "case": 28,
+      "requested_units": 1,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": 29,
+      "requested_units": 2,
+      "sides": {
+        "before": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ],
+        "after": [
+          {
+            "label": "today",
+            "quantity": 1
+          },
+          {
+            "label": "future",
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  ],
+  "pos": [
+    {
+      "case": 0,
+      "quantity": 1,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "50000.00",
+          "reported_total_vnd": "50000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "50000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 1,
+      "quantity": 2,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "200000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 2,
+      "quantity": 3,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "450000.00",
+          "reported_total_vnd": "450000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "450000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 3,
+      "quantity": 4,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "200000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 4,
+      "quantity": 1,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "100000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 5,
+      "quantity": 2,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "300000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 6,
+      "quantity": 3,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "150000.00",
+          "reported_total_vnd": "150000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "150000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 7,
+      "quantity": 4,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "400000.00",
+          "reported_total_vnd": "400000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "400000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 8,
+      "quantity": 1,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "150000.00",
+          "reported_total_vnd": "150000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "150000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 9,
+      "quantity": 2,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "100000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 10,
+      "quantity": 3,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "300000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 11,
+      "quantity": 4,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "600000.00",
+          "reported_total_vnd": "600000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "600000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 12,
+      "quantity": 1,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "50000.00",
+          "reported_total_vnd": "50000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "50000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 13,
+      "quantity": 2,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "200000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 14,
+      "quantity": 3,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "450000.00",
+          "reported_total_vnd": "450000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "450000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 15,
+      "quantity": 4,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "200000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 16,
+      "quantity": 1,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "100000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 17,
+      "quantity": 2,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "300000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 18,
+      "quantity": 3,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "150000.00",
+          "reported_total_vnd": "150000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "150000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 19,
+      "quantity": 4,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "400000.00",
+          "reported_total_vnd": "400000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "400000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 20,
+      "quantity": 1,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "150000.00",
+          "reported_total_vnd": "150000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "150000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 21,
+      "quantity": 2,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "100000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 22,
+      "quantity": 3,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "300000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 23,
+      "quantity": 4,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "600000.00",
+          "reported_total_vnd": "600000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "600000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 24,
+      "quantity": 1,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "50000.00",
+          "reported_total_vnd": "50000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "50000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 25,
+      "quantity": 2,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "200000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 26,
+      "quantity": 3,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "450000.00",
+          "reported_total_vnd": "450000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "450000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 27,
+      "quantity": 4,
+      "unit_price_vnd": 50000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "200000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "200000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 28,
+      "quantity": 1,
+      "unit_price_vnd": 100000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "100000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "100000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    },
+    {
+      "case": 29,
+      "quantity": 2,
+      "unit_price_vnd": 150000,
+      "sides": {
+        "before": {
+          "status": "hoan_thanh",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "300000.00"
+        },
+        "after": {
+          "status": "dang_xu_ly",
+          "successful_payments": 0,
+          "payable_vnd": "300000.00",
+          "reported_total_vnd": "0"
+        }
+      }
+    }
+  ],
+  "finished_at": "2026-10-06T08:39:07.678536+00:00"
+}

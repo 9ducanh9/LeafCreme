@@ -10,7 +10,7 @@ const order = {
 }
 const payment = { payment_id: 1, method: 'sepay', bank_account: '0123456789', bank_code: 'MB', account_name: 'TEST', amount: 200000, transfer_content: 'LC1', qr_image: 'http://localhost:8000/test-qr.svg' }
 
-async function setup(page: Page, options: { loseFirstResponse?: boolean; terminal?: boolean } = {}) {
+async function setup(page: Page, options: { loseFirstResponse?: boolean; terminal?: boolean; firstResponse503?: boolean } = {}) {
   const attempts: { key: string; body: unknown }[] = []
   const committed = new Set<string>()
   let polls = 0
@@ -27,6 +27,7 @@ async function setup(page: Page, options: { loseFirstResponse?: boolean; termina
       const body = route.request().postDataJSON()
       attempts.push({ key, body })
       committed.add(key)
+      if (options.firstResponse503 && attempts.length === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic proxy failure after commit' } })
       if (options.loseFirstResponse && attempts.length === 1) return route.abort('failed')
       const response: CheckoutResponse = {
         order,
@@ -89,4 +90,17 @@ test('late payment shows reconciliation and removes the expired QR', async ({ pa
   const polls = state.polls()
   await page.waitForTimeout(3500)
   expect(state.polls()).toBe(polls)
+})
+
+test('503 after checkout commit survives reload with the same idempotency key', async ({ page }) => {
+  const state = await setup(page, { firstResponse503: true })
+  await fillCheckout(page, false)
+  await page.getByRole('button', { name: 'Đặt hàng', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Tiếp tục checkout' })).toBeEnabled()
+  await page.reload()
+  await page.getByRole('button', { name: 'Tiếp tục checkout' }).click()
+  await expect(page).toHaveURL(/\/orders\/42\/success\?payment_status=unpaid$/)
+  expect(state.attempts).toHaveLength(2)
+  expect(state.attempts[0]).toEqual(state.attempts[1])
+  expect(state.committed.size).toBe(1)
 })

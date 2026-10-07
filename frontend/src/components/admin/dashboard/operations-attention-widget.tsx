@@ -18,7 +18,7 @@ import {
   type Insight,
   type ProactiveInsight,
 } from '../../../services/admin/agentService'
-import { cleanOperationalText, formatProactiveEvidence, presentAction } from '../../../utils/admin/operationsPresentation'
+import { cleanOperationalText, formatProactiveEvidence, presentAction, presentProactiveRecommendation } from '../../../utils/admin/operationsPresentation'
 
 interface OperationsData {
   insights: Insight[]
@@ -144,7 +144,7 @@ export default function OperationsAttentionWidget() {
                       <Chip size="small" color={getSeverityColor(insight.severity)} label={getSeverityLabel(insight.severity)} />
                       <Typography fontWeight={600}>{cleanOperationalText(insight.title)}</Typography>
                     </Stack>
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>{cleanOperationalText(insight.recommendation)}</Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>{presentProactiveRecommendation(insight)}</Typography>
                     {evidence.length > 0 ? <Typography variant="caption" color="text.secondary">{evidence.join(' · ')}</Typography> : null}
                   </Box>
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>

@@ -5,6 +5,8 @@ BakeryOnl API - Main application entry point
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+import os
+import re
 
 from fastapi import FastAPI, Request, status, Depends
 from fastapi.encoders import jsonable_encoder
@@ -37,6 +39,7 @@ from app.routers import (
     vouchers,
 )
 from app.middleware.logging_middleware import LoggingMiddleware
+from app.middleware.admission_middleware import AdmissionMiddleware
 from app.middleware.security_middleware import SecurityMiddleware
 from app.scheduler import shutdown_scheduler, start_scheduler
 
@@ -60,6 +63,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    AdmissionMiddleware,
+    max_inflight=int(os.getenv("HTTP_MAX_INFLIGHT", "20")),
+    max_waiting=int(os.getenv("HTTP_MAX_WAITING", "200")),
+    wait_seconds=float(os.getenv("HTTP_ADMISSION_WAIT_SECONDS", "2")),
+)
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(SecurityMiddleware)
 app.add_middleware(
@@ -137,9 +146,18 @@ def root():
     }
 
 
+def _runtime_revision():
+    for source in ("RAILWAY_GIT_COMMIT_SHA", "APP_COMMIT_SHA"):
+        value = os.getenv(source, "").strip()
+        if re.fullmatch(r"[0-9a-fA-F]{40}", value):
+            return {"sha": value.lower(), "source": source}
+    return None
+
+
 @app.get("/health", tags=["health"])
 def health_check():
-    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(), "service": "BakeryOnl API"}
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat(),
+            "service": "BakeryOnl API", "revision": _runtime_revision()}
 
 
 @app.get("/health/db", tags=["health"])
@@ -148,13 +166,14 @@ def health_check_db(db: Session = Depends(get_db)):
         db.execute(text("SELECT 1"))
         db_status = "connected"
         db_error = None
-    except Exception as e:
+    except Exception:
         db_status = "disconnected"
-        db_error = str(e)
+        db_error = "Database unavailable"
 
-    return {
+    return JSONResponse(status_code=200 if db_status == "connected" else 503, content={
         "status": "healthy" if db_status == "connected" else "unhealthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "database": {"status": db_status, "error": db_error},
         "service": "BakeryOnl API",
-    }
+        "revision": _runtime_revision(),
+    })

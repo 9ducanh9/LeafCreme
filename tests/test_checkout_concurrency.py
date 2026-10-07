@@ -64,16 +64,38 @@ def run_parallel(functions):
         return [future.result(timeout=30) for future in futures]
 
 
-def test_concurrent_checkout_reuses_one_order(concurrent_flow):
+@pytest.mark.parametrize("concurrency", [2, 10, 20])
+def test_concurrent_checkout_reuses_one_order(concurrent_flow, concurrency):
     sessions, user_id, batch_id, payload, key = concurrent_flow
     def create():
         with sessions() as db:
             return CheckoutService().checkout(db, payload, key, db.get(NguoiDung, user_id))
-    results = run_parallel([create, create])
-    assert results[0]["order"]["donhang_id"] == results[1]["order"]["donhang_id"]
+    results = run_parallel([create] * concurrency)
+    assert len({result["order"]["donhang_id"] for result in results}) == 1
     with sessions() as db:
         assert db.query(DonHang).filter_by(nguoidung_id=user_id).count() == 1
         assert db.query(TonKhoSanPham).filter_by(lohang_sanpham_id=batch_id).one().so_luong_hien_tai == 8
+
+
+def test_distinct_checkouts_cannot_oversell(concurrent_flow):
+    sessions, user_id, batch_id, payload, key = concurrent_flow
+
+    def create(index):
+        with sessions() as db:
+            try:
+                CheckoutService().checkout(db, payload, f"{key}-{index}", db.get(NguoiDung, user_id))
+                return "created"
+            except DomainError as error:
+                db.rollback()
+                assert error.status_code == 400
+                return "rejected"
+
+    results = run_parallel([lambda index=index: create(index) for index in range(20)])
+    assert results.count("created") == 5
+    assert results.count("rejected") == 15
+    with sessions() as db:
+        assert db.query(DonHang).filter_by(nguoidung_id=user_id).count() == 5
+        assert db.query(TonKhoSanPham).filter_by(lohang_sanpham_id=batch_id).one().so_luong_hien_tai == 0
 
 
 def test_concurrent_cancel_returns_inventory_once(concurrent_flow):

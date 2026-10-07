@@ -12,9 +12,34 @@ const SUBJECT_TRANSLATIONS: Array<[RegExp, string]> = [
 ]
 
 export function cleanOperationalText(value: string): string {
-  let cleaned = value.replace(VERIFY_PREFIX, '').replace(/\s{2,}/g, ' ').trim()
+  let cleaned = value.replace(VERIFY_PREFIX, '')
+    .replace(/(^|\s)#{1,6}\s*/g, '$1')
+    .replace(/\*\*|__|`/g, '')
+    .replace(/\b(san_pham_can_nhap|sap_het_han|qua_han|chua_xu_ly|dang_xu_ly|binh_thuong|low_stock|out_of_stock|partial_out_of_stock)\b/g, (key) => ({
+      san_pham_can_nhap: 'sản phẩm cần bổ sung', sap_het_han: 'sắp hết hạn', qua_han: 'quá hạn',
+      chua_xu_ly: 'chưa xử lý', dang_xu_ly: 'đang xử lý', binh_thuong: 'bình thường',
+      low_stock: 'tồn chạm ngưỡng cảnh báo', out_of_stock: 'hết hàng', partial_out_of_stock: 'hết một số kích thước',
+    }[key] ?? key))
+    .replace(/\s{2,}/g, ' ').trim()
   for (const [pattern, replacement] of SUBJECT_TRANSLATIONS) cleaned = cleaned.replace(pattern, replacement)
   return cleaned
+}
+
+export function presentProactiveRecommendation(insight: Pick<ProactiveInsight, 'scenario' | 'evidence'>): string {
+  const evidence = insight.evidence
+  if (insight.scenario === 'product_stock') {
+    const unavailable = Number(evidence.unavailable_product_count ?? 0)
+    const missingSizes = Number(evidence.partial_out_of_stock_count ?? 0)
+    return unavailable > 0 || missingSizes > 0
+      ? 'Kiểm tra các sản phẩm hoặc kích thước hết hàng và lập kế hoạch bổ sung. Không tự động nhập thêm hàng.'
+      : 'Tồn kho đã chạm ngưỡng cảnh báo, không có nghĩa là đã hết hàng. Kiểm tra nhu cầu bán và các lô cận hạn trước khi nhập thêm.'
+  }
+  if (insight.scenario === 'expiring_batch') {
+    return evidence.alert_type === 'qua_han'
+      ? 'Kiểm tra và xử lý lô đã quá hạn; không tiếp tục bán hàng từ lô này.'
+      : 'Kiểm tra lô gần hạn và ưu tiên bán theo hạn dùng. Chỉ xuất hủy khi thực tế đã hết hạn hoặc hàng không còn đạt chất lượng.'
+  }
+  return 'Kiểm tra thông tin cảnh báo trước khi quyết định xử lý.'
 }
 
 function formatDate(value: unknown): string | null {
