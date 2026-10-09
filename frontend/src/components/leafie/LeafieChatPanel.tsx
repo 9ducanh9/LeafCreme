@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useId } from 'react'
 import { useOverlayA11y } from '../../hooks/useOverlayA11y'
-import { X, Send, Trash2, MoreVertical } from 'lucide-react'
+import { useSpeechInput } from '../../hooks/useSpeechInput'
+import { X, Send, Trash2, MoreVertical, Mic, Square } from 'lucide-react'
 import LeafieMessageList from './LeafieMessageList'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import type { LeafieMessage } from '../../types/leafie'
@@ -31,9 +32,14 @@ export default function LeafieChatPanel({
   const [inputValue, setInputValue] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const voiceDraftRef = useRef('')
+  const voice = useSpeechInput(isOpen && !loading && !showConfirmDialog, (transcript) => {
+    setInputValue([voiceDraftRef.current, transcript].filter(Boolean).join(' ').slice(0, 2000))
+  })
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = `${useId()}-leafie-title`
+  const voiceHintId = `${useId()}-leafie-voice`
 
   // Panel giữ trong DOM khi đóng để còn transition trượt. `invisible` + `inert`
   // (trong hook) bỏ nó khỏi tab order và accessibility tree — không thì người dùng
@@ -149,9 +155,19 @@ export default function LeafieChatPanel({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (inputValue.trim() && !loading) {
+    if (inputValue.trim() && !loading && !voice.recording) {
       onSendMessage(inputValue)
       setInputValue('')
+    }
+  }
+
+  const handleVoice = () => {
+    if (voice.recording) {
+      voice.stop()
+    } else {
+      voiceDraftRef.current = inputValue.trim()
+      inputRef.current?.blur()
+      voice.start()
     }
   }
 
@@ -260,18 +276,35 @@ export default function LeafieChatPanel({
               aria-label="Câu hỏi cho Leafie"
               maxLength={2000}
               disabled={loading}
-              className="min-w-0 flex-1 rounded-md border border-[#e6ebe4] bg-[#f6f8f5] px-3 py-2.5 text-xs text-[#344236] placeholder:text-[#8a938b] outline-none transition-colors focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+              readOnly={voice.recording}
+              className="min-w-0 flex-1 rounded-md border border-[#e6ebe4] bg-[#f6f8f5] px-3 py-2.5 text-base text-[#344236] placeholder:text-[#8a938b] outline-none transition-colors focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
             />
+            <button
+              type="button"
+              onClick={handleVoice}
+              aria-label={voice.recording ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'}
+              aria-pressed={voice.recording}
+              aria-describedby={voiceHintId}
+              title={voice.recording ? 'Dừng micro' : 'Nói tiếng Việt'}
+              disabled={loading || !voice.supported || voice.status === 'stopping'}
+              className={`grid size-11 shrink-0 place-items-center rounded-md border transition-colors focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 ${voice.recording ? 'border-danger bg-danger-solid text-danger-fg-on-solid' : 'border-border bg-bg-surface text-brand hover:bg-brand-subtle'}`}
+            >
+              {voice.recording ? <Square className="size-4" aria-hidden="true" /> : <Mic className="size-5" aria-hidden="true" />}
+            </button>
             <button
               type="submit"
               aria-label="Gửi câu hỏi"
               title="Gửi câu hỏi"
-              disabled={!inputValue.trim() || loading}
-              className="grid size-10 shrink-0 place-items-center rounded-md bg-brand text-fg-on-brand transition-colors hover:bg-brand-hover focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!inputValue.trim() || loading || voice.recording}
+              className="grid size-11 shrink-0 place-items-center rounded-md bg-brand text-fg-on-brand transition-colors hover:bg-brand-hover focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
             </button>
           </form>
+          <p id={voiceHintId} role="status" className="mt-2 text-[11px] leading-4 text-fg-muted">
+            {voice.status === 'starting' ? 'Đang mở micro…' : voice.status === 'listening' ? 'Đang nghe tiếng Việt… Nhấn nút dừng khi nói xong.' : voice.status === 'stopping' ? 'Đang hoàn tất lời nói…' : voice.supported ? 'Nhấn micro để nói, kiểm tra nội dung rồi nhấn Gửi.' : 'Trình duyệt chưa hỗ trợ voice. Bạn có thể dùng micro trên bàn phím điện thoại.'}
+          </p>
+          {voice.error && <p role="alert" className="mt-1 text-xs leading-5 text-danger">{voice.error}</p>}
         </div>
       </div>
 

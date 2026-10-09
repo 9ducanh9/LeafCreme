@@ -251,6 +251,15 @@ reference, an ambiguous reference, sold-out products, allergy questions,
 private-data requests and instruction injection). An invalid provider key
 returns a safe HTTP 503; it does not silently fall back to a fake answer.
 
+Leafie's microphone button uses the browser's speech recognition service with
+Vietnamese (`vi-VN`) on HTTPS or localhost. Speech fills an editable draft;
+the user reviews it and taps Send. Recording ends when chat closes or the app
+goes into the background. Unsupported browsers can use keyboard dictation.
+No audio is uploaded to the LeafCreme API; recognition may use the browser
+vendor's service. `frontend/e2e/leafie-voice.spec.ts` simulates speech events,
+permission errors and session cleanup; verify real microphone recognition on
+the target Android/iPhone browser separately.
+
 Run frontend:
 
 ```bash
