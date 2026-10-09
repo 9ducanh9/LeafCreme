@@ -121,13 +121,16 @@ class ApiClient {
           !!localStorage.getItem('refresh_token')
 
         if (canAttemptRefresh) {
+          let refreshed = false
           try {
             await _refreshAccessToken(this.baseURL)
-            return await this.request<T>(endpoint, options, true)
+            refreshed = true
           } catch {
             // Refresh token itself is invalid/expired — fall through to the
             // normal "clear tokens" 401 handling below.
           }
+          // A failed replay is a request error, not a failed token refresh.
+          if (refreshed) return this.request<T>(endpoint, options, true)
         }
 
         // Handle 401 Unauthorized - clear invalid tokens (refresh either
