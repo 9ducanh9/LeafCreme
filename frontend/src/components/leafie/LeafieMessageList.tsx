@@ -11,12 +11,12 @@ const chip = 'rounded-md border border-[#dce4dc] bg-[#fff] px-2.5 py-2 text-left
 
 export default function LeafieMessageList({ messages, loading, onSuggestionSelect }: LeafieMessageListProps) {
   return <div className="space-y-4 py-5">
-    {messages.length === 0 && !loading && <div className="px-1 pt-8">
+    {messages.length === 0 && !loading && <div className="halloween-leafie-welcome px-1 pt-8">
       <img src="/branding/liceria.png" alt="" className="mb-5 size-12 rounded-full" />
-      <h4 className="max-w-56 text-xl font-semibold leading-7 text-[#28362c]">Mình giúp bạn chọn bánh nhé?</h4>
-      <p className="mt-3 text-[13px] leading-6 text-[#778176]">Bạn chọn cho dịp gì?<br />Mình cùng tìm một chiếc bánh phù hợp.</p>
+      <h4 className="max-w-64 text-2xl leading-8 text-[#28362c]">Dạ, mình chọn bánh cho Halloween nhé?</h4>
+      <p className="mt-3 text-[13px] leading-6 text-[#778176]">Bạn thích chocolate hay một món nhẹ nhàng hơn?<br />Mình cùng tìm bánh trong menu hiện tại.</p>
       <div className="mt-6 flex flex-col items-start gap-2">
-        {['Chọn bánh cho sinh nhật 4 người', 'Gợi ý hộp quà dưới 300.000đ', 'Bánh nào đang còn hàng?'].map(suggestion =>
+        {['Chọn bánh cho tiệc Halloween 4 người', 'Gợi ý bánh dưới 300.000đ', 'Bánh chocolate nào đang còn hàng?'].map(suggestion =>
           <button key={suggestion} type="button" onClick={() => onSuggestionSelect(suggestion)} className={chip}>{suggestion}</button>)}
       </div>
     </div>}

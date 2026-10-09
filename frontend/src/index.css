@@ -1,4 +1,6 @@
 @import './styles/tokens.css';
+@import './styles/halloween.css';
+@import './styles/auth.css';
 
 @tailwind base;
 @tailwind components;

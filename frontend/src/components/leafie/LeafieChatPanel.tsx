@@ -173,12 +173,12 @@ export default function LeafieChatPanel({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`fixed right-0 top-0 h-[100dvh] w-full max-w-[400px] bg-[#fff] z-modal flex flex-col border-l border-[#dce1dd] shadow-xl outline-none transition-[transform,visibility] duration-slow sm:right-4 sm:top-4 sm:h-[min(650px,calc(100dvh-32px))] sm:rounded-[8px] sm:border ${
+        className={`halloween-leafie-panel fixed right-0 top-0 h-[100dvh] w-full max-w-[400px] bg-[#fff] z-modal flex flex-col border-l border-[#dce1dd] shadow-xl outline-none transition-[transform,visibility] duration-slow sm:right-4 sm:top-4 sm:h-[min(650px,calc(100dvh-32px))] sm:rounded-[8px] sm:border ${
           isOpen ? 'visible translate-x-0' : 'invisible translate-x-full'
         }`}
       >
         {/* Header - Discord style */}
-        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-[#edf0ed] bg-[#fff]">
+        <div className="halloween-leafie-header flex-shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-[#edf0ed] bg-[#fff]">
           <div className="flex items-center gap-2.5">
             <div className="size-9 rounded-full bg-brand-subtle overflow-hidden">
               <img
@@ -189,7 +189,7 @@ export default function LeafieChatPanel({
             </div>
             <div>
               <h3 id={titleId} className="font-semibold text-[#28362c] text-[15px]">Leafie</h3>
-              <p className="mt-0.5 text-[11px] text-[#727b75]">Tư vấn bánh · Leaf Creme</p>
+              <p className="mt-0.5 text-[11px] text-[#727b75]">Một chút phép màu từ căn bếp</p>
             </div>
           </div>
           <div className="flex items-center gap-1">

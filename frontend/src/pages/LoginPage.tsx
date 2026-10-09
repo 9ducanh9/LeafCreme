@@ -1,18 +1,13 @@
+import AuthFrame from '../components/auth/AuthFrame'
+import SocialSignIn from '../components/auth/SocialSignIn'
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, LockKeyhole, Mail, ShoppingBag } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
 import Button from '../components/ui/Button'
 import { useAuth } from '../contexts/AuthContext'
-import { FALLBACK_IMAGE, IMAGE_PATHS } from '../constants/images'
-import { cognitoEnabled, cognitoSocialProviders } from '../config/cognito'
-import { beginCognitoSocialLogin } from '../services/cognitoService'
+import { cognitoEnabled } from '../config/cognito'
 
 const inputClassName = 'w-full rounded-md border border-interactive bg-bg-surface px-11 py-3 text-fg placeholder:text-fg-subtle outline-none transition-[border-color,box-shadow] focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:bg-bg-inset disabled:opacity-70'
-
-const SOCIAL_PROVIDER_LOGOS: Record<string, string> = {
-  google: IMAGE_PATHS.logos.google,
-  facebook: IMAGE_PATHS.logos.facebook,
-}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -23,7 +18,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [socialLoading, setSocialLoading] = useState<string | null>(null)
+  const [socialLoading, setSocialLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,60 +38,10 @@ export default function LoginPage() {
     }
   }
 
-  const handleSocialLogin = async (provider: string) => {
-    setError(null)
-    setSocialLoading(provider)
-    try {
-      await beginCognitoSocialLogin(provider)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to start sign in.')
-      setSocialLoading(null)
-    }
-  }
-
-  // <div> chứ không <main>: MainLayout đã render <main id="main-content">.
-  // HTML chỉ được có MỘT main landmark — hai main làm lệnh "nhảy tới main" của
-  // screen reader có hai đích, và skip link trỏ vào main ngoài chứ không phải
-  // nội dung của trang này.
   return (
-    <div className="min-h-screen bg-background lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(480px,1.1fr)]">
-      <section className="relative hidden min-h-screen overflow-hidden lg:block">
-        <img
-          src={FALLBACK_IMAGE.productDetail}
-          alt="Bánh kem chocolate Leaf Creme"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-bg-overlay" />
-        <div className="relative flex h-full max-w-xl flex-col justify-between px-12 py-12 text-fg-on-brand xl:px-16">
-          <Link to="/" className="font-heading text-3xl leading-none text-fg-on-brand">
-            Leaf Creme
-          </Link>
-          <div>
-            <span className="mb-5 inline-flex items-center gap-2 border border-fg-on-brand/30 bg-fg-on-brand/10 px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em] backdrop-blur-sm">
-              <ShoppingBag size={14} aria-hidden="true" />
-              Tiệm bánh thủ công
-            </span>
-            <h1 className="max-w-md text-5xl leading-tight text-fg-on-brand">Một chút ngọt ngào cho ngày của bạn.</h1>
-            <p className="mt-4 max-w-sm text-base leading-7 text-fg-on-brand/80">
-              Đăng nhập để theo dõi đơn hàng, lưu những chiếc bánh yêu thích và nhận ưu đãi riêng.
-            </p>
-          </div>
-          <p className="text-xs tracking-wide text-fg-on-brand/65">Leaf Creme · Bánh làm theo từng mẻ nhỏ</p>
-        </div>
-      </section>
-
-      <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
-        <div className="w-full max-w-md">
-          <Link to="/" className="font-heading text-3xl leading-none text-text-primary lg:hidden">
-            Leaf Creme
-          </Link>
-          <div className="mb-8 mt-12 lg:mt-0">
-            <p className="text-sm font-medium uppercase tracking-[0.15em] text-accent-brown">Tài khoản của bạn</p>
-            <h1 className="mt-3 text-3xl text-text-primary sm:text-4xl">Chào mừng bạn trở lại</h1>
-            <p className="mt-3 text-sm leading-6 text-text-secondary">Đăng nhập để tiếp tục mua sắm cùng Leaf Creme.</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+    <AuthFrame title="Chào mừng bạn trở lại" description="Đăng nhập để theo dõi đơn hàng và chọn bánh cùng Leaf Creme.">
+      <SocialSignIn disabled={loading} onBusyChange={setSocialLoading} />
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-4 py-3 text-sm leading-6 text-danger">
                 {error}
@@ -155,29 +100,12 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {cognitoSocialProviders.length > 0 && (
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center gap-3 text-xs text-text-secondary"><span className="h-px flex-1 bg-border" />Or continue with<span className="h-px flex-1 bg-border" /></div>
-              {cognitoSocialProviders.map((provider) => {
-                const logo = SOCIAL_PROVIDER_LOGOS[provider.toLowerCase()]
-                return (
-                  <button key={provider} type="button" onClick={() => handleSocialLogin(provider)} disabled={loading || !!socialLoading} className="flex w-full items-center justify-center gap-2.5 rounded-md border border-interactive px-4 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-subtle disabled:cursor-not-allowed disabled:opacity-60">
-                    {logo && <img src={logo} alt="" aria-hidden="true" className="size-5 shrink-0" />}
-                    {socialLoading === provider ? 'Redirecting...' : `Continue with ${provider}`}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
           <p className="mt-7 text-center text-sm text-text-secondary">
             Chưa có tài khoản?{' '}
             <Link to="/register" className="font-semibold text-accent-brown underline-offset-4 hover:underline">
               Đăng ký ngay
             </Link>
           </p>
-        </div>
-      </section>
-    </div>
+    </AuthFrame>
   )
 }

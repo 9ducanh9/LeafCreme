@@ -27,7 +27,7 @@ const amber = { 50: '#FFFBEB', 600: '#B45309' }
 const red = { 50: '#FEF2F2', 600: '#B91C1C' }
 const blue = { 50: '#EFF6FF', 600: '#1D4ED8' }
 
-export const adminTheme = createTheme({
+const baseAdminTheme = createTheme({
   palette: {
     mode: 'light',
     primary: { main: terra[600], light: terra[400], dark: terra[700], contrastText: '#FFFFFF' },
@@ -89,5 +89,31 @@ export const adminTheme = createTheme({
         },
       },
     },
+  },
+})
+
+// Keep operational status colors unchanged; only seasonal surfaces and accents change.
+export const adminTheme = createTheme(baseAdminTheme, {
+  palette: {
+    primary: { main: '#285744', light: '#748b7b', dark: '#1b4433', contrastText: '#FFFFFF' },
+    secondary: { main: '#a02f4c', light: '#fff0f2', dark: '#84233d', contrastText: '#FFFFFF' },
+    background: { default: '#f5faf4', paper: '#FFFFFF' },
+    text: { primary: '#20392e', secondary: '#53685a' },
+    divider: '#e1e7e1',
+  },
+  shape: { borderRadius: 8 },
+  typography: { h4: { color: '#20392e' }, h5: { color: '#20392e' }, h6: { color: '#20392e' } },
+  components: {
+    MuiAppBar: { styleOverrides: { root: { backgroundColor: '#f5faf4', color: '#20392e' } } },
+    MuiDrawer: { styleOverrides: { paper: { borderRight: '1px solid #e1e7e1' } } },
+    MuiOutlinedInput: { styleOverrides: { root: { borderRadius: 8 } } },
+    MuiListItemButton: { styleOverrides: { root: {
+      '&.Mui-selected': { backgroundColor: '#edf6ee', color: '#285744' },
+      '&.Mui-selected:hover': { backgroundColor: '#c6dfcd' },
+      '&.Mui-selected .MuiListItemIcon-root': { color: '#285744' },
+    } } },
+    MuiButtonBase: { styleOverrides: { root: { '&.Mui-focusVisible': { outline: '2px solid #a02f4c', outlineOffset: 2 } } } },
+    MuiTableCell: { styleOverrides: { head: { color: '#53685a', backgroundColor: '#f5faf4' } } },
+    MuiTableRow: { styleOverrides: { root: { '&:hover': { backgroundColor: '#f5faf4' } } } },
   },
 })

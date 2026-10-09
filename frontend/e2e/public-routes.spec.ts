@@ -62,7 +62,7 @@ test('homepage loads lazy routes and ranked products without application errors'
   await page.goto('/')
 
   await expect(page).toHaveTitle(/Leaf Creme/)
-  await expect(page.getByRole('heading', { name: 'Best sellers' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Chọn một chút ngọt' })).toBeVisible()
   await expect(page.getByText('Bánh kem chocolate', { exact: true })).toBeVisible()
   expect(appErrors).toEqual([])
 })

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
+import { Candy } from 'lucide-react'
 import Header from '../bakery/Header'
 import Footer from '../bakery/Footer'
 import { useLeafieContext } from '../../contexts/LeafieContext'
@@ -15,7 +16,8 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
   const location = useLocation()
   const mainRef = useRef<HTMLElement>(null)
   const isAdminRoute = location.pathname.startsWith('/admin')
-  const { isOpen, messages, loading, error, retryMessage, closeChat, sendMessage, clearHistory } = useLeafieContext()
+  const isAccountEntry = ['/login', '/register', '/verify-email', '/auth/callback'].includes(location.pathname)
+  const { isOpen, messages, loading, error, retryMessage, openChat, closeChat, sendMessage, clearHistory } = useLeafieContext()
   const { isCartDrawerOpen, closeCartDrawer } = useCart()
   const [hasOpenedLeafie, setHasOpenedLeafie] = useState(isOpen)
   const [hasOpenedCart, setHasOpenedCart] = useState(isCartDrawerOpen)
@@ -36,12 +38,16 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
 
   if (isAdminRoute) return <>{children}</>
 
-  return <div className="flex min-h-screen flex-col bg-bg-canvas">
+  return <div className="halloween-storefront flex min-h-screen flex-col bg-bg-canvas">
     <a href="#main-content" className="skip-link">Bỏ qua đến nội dung chính</a>
     <Header />
     <div className="sr-only" aria-live="polite" aria-atomic="true">Đã chuyển đến {location.pathname === '/' ? 'trang chủ' : location.pathname.replace(/\//g, ' ')}</div>
-    <main id="main-content" ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 outline-none">{children}</main>
+    <main id="main-content" ref={mainRef} tabIndex={-1} className={`min-w-0 flex-1 outline-none ${location.pathname.startsWith('/products/') ? 'halloween-product' : ''}`}>{children}</main>
     {showFooter && <Footer />}
+    {!isAccountEntry && !isOpen && !isCartDrawerOpen && <button type="button" onClick={openChat} aria-label="Mở Leafie" className="halloween-leafie-launcher">
+      <img src="/branding/liceria.png" alt="" aria-hidden="true" />
+      <span>Hỏi Leafie nhé?</span><Candy className="size-4" aria-hidden="true" />
+    </button>}
     {hasOpenedLeafie && (
       <Suspense fallback={null}>
         <LeafieChatPanel isOpen={isOpen} messages={messages} loading={loading} error={error} onRetry={retryMessage} onClose={closeChat} onSendMessage={sendMessage} onSuggestionSelect={sendMessage} onClearHistory={clearHistory} />

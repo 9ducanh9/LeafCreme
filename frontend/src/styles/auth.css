@@ -1,0 +1,22 @@
+.auth-scene { display: flex; justify-content: center; align-items: flex-start; min-height: calc(100svh - var(--header-height)); padding: 40px 20px 56px; background: var(--bg-subtle); }
+.auth-form-panel { width: 100%; max-width: 480px; padding: 28px 32px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; box-shadow: var(--shadow-sm); }
+.auth-season-label { display: flex; align-items: center; justify-content: center; gap: 8px; padding-bottom: 20px; color: var(--accent-fg); font-size: 11px; }
+.auth-season-label span { text-align: center; }
+.auth-season-label svg { flex-shrink: 0; }
+.auth-brand { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 20px; font-weight: 700; }
+.auth-brand img { width: 36px; height: 36px; }
+.auth-form-panel h1 { margin: 18px 0 8px; font-size: 26px; line-height: 1.25; text-align: center; }
+.auth-description { color: var(--fg-muted); font-size: 13px; text-align: center; margin-bottom: 22px; }
+.auth-social button { width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 44px; border: 1px solid var(--border-default); border-radius: 6px; font-size: 13px; font-weight: 600; }
+.auth-social button:hover:not(:disabled) { background: var(--bg-subtle); }
+.auth-social button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.auth-social button:disabled { opacity: .65; cursor: not-allowed; }
+.auth-social img { width: 18px; height: 18px; }
+.auth-provider-note { margin-top: 8px; color: var(--fg-muted); font-size: 11px; text-align: center; }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; font-size: 11px; color: var(--fg-subtle); }
+.auth-divider span { height: 1px; flex: 1; background: var(--border-subtle); }
+.auth-form-panel input, .auth-form-panel select { font-size: 13px; min-height: 44px; }
+.auth-form-panel label { font-size: 12px; }
+.auth-privacy { margin-top: 24px; text-align: center; color: var(--fg-muted); font-size: 11px; }
+.auth-privacy a:hover { text-decoration: underline; }
+@media (max-width: 600px) { .auth-scene { padding: 24px 12px 80px; } .auth-form-panel { padding: 24px 20px; } .auth-form-panel input, .auth-form-panel select { font-size: 16px; } }

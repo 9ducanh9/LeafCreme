@@ -30,9 +30,9 @@ export default function BestSellers() {
       <Container>
         <SectionHeader
           eyebrow="Được yêu thích"
-          title="Best sellers"
-          description="Bốn món bánh được chọn nhiều nhất từ bếp Leaf Creme."
-          align="center"
+          title="Chọn một chút ngọt"
+          description="Những món bánh được yêu thích từ bếp Leaf Creme."
+          align="left"
         />
         {loading && (
           <ProductGrid columns="four">
