@@ -1,7 +1,7 @@
 # Đề xuất giọng tư vấn khách hàng cho Leafie
 
 Ngày rà soát: 09/10/2026. Cập nhật triển khai mã nguồn: 10/10/2026,
-`leafie-sales-v3`, sau góp ý của chủ ứng dụng. Chưa thử nghiệm mức độ hài lòng
+`leafie-sales-v3.1`, sau góp ý của chủ ứng dụng. Chưa thử nghiệm mức độ hài lòng
 với khách hàng thật. Các câu ví dụ dưới đây do người soạn đề xuất và chủ ứng
 dụng chỉnh, không phải trích lời khách hay đầu ra đã kiểm chứng của model.
 

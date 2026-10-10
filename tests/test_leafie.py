@@ -150,7 +150,7 @@ def test_new_order_http_path_reaches_sales_advice(client, monkeypatch, provider,
     response = client.post("/leafie/ask", json={"message": "Chị muốn đặt đơn hàng bánh sinh nhật"})
     assert response.status_code == 200
     assert reads == [True]
-    assert response.json()["prompt_version"] == "leafie-sales-v3"
+    assert response.json()["prompt_version"] == "leafie-sales-v3.1"
     assert response.json()["products"] == catalog["products"]
     assert provider.call_args.kwargs["messages"][-1]["content"] == "Chị muốn đặt đơn hàng bánh sinh nhật"
 
@@ -169,7 +169,7 @@ def test_history_sent_once_and_contacts_credentials_redacted(provider, catalog):
     for private in ["test@example.com", "0912345678", "sk-testcredential"]:
         assert private not in serialized
     assert response["products"] == catalog["products"]
-    assert response["prompt_version"] == "leafie-sales-v3"
+    assert response["prompt_version"] == "leafie-sales-v3.1"
 
 
 @pytest.mark.parametrize("history", [
