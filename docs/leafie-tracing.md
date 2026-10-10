@@ -17,7 +17,7 @@ export failures must not interrupt chat.
 Each request creates `leafie-sales` with child `leafie-public-catalog` (retriever)
 and `leafie-model-call` (generation). Policy refusals do not call the model.
 Generations capture the model, provider token usage, catalog snapshot, and the
-system prompt used for that call. The current prompt version is `leafie-sales-v2`. Latency is
+system prompt used for that call. The current prompt version is `leafie-sales-v3`. Latency is
 measured by the SDK. Cost requires a matching Langfuse model pricing definition;
 missing cost must not be presented as zero.
 
@@ -31,6 +31,11 @@ traces to the deployed prompt; this is not Langfuse-hosted prompt management.
 - `leafie-sales-v2` (2026-10-05): answer directly when history uniquely identifies
   a catalog product; retain clarification for ambiguous references. New purchases
   use product pages, `/cart`, and `/checkout`; `/orders` is existing-order history.
+- `leafie-sales-v3` (2026-10-10): adapt forms of address to explicit customer cues,
+  retain the gift recipient, ask cake type before missing flavor, recommend
+  directly when both are known, and apologize concretely for repeated questions.
+  New-purchase phrases reach sales advice; existing-order/payment/privacy signals
+  retain their policy guard. Product-data and JSON constraints remain in place.
 
 Keep evaluation evidence for each version separate; do not overwrite baselines.
 

@@ -64,7 +64,7 @@ test('mobile seasonal chat sends to the existing Leafie endpoint without overflo
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByRole('button', { name: 'Mở Leafie', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Leafie', exact: true })
-  await expect(dialog.getByText('Dạ, mình chọn bánh cho Halloween nhé?')).toBeVisible()
+  await expect(dialog.getByText('Hôm nay bạn đang tìm bánh gì?')).toBeVisible()
   await dialog.getByRole('button', { name: 'Bánh chocolate nào đang còn hàng?', exact: true }).click()
   await expect(dialog.getByText('Dạ, đây là câu trả lời từ endpoint Leafie kiểm thử.')).toBeVisible()
   expect(messages).toEqual(['Bánh chocolate nào đang còn hàng?'])

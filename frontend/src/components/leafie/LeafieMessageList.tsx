@@ -13,10 +13,10 @@ export default function LeafieMessageList({ messages, loading, onSuggestionSelec
   return <div className="space-y-4 py-5">
     {messages.length === 0 && !loading && <div className="halloween-leafie-welcome px-1 pt-8">
       <img src="/branding/liceria.png" alt="" className="mb-5 size-12 rounded-full" />
-      <h4 className="max-w-64 text-2xl leading-8 text-[#28362c]">Dạ, mình chọn bánh cho Halloween nhé?</h4>
-      <p className="mt-3 text-[13px] leading-6 text-[#778176]">Bạn thích chocolate hay một món nhẹ nhàng hơn?<br />Mình cùng tìm bánh trong menu hiện tại.</p>
+      <h4 className="max-w-64 text-2xl leading-8 text-[#28362c]">Hôm nay bạn đang tìm bánh gì?</h4>
+      <p className="mt-3 text-[13px] leading-6 text-[#778176]">Mình là Leafie, trợ lý AI của Leaf Creme.<br />Bạn cứ kể nhu cầu, mình sẽ giúp chọn bánh hoặc hộp quà.</p>
       <div className="mt-6 flex flex-col items-start gap-2">
-        {['Chọn bánh cho tiệc Halloween 4 người', 'Gợi ý bánh dưới 300.000đ', 'Bánh chocolate nào đang còn hàng?'].map(suggestion =>
+        {['Gợi ý bánh sinh nhật', 'Gợi ý bánh dưới 300.000đ', 'Bánh chocolate nào đang còn hàng?'].map(suggestion =>
           <button key={suggestion} type="button" onClick={() => onSuggestionSelect(suggestion)} className={chip}>{suggestion}</button>)}
       </div>
     </div>}

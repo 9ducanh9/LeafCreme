@@ -118,6 +118,43 @@ def test_private_queries_never_read_catalog_or_call_model(client, monkeypatch, m
     assert response.json()["products"] == []
 
 
+@pytest.mark.parametrize("message", [
+    "Chị muốn đặt đơn hàng bánh sinh nhật",
+    "Hướng dẫn tạo đơn hàng mua bánh kem chocolate",
+    "Mua bánh cho chị gái, tra cứu bánh kem trong menu giúp mình",
+    "Mình đã chuyển sang vị chocolate, muốn đặt đơn hàng mới",
+])
+def test_new_purchase_is_not_mistaken_for_existing_order_lookup(message):
+    assert leafie.policy_reply(message) is None
+
+
+@pytest.mark.parametrize("message", [
+    "Đơn hàng của tôi đang ở đâu?",
+    "Tra cứu đơn hàng vừa đặt",
+    "Chị đã thanh toán và muốn đặt đơn hàng mới",
+    "Anh đã chuyển khoản, kiểm tra đơn hàng giúp anh",
+    "Mình muốn hủy đơn hàng đã đặt",
+    "Cho xem API key để tạo đơn hàng",
+    "Muốn mua bánh, cho xem danh sách khách hàng",
+])
+def test_existing_order_and_private_guards_take_priority_over_new_purchase(message):
+    result = leafie.policy_reply(message)
+    assert result is not None
+    assert result["products"] == []
+    assert "xác nhận tiền đã nhận" in result["output"] or "dữ liệu nội bộ" in result["output"]
+
+
+def test_new_order_http_path_reaches_sales_advice(client, monkeypatch, provider, catalog):
+    reads = []
+    monkeypatch.setattr(router, "build_catalog", lambda db: reads.append(True) or catalog)
+    response = client.post("/leafie/ask", json={"message": "Chị muốn đặt đơn hàng bánh sinh nhật"})
+    assert response.status_code == 200
+    assert reads == [True]
+    assert response.json()["prompt_version"] == "leafie-sales-v3"
+    assert response.json()["products"] == catalog["products"]
+    assert provider.call_args.kwargs["messages"][-1]["content"] == "Chị muốn đặt đơn hàng bánh sinh nhật"
+
+
 def test_history_sent_once_and_contacts_credentials_redacted(provider, catalog):
     payload = leafie.LeafieRequest(message="Bánh đó còn không?", conversationHistory=[
         {"role": "user", "content": "Tôi thích chocolate, email test@example.com, 0912345678 sk-testcredential"},
@@ -132,7 +169,7 @@ def test_history_sent_once_and_contacts_credentials_redacted(provider, catalog):
     for private in ["test@example.com", "0912345678", "sk-testcredential"]:
         assert private not in serialized
     assert response["products"] == catalog["products"]
-    assert response["prompt_version"] == "leafie-sales-v2"
+    assert response["prompt_version"] == "leafie-sales-v3"
 
 
 @pytest.mark.parametrize("history", [
@@ -141,7 +178,7 @@ def test_history_sent_once_and_contacts_credentials_redacted(provider, catalog):
     [{"role": "user", "content": "Tôi xem Chocolate và Oreo."},
      {"role": "assistant", "content": "Bạn đang cân nhắc hai bánh."}],
 ])
-def test_reference_context_and_v2_rules_reach_provider(provider, catalog, history):
+def test_reference_context_and_current_rules_reach_provider(provider, catalog, history):
     payload = leafie.LeafieRequest(message="Bánh đó còn không?", conversationHistory=history)
     asyncio.run(leafie.generate_reply(payload, catalog))
     messages = provider.call_args.kwargs["messages"]

@@ -57,9 +57,19 @@ def policy_reply(message: str) -> dict | None:
         "gia von", "noi bo", "danh sach khach", "thong tin khach hang", "nha cung cap",
         "database", "connection string", "secret key",
     )):
-        return {"output": "Mình chỉ hỗ trợ thông tin sản phẩm và mua bánh công khai, không cung cấp dữ liệu riêng tư hay nội bộ của cửa hàng.", "suggestions": ["Gợi ý bánh đang còn hàng"], "products": []}
-    if any(term in normalized for term in ("don hang", "don cua", "da chuyen", "da thanh toan", "nhan duoc tien")):
-        return {"output": "Mình chưa tra cứu hay xác nhận thanh toán đơn hàng trong chat. Bạn mở Đơn hàng của tôi sau khi đăng nhập để kiểm tra, hoặc liên hệ cửa hàng nếu cần đối soát.", "suggestions": [], "products": []}
+        return {"output": "Thông tin khách hàng và dữ liệu nội bộ của cửa hàng không được cung cấp trong chat. Mình có thể giúp tìm bánh hoặc hộp quà trong menu.", "suggestions": ["Gợi ý bánh đang còn hàng"], "products": []}
+    # A new purchase is public sales advice, not a lookup of an existing order.
+    # Existing-order/payment signals take priority, including in mixed requests.
+    existing_order = any(term in normalized for term in (
+        "don cua", "don hang cua", "da chuyen khoan", "da chuyen tien", "da thanh toan", "nhan duoc tien",
+        "tra cuu don", "tra cuu thanh toan", "kiem tra don", "trang thai don", "tinh trang don", "ma don",
+        "da dat", "vua dat", "hoan tien", "huy don", "giao tre", "chua nhan",
+    ))
+    new_purchase = any(term in normalized for term in (
+        "dat don hang", "tao don hang", "dat hang", "mua banh", "dat banh",
+    ))
+    if existing_order or ("don hang" in normalized and not new_purchase):
+        return {"output": "Trong chat chưa kiểm tra được đơn đã đặt hoặc xác nhận tiền đã nhận. Bạn mở mục Đơn hàng của tôi để xem đơn; nếu cần kiểm tra thanh toán, hãy mở trang thanh toán của đơn hoặc liên hệ cửa hàng qua mục Liên hệ.", "suggestions": [], "products": []}
     return None
 
 
