@@ -233,7 +233,7 @@ the backend environment (local `.env` or Railway variables); never in `VITE_*`.
 No n8n instance or webhook URL is required. Existing `N8N_WEBHOOK_URL` and
 `VITE_LEAFIE_BACKEND_URL` values are unused.
 
-Leafie uses a separate, code-versioned `leafie-sales-v3.1` prompt. Changing it
+Leafie uses a separate, code-versioned `leafie-sales-v3.2` prompt. Changing it
 does not change the admin Operations Agent. The server reads a fresh public
 catalog for each question and selects cards by validated catalog IDs. It has
 no customer/order lookup or mutation tools. Guest history lasts for the browser

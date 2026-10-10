@@ -19,6 +19,7 @@ from app.services import leafie_observability as telemetry
 from app.services.errors import DomainError
 from app.services.gift_boxes import GiftBoxService
 from app.services.leafie_prompt import PROMPT_VERSION, SYSTEM_PROMPT
+from app.services.leafie_language import normalize_address, resolve_address
 from app.services.products import ProductService
 from app.services.products.availability import sellable_stock
 
@@ -112,7 +113,9 @@ async def generate_reply(payload: LeafieRequest, catalog: dict) -> dict:
     # Older clients included the current question in their history.
     if history and history[-1] == {"role": "user", "content": payload.message}:
         history.pop()
-    messages = [{"role": "system", "content": SYSTEM_PROMPT + "\nCATALOG_SERVER:\n" + json.dumps(catalog, ensure_ascii=False)}]
+    address = resolve_address(payload.message, history)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT + "\nCATALOG_SERVER:\n" + json.dumps(catalog, ensure_ascii=False)
+                 + "\nKẾT THÚC CATALOG_SERVER.\n" + address.instruction}]
     # JSON mode needs prior assistant turns in the same wire format, not UI text.
     for turn in history:
         content = clean_text(turn["content"])
@@ -129,7 +132,8 @@ async def generate_reply(payload: LeafieRequest, catalog: dict) -> dict:
         ) as client:
             model = os.getenv("LEAFIE_MODEL") or "deepseek-chat"
             with telemetry.observation("leafie-model-call", kind="generation", model=model,
-                                       input={"system_prompt": SYSTEM_PROMPT, "catalog": catalog},
+                                       input={"system_prompt": SYSTEM_PROMPT, "catalog": catalog,
+                                              "address_instruction": address.instruction},
                                        metadata={"prompt_version": PROMPT_VERSION,
                                                  "customer_text_capture": False}) as generation:
                 response = await client.chat.completions.create(
@@ -153,8 +157,9 @@ async def generate_reply(payload: LeafieRequest, catalog: dict) -> dict:
                 if item_id not in lookup:
                     raise ValueError("Unknown catalog reference")
                 selected.append(lookup[item_id])
+        names = [product["name"] for group in ("products", "gift_boxes") for product in catalog[group]]
         return {
-            "output": clean_text(reply.output), "products": selected[:3],
+            "output": clean_text(normalize_address(reply.output, address, names)), "products": selected[:3],
             "suggestions": [clean_text(s) for s in reply.suggestions if 0 < len(s.strip()) <= 100],
             "prompt_version": PROMPT_VERSION,
         }

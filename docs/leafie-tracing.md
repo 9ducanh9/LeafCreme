@@ -17,7 +17,8 @@ export failures must not interrupt chat.
 Each request creates `leafie-sales` with child `leafie-public-catalog` (retriever)
 and `leafie-model-call` (generation). Policy refusals do not call the model.
 Generations capture the model, provider token usage, catalog snapshot, and the
-system prompt used for that call. The current prompt version is `leafie-sales-v3.1`. Latency is
+system prompt and server-selected address instruction used for that call.
+The instruction contains only a fixed address pair, not names or customer text. The current prompt version is `leafie-sales-v3.2`. Latency is
 measured by the SDK. Cost requires a matching Langfuse model pricing definition;
 missing cost must not be presented as zero.
 
@@ -40,6 +41,12 @@ traces to the deployed prompt; this is not Langfuse-hosted prompt management.
 - `leafie-sales-v3.1` (2026-10-10): keep explicit em/anh/chị address pairs
   consistent; make suggestion chips customer messages that respect cake-type
   before flavor and do not repeat known preferences or budget.
+
+- `leafie-sales-v3.2` (2026-10-10): choose address pairs from explicit user
+  cues, retain them across visible history, and apply an address instruction
+  after the catalog. Normalize recognizable assistant subjects/customer address
+  in replies (including guarded replies), preserving quotations, catalog names,
+  prices and customer-authored suggestion chips. No second model call is needed.
 
 Keep evaluation evidence for each version separate; do not overwrite baselines.
 

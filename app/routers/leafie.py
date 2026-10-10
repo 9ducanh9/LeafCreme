@@ -12,6 +12,7 @@ from app.db import get_db
 from app.services.errors import DomainError
 from app.services.leafie import LeafieRequest, build_catalog, generate_reply, policy_reply
 from app.services.leafie_prompt import PROMPT_VERSION
+from app.services.leafie_language import normalize_address, resolve_address
 from app.services import leafie_observability as telemetry
 
 router = APIRouter(prefix="/leafie", tags=["leafie"])
@@ -45,6 +46,8 @@ async def _ask_leafie(payload, request, db, span):
     check_rate_limit(request.client.host if request.client else "unknown")
     guarded = policy_reply(payload.message)
     if guarded is not None:
+        address = resolve_address(payload.message, [turn.model_dump() for turn in payload.conversationHistory])
+        guarded["output"] = normalize_address(guarded["output"], address, [])
         telemetry.tracing.safe_update(span, metadata={"mode": "policy_guard"})
         return guarded
     if _slots.locked():

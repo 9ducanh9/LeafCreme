@@ -150,7 +150,7 @@ def test_new_order_http_path_reaches_sales_advice(client, monkeypatch, provider,
     response = client.post("/leafie/ask", json={"message": "Chị muốn đặt đơn hàng bánh sinh nhật"})
     assert response.status_code == 200
     assert reads == [True]
-    assert response.json()["prompt_version"] == "leafie-sales-v3.1"
+    assert response.json()["prompt_version"] == "leafie-sales-v3.2"
     assert response.json()["products"] == catalog["products"]
     assert provider.call_args.kwargs["messages"][-1]["content"] == "Chị muốn đặt đơn hàng bánh sinh nhật"
 
@@ -169,7 +169,7 @@ def test_history_sent_once_and_contacts_credentials_redacted(provider, catalog):
     for private in ["test@example.com", "0912345678", "sk-testcredential"]:
         assert private not in serialized
     assert response["products"] == catalog["products"]
-    assert response["prompt_version"] == "leafie-sales-v3.1"
+    assert response["prompt_version"] == "leafie-sales-v3.2"
 
 
 @pytest.mark.parametrize("history", [
@@ -208,6 +208,42 @@ def test_assistant_history_uses_json_mode_wire_format(provider, catalog):
     for private in ["test@example.com", "0912345678", "sk-testcredential"]:
         assert private not in request["messages"][2]["content"]
     assert request["messages"][-1] == {"role": "user", "content": payload.message}
+
+
+def test_model_address_drift_is_repaired_but_customer_chips_are_preserved(provider, catalog):
+    provider.return_value.choices[0].message.content = json.dumps({
+        "output": 'Chào chị, mình hỗ trợ chị chọn Chocolate. Chị nói “mình muốn dưới 300k”.',
+        "product_ids": [7], "gift_box_ids": [], "suggestions": ["Mình muốn xem mousse"],
+    })
+    payload = leafie.LeafieRequest(message="Chị muốn bánh chocolate")
+    response = asyncio.run(leafie.generate_reply(payload, catalog))
+    assert response["output"] == 'Chào chị, em hỗ trợ chị chọn Chocolate. Chị nói “mình muốn dưới 300k”.'
+    assert response["products"] == catalog["products"]
+    assert response["suggestions"] == ["Mình muốn xem mousse"]
+    assert "Khách đã tự xưng 'chị'" in provider.call_args.kwargs["messages"][0]["content"]
+    assert provider.call_count == 1
+
+
+def test_followup_remembers_address_from_user_history_not_bot_history(provider, catalog):
+    provider.return_value.choices[0].message.content = json.dumps({"output": "Mình có thể gợi ý Chocolate."})
+    payload = leafie.LeafieRequest(message="Vị chocolate", conversationHistory=[
+        {"role": "user", "content": "Anh muốn bánh kem"},
+        {"role": "assistant", "content": "Chị thích vị gì?"},
+    ])
+    response = asyncio.run(leafie.generate_reply(payload, catalog))
+    assert response["output"] == "Em có thể gợi ý Chocolate."
+    assert "Khách đã tự xưng 'anh'" in provider.call_args.kwargs["messages"][0]["content"]
+
+
+def test_policy_guard_keeps_address_and_never_calls_catalog_or_provider(client, monkeypatch):
+    def fail(*args):
+        pytest.fail("Private guard must not call catalog or provider")
+    monkeypatch.setattr(router, "build_catalog", fail)
+    monkeypatch.setattr(router, "generate_reply", fail)
+    response = client.post("/leafie/ask", json={"message": "Chị cần xem API key"})
+    assert response.status_code == 200
+    assert "Em có thể giúp" in response.json()["output"] or "em có thể giúp" in response.json()["output"]
+    assert "dữ liệu nội bộ" in response.json()["output"]
 
 
 @pytest.mark.parametrize("content,finish", [
