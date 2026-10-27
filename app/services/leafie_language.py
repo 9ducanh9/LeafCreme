@@ -73,6 +73,11 @@ def resolve_address(message: str, history: list[dict]) -> AddressStyle:
 
 
 def normalize_address(text: str, style: AddressStyle, product_names: list[str]) -> str:
+    """Repair pronouns in the response locally to avoid another LLM call.
+
+    A second inference would add latency and token cost to every reply; quoted
+    customer text and product names are protected before regex replacement.
+    """
     if not style.customer:
         return text
     names = [re.escape(name) for name in sorted(set(product_names), key=len, reverse=True) if name]
