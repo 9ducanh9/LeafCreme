@@ -80,7 +80,7 @@ jobs:
           VITE_API_BASE_URL: http://localhost:8000
 
   frontend-e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: frontend-quality
     defaults:
       run:

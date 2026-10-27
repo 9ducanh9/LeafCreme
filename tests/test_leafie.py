@@ -246,7 +246,36 @@ def test_policy_guard_keeps_address_and_never_calls_catalog_or_provider(client, 
     assert "dữ liệu nội bộ" in response.json()["output"]
 
 
+@pytest.mark.parametrize("group,id_field", [
+    ("products", "product_ids"), ("gift_boxes", "gift_box_ids"),
+])
+def test_model_can_enumerate_four_catalog_matches_but_only_three_cards_are_returned(provider, group, id_field):
+    items = [{"id": i, "name": f"Chocolate {i}"} for i in range(1, 5)]
+    catalog = {"products": [], "gift_boxes": []}
+    catalog[group] = items
+    provider.return_value.choices[0].message.content = json.dumps({
+        "output": "Có các lựa chọn chocolate trên thẻ.", id_field: [1, 2, 3, 4],
+    })
+    response = asyncio.run(leafie.generate_reply(leafie.LeafieRequest(message="Bánh chocolate nào còn hàng?"), catalog))
+    assert response["products"] == items[:3]
+    assert provider.call_count == 1
+
+
+def test_card_limit_deduplicates_and_applies_across_products_and_gifts(provider):
+    catalog = {"products": [{"id": 7, "name": "Cake"}],
+               "gift_boxes": [{"id": i, "name": f"Gift {i}"} for i in range(1, 4)]}
+    provider.return_value.choices[0].message.content = json.dumps({
+        "output": "Các lựa chọn trên thẻ.", "product_ids": [7, 7], "gift_box_ids": [1, 2, 3],
+    })
+    response = asyncio.run(leafie.generate_reply(leafie.LeafieRequest(message="Tư vấn bánh"), catalog))
+    assert response["products"] == catalog["products"] + catalog["gift_boxes"][:2]
+
+
 @pytest.mark.parametrize("content,finish", [
+    ('{"output":"ok","product_ids":[7,7,7,999]}', "stop"),
+    ('{"output":"ok","gift_box_ids":[1,2,3,999]}', "stop"),
+    (json.dumps({"output": "ok", "product_ids": [7] * 101}), "stop"),
+    (json.dumps({"output": "ok", "gift_box_ids": [1] * 31}), "stop"),
     ('{"output":"Invented cake","product_ids":[999]}', "stop"),
     ("not json", "stop"), ('{"output":" "}', "stop"),
     ('{"output":"ok","secret":"x"}', "stop"), ('{"output":"ok"}', "length"),

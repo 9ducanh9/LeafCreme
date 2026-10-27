@@ -42,8 +42,11 @@ class LeafieRequest(BaseModel):
 class ModelReply(BaseModel):
     model_config = ConfigDict(extra="forbid")
     output: str = Field(min_length=1, max_length=1800)
-    product_ids: list[int] = Field(default_factory=list, max_length=3)
-    gift_box_ids: list[int] = Field(default_factory=list, max_length=3)
+    # The model can enumerate more matches than the three displayed cards.
+    # Bound input to the server catalog limits, validate every reference below,
+    # then apply the display limit after validation and deduplication.
+    product_ids: list[int] = Field(default_factory=list, max_length=100)
+    gift_box_ids: list[int] = Field(default_factory=list, max_length=30)
     suggestions: list[str] = Field(default_factory=list, max_length=3)
 
 
