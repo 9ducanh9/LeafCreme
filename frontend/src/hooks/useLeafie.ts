@@ -16,6 +16,7 @@ export interface UseLeafieReturn {
 }
 
 function storageFor(userId: number | null) {
+  // Guest chat ends with this tab session; signed-in chat survives a browser restart.
   return { storage: userId ? localStorage : sessionStorage, key: userId ? `leafie_sales_v1_user_${userId}` : 'leafie_sales_v1_guest' }
 }
 

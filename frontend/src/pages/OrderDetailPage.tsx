@@ -11,6 +11,7 @@ import { getOrder } from '../services/orderService'
 import type { OrderResponse } from '../services/orderService'
 import { createSePayPayment, getOrderPayments, type PaymentStatus } from '../services/paymentService'
 import { formatPrice } from '../utils/formatPrice'
+import { formatDateTime } from '../utils/date'
 
 const statuses: Record<string, { label: string; variant: BadgeVariant }> = {
   cho: { label: 'Chờ xử lý', variant: 'warning' },
@@ -21,7 +22,7 @@ const statuses: Record<string, { label: string; variant: BadgeVariant }> = {
   da_huy: { label: 'Đã hủy', variant: 'neutral' },
 }
 const types: Record<string, string> = { pos: 'Tại quầy', online: 'Trực tuyến', dat_truoc: 'Đặt trước', dattruoc: 'Đặt trước' }
-const date = (value: string) => new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+const date = formatDateTime
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()

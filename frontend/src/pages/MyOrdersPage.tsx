@@ -11,10 +11,11 @@ import Alert from '../components/ui/Alert'
 import { listOrders } from '../services/orderService'
 import type { OrderListItem } from '../services/orderService'
 import { formatPrice } from '../utils/formatPrice'
+import { formatDateTime } from '../utils/date'
 
 const statuses: Record<string, { label: string; variant: BadgeVariant }> = { cho: { label: 'Chờ xử lý', variant: 'warning' }, dang_xu_ly: { label: 'Đang xử lý', variant: 'info' }, thanh_toan: { label: 'Đã thanh toán', variant: 'success' }, da_nhan: { label: 'Đã nhận', variant: 'success' }, huy: { label: 'Đã hủy', variant: 'neutral' } }
 const types: Record<string, string> = { pos: 'Tại quầy', online: 'Trực tuyến', dattruoc: 'Đặt trước' }
-const date = (value: string) => new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+const date = formatDateTime
 
 export default function MyOrdersPage() {
   const navigate = useNavigate()
