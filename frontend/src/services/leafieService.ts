@@ -25,7 +25,7 @@ export async function askLeafie(
     })
     if (!res.ok) {
       if (res.status === 429) throw new Error('Leafie đang bận. Bạn chờ một phút rồi thử lại nhé.')
-      if (res.status === 503) throw new Error('Leafie chưa sẵn sàng. Bạn thử lại sau hoặc liên hệ cửa hàng nhé.')
+      if (res.status === 503) throw new Error('Leafie chưa sẵn sàng. Bạn thử lại sau hoặc nhắn cho tiệm nhé.')
       throw new Error('Chưa nhận được câu trả lời. Bạn thử gửi lại nhé.')
     }
     const data = await res.json()
