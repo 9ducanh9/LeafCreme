@@ -317,6 +317,9 @@ class OrderService:
                     if not bienthe:
                         raise DomainError(status_code=404, detail=f"Biến thể {item.bienthe_id} không tồn tại")
 
+                    # FEFO consumes the earliest-expiring lohang_sanpham first.
+                    # Fresh cakes have a short shelf life, so this avoids leaving
+                    # older safe stock behind while newer batches are shipped.
                     allocations = self.inventory_service.allocate_variant(
                         db,
                         item.bienthe_id,
