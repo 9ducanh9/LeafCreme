@@ -11,8 +11,7 @@ export default function PolicyPage() {
           Những điều cần biết
         </h1>
         <p className="text-text-secondary text-base md:text-lg leading-relaxed">
-          Chúng mình muốn mọi thứ rõ ràng từ đầu, để bạn yên tâm khi đặt bánh. 
-          Đây là cách chúng mình làm việc.
+          Chúng mình luôn mong mọi điều thật rõ ràng và an tâm ngay từ đầu, để mỗi lần chọn bánh cùng Leaf Creme đều là một niềm vui trọn vẹn.
         </p>
       </div>
 
@@ -22,19 +21,17 @@ export default function PolicyPage() {
         {/* Order & Confirmation */}
         <Card>
           <h2 className="font-heading text-xl font-medium text-text-primary mb-4">
-            Đặt hàng & xác nhận
+            Đặt bánh & xác nhận
           </h2>
           <div className="space-y-3 text-text-secondary leading-relaxed">
             <p>
-              Sau khi bạn đặt bánh, chúng mình sẽ gọi điện hoặc nhắn tin để xác nhận lại 
-              thông tin—ngày nhận, giờ giao, và những chi tiết nhỏ khác.
+              Sau khi bạn đặt bánh, chúng mình sẽ nhắn tin hoặc gọi điện để xác nhận lại thông tin — từ ngày nhận, giờ giao, cho đến những lời nhắn nhỏ xinh bạn muốn gửi gắm.
             </p>
             <p>
-              Nếu có gì chưa rõ hoặc cần thay đổi, đó là lúc chúng ta nói chuyện. 
-              Bạn không phải lo là mình nhầm gì đâu.
+              Nếu có bất kỳ điều gì cần dặn dò thêm hay thay đổi khẩu vị, bạn cứ thoải mái nói với tiệm nhé. Chúng mình sẽ chuẩn bị thật chu đáo.
             </p>
             <p className="text-sm text-text-secondary">
-              Thường thì chúng tôi sẽ liên hệ ngay sau khi bạn đặt bánh, trừ khi bạn đặt vào đêm khuya.
+              Tiệm sẽ chủ động liên hệ với bạn ngay sau khi nhận đơn, trừ khi bạn đặt bánh vào đêm khuya (chúng mình sẽ nhắn lại vào sáng hôm sau nhé).
             </p>
           </div>
         </Card>
@@ -46,18 +43,16 @@ export default function PolicyPage() {
           </h2>
           <div className="space-y-3 text-text-secondary leading-relaxed">
             <p>
-              Nếu có gì đó đổi kế hoạch, cứ báo chúng mình sớm nhất có thể. 
-              Chúng mình hiểu mà, cuộc sống không phải lúc nào cũng đi đúng kế hoạch.
+              Nếu lịch trình của bạn có chút thay đổi, hãy nhắn cho chúng mình sớm nhất có thể nhé. Cuộc sống luôn có những bất ngờ, và tiệm luôn sẵn lòng đồng hành cùng bạn.
             </p>
             <p>
-              Với bánh thường, nếu bạn báo trước ít nhất 2 giờ, chúng mình có thể hủy hoặc đổi không mất phí.
+              Với bánh thường, chỉ cần bạn báo trước giờ giao ít nhất 2 tiếng, chúng mình có thể đổi hoặc hủy đơn hoàn toàn miễn phí.
             </p>
             <p>
-              Với bánh custom hoặc hộp quà đặc biệt, vì chúng mình đã chuẩn bị nguyên liệu riêng, 
-              nên việc hủy có thể khó hơn một chút. 
+              Với bánh thiết kế riêng (custom) hoặc hộp quà đặc biệt, do tiệm đã chuẩn bị nguyên liệu riêng cho bạn, việc hủy đơn có thể cần linh hoạt một chút tùy theo giai đoạn làm bánh.
             </p>
             <p className="text-sm text-text-secondary">
-              Nếu chỉ đổi giờ giao hay địa chỉ, thì không sao cả—miễn bạn báo trước giờ giao bánh ít nhất 2 tiếng là được.
+              Nếu chỉ cần đổi giờ giao hoặc địa chỉ nhận bánh, bạn chỉ cần báo tiệm trước giờ giao 2 tiếng là được nha.
             </p>
           </div>
         </Card>
@@ -65,22 +60,20 @@ export default function PolicyPage() {
         {/* Delivery */}
         <Card>
           <h2 className="font-heading text-xl font-medium text-text-primary mb-4">
-            Giao hàng
+            Giao bánh tận nơi
           </h2>
           <div className="space-y-3 text-text-secondary leading-relaxed">
             <p>
-              Chúng mình giao trong nội thành Sài Gòn. 
-              Nếu bạn ở xa hơn, hãy hỏi, có khi vẫn giao được, chỉ là cần thêm chút thời gian.
+              Chúng mình nhận giao trong khu vực nội thành Sài Gòn. Nếu bạn ở xa hơn một chút, cứ nhắn tiệm kiểm tra nhé — chúng mình sẽ cố gắng sắp xếp để bánh đến được với bạn.
             </p>
             <p>
-              Bánh được đóng gói cẩn thận, chúng mình cố gắng để nó đến tay bạn còn nguyên vẹn và đẹp. 
-              Nếu có gì không ổn khi nhận hàng, chụp ảnh và báo ngay cho chúng mình nhé.
+              Mỗi chiếc bánh đều được nâng niu và đóng gói cẩn thận để giữ trọn vẹn vẻ đẹp khi đến tay bạn. Nếu có bất kỳ điều gì sơ suất trên đường đi, bạn chụp ảnh gửi ngay cho chúng mình để tiệm hỗ trợ bạn liền nhé.
             </p>
             <p>
-              Phí giao hàng tùy khoảng cách. Chúng mình sẽ báo rõ trước khi bạn xác nhận đơn.
+              Phí giao hàng được tính theo khoảng cách thực tế và sẽ được thông báo rõ ràng trước khi bạn xác nhận đơn.
             </p>
             <p className="text-sm text-text-secondary">
-              Nếu không có ai nhận ở nhà, tài xế sẽ gọi điện. Nên nhớ để máy gần nhé.
+              Khi giao bánh đến nơi, bác tài xế sẽ gọi điện trước, nên bạn để ý điện thoại một chút giúp tiệm nha.
             </p>
           </div>
         </Card>
@@ -92,19 +85,16 @@ export default function PolicyPage() {
           </h2>
           <div className="space-y-3 text-text-secondary leading-relaxed">
             <p>
-                Chúng mình làm bánh từng chiếc, không làm sẵn hàng loạt. 
-                Nên đôi khi màu sắc hay hình dáng có thể hơi khác một chút so với ảnh — nhưng vị vẫn như nhau.
+              Tiệm làm từng chiếc bánh thủ công theo mẻ nhỏ trong ngày, không làm sẵn hàng loạt. Vì vậy, đôi lúc màu sắc hay chi tiết trang trí có thể có chút khác biệt nhỏ so với ảnh chụp — nhưng hương vị và sự thơm ngon thì luôn được đảm bảo tuyệt đối.
             </p>
             <p>
-              Bánh tươi nên để tủ lạnh và dùng trong 2–3 ngày. 
-              Một số loại bánh kem sẽ có hướng dẫn bảo quản riêng, chúng mình sẽ ghi kèm.
+              Bánh tươi ngon nhất khi được bảo quản lạnh và dùng trong 2–3 ngày. Một số mẫu bánh kem đặc biệt sẽ có thẻ hướng dẫn bảo quản riêng đi kèm hộp bánh.
             </p>
             <p>
-              Nếu bánh có vấn đề gì (vị lạ, hỏng, không đúng như đã đặt), 
-              hãy chụp ảnh và liên hệ ngay. Chúng mình sẽ làm lại hoặc hoàn tiền cho bạn.
+              Nếu bánh có bất kỳ vấn đề gì khiến bạn chưa ưng ý (vị lạ, biến dạng, không đúng yêu cầu), hãy chụp ảnh và liên hệ ngay với tiệm nhé. Chúng mình sẽ làm lại chiếc mới hoặc hoàn tiền ngay cho bạn.
             </p>
             <p className="text-sm text-text-secondary">
-              Chúng mình không dùng chất bảo quản, nên bánh không để lâu được nhưng đảm bảo luôn tươi mới.
+              Leaf Creme hoàn toàn không sử dụng chất bảo quản, để mỗi miếng bánh bạn thưởng thức đều là nguyên liệu tươi lành và thuần khiết nhất.
             </p>
           </div>
         </Card>
@@ -116,20 +106,16 @@ export default function PolicyPage() {
           </h2>
           <div className="space-y-3 text-text-secondary leading-relaxed">
             <p>
-              Khi bạn đặt bánh, chúng mình luôn lưu tên, số điện thoại, địa chỉ giao hàng của bạn—
-              để giao bánh và liên hệ khi cần.
+              Khi bạn đặt bánh, chúng mình chỉ lưu lại họ tên, số điện thoại và địa chỉ giao hàng để tiện liên hệ và giao bánh đến đúng người nhận.
             </p>
             <p>
-              Chúng mình không bán thông tin của bạn cho ai. 
-              Chúng mình cũng không gửi quảng cáo lung tung. 
-              Nếu có tin nhắn gì, đó là về đơn hàng hoặc menu mới (và bạn có thể từ chối nhận).
+              Chúng mình tuyệt đối không chia sẻ thông tin của bạn cho bên thứ ba vì mục đích quảng cáo, và cũng không gửi tin nhắn làm phiền. Tiệm chỉ liên hệ khi có việc liên quan đến đơn hàng hoặc khi có menu mới mà bạn đồng ý nhận.
             </p>
             <p>
-              Nếu bạn muốn xóa tài khoản hoặc xóa thông tin, cứ nói. Chúng tôi sẽ xóa.
+              Bất cứ khi nào bạn muốn xem lại, chỉnh sửa hoặc xóa thông tin tài khoản, cứ nhắn với tiệm nhé, chúng mình sẽ hỗ trợ xóa ngay lập tức.
             </p>
             <p className="text-sm text-text-secondary">
-              Chúng mình giữ thông tin đơn hàng để phục vụ bạn tốt hơn lần sau—
-              ví dụ nhớ địa chỉ, hay bánh bạn thích.
+              Chúng mình lưu giữ lịch sử đơn hàng đơn giản là để phục vụ bạn chu đáo hơn ở những lần ghé tiệm sau — như nhớ khẩu vị yêu thích hay địa chỉ quen thuộc của bạn.
             </p>
           </div>
         </Card>
@@ -137,9 +123,9 @@ export default function PolicyPage() {
         {/* Closing Note */}
         <div className="text-center pt-8 pb-4">
           <p className="text-text-secondary text-sm leading-relaxed">
-            Nếu có gì chưa rõ hoặc bạn gặp trường hợp đặc biệt, 
+            Nếu có bất kỳ điều gì chưa rõ hoặc bạn có yêu cầu riêng cho dịp đặc biệt,
             <br />
-            cứ liên hệ trực tiếp. Chúng mình sẽ nói chuyện cụ thể hơn.
+            cứ nhắn trực tiếp cho chúng mình nhé. Tiệm luôn ở đây để lắng nghe bạn.
           </p>
           <p className="text-text-secondary text-xs mt-4">
             Cập nhật lần cuối: 25/12/2025
@@ -150,4 +136,3 @@ export default function PolicyPage() {
     </Container></div>
   )
 }
-
