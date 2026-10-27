@@ -110,11 +110,11 @@ test('lost live checkout response reloads and replays the same committed order',
     }
   })
   await page.getByRole('button', { name: 'Đặt hàng', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Tiếp tục checkout' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Tiếp tục đặt hàng' })).toBeEnabled()
   await page.reload()
   const replay = page.waitForResponse(response =>
     response.url() === 'http://127.0.0.1:58081/orders/checkout' && response.request().method() === 'POST')
-  await page.getByRole('button', { name: 'Tiếp tục checkout' }).click()
+  await page.getByRole('button', { name: 'Tiếp tục đặt hàng' }).click()
   const response = await replay
   expect(response.status()).toBe(201)
   expect((await response.json()).order.donhang_id).toBe(committedOrderId)
