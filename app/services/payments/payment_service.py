@@ -7,28 +7,52 @@ confirmation updates money state only; order fulfillment advances separately
 after handover.
 """
 
-import re
 from decimal import Decimal
 from typing import Any, Optional
 
-from sqlalchemy import desc, func, text
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session, object_session
 
-from app.core.config import settings
 from app.core.dependencies import BACK_OFFICE_ROLES, MANAGEMENT_ROLES, role_name
 from app.core.time import utc_now
 from app.models import DonHang, NguoiDung, ThanhToan, SePayTransaction
 from app.schemas import validate_thong_tin_giao_dich
 from app.services.errors import DomainError
+from app.services.payments.base import PaymentProvider
+from app.services.payments.providers.sepay_provider import SePayProvider
 from app.services.orders import OrderService, can_access_order
-from app.services.sepay import build_sepay_qr_url
-
-_PAYMENT_ACCEPTING_ORDER_STATUSES = ("cho", "cho_coc", "dang_xu_ly", "dang_giao")
 
 
 class PaymentService:
     def __init__(self):
         self.order_service = OrderService()
+        self._providers: dict[str, PaymentProvider] = {}
+        self.register_provider("sepay_qr", SePayProvider(self))
+
+    def register_provider(self, payment_method: str, provider: PaymentProvider) -> None:
+        """Register a gateway without changing checkout or manual payment logic."""
+        self._providers[payment_method] = provider
+
+    def provider_for(self, payment_method: str) -> PaymentProvider:
+        try:
+            return self._providers[payment_method]
+        except KeyError as exc:
+            raise DomainError(400, "Phương thức thanh toán không được hỗ trợ.") from exc
+
+    def create_gateway_payment(
+        self, db: Session, payment_method: str, order: DonHang, user: NguoiDung, **kwargs
+    ) -> dict:
+        """Dispatch a gateway payment by method; new providers need registration only."""
+        return self.provider_for(payment_method).create_payment(db, order, user, **kwargs)
+
+    def verify_gateway_webhook(self, db: Session, payment_method: str, payload: dict) -> dict:
+        return self.provider_for(payment_method).verify_webhook(db, payload)
+
+    def get_gateway_payment_info(self, payment_method: str, payment: ThanhToan) -> dict:
+        return self.provider_for(payment_method).get_payment_info(payment)
+
+    def check_gateway_configuration(self, payment_method: str) -> None:
+        self.provider_for(payment_method).check_configuration()
 
     # ------------------------------------------------------------------
     # Shared helpers (previously duplicated inline across the router)
@@ -338,171 +362,24 @@ class PaymentService:
         db.refresh(payment)
         return self._to_response(payment, order)
 
-    # ------------------------------------------------------------------
-    # SePay/VietQR payments
-    # ------------------------------------------------------------------
+    # Existing router and checkout entry points remain stable while gateway
+    # behavior is dispatched through the registered provider.
     def _sepay_payment_info(self, payment: ThanhToan) -> dict:
-        payment_code = f"LC{payment.thanhtoan_id}"
-        amount = int(payment.so_tien or Decimal("0"))
-        return {
-            "payment_id": payment.thanhtoan_id,
-            "method": "sepay",
-            "bank_account": settings.SEPAY_BANK_ACCOUNT,
-            "bank_code": settings.SEPAY_BANK_CODE,
-            "account_name": settings.SEPAY_ACCOUNT_NAME,
-            "amount": amount,
-            "transfer_content": payment_code,
-            "qr_image": build_sepay_qr_url(
-                bank_account=settings.SEPAY_BANK_ACCOUNT,
-                bank_code=settings.SEPAY_BANK_CODE,
-                amount=amount,
-                payment_code=payment_code,
-                account_name=settings.SEPAY_ACCOUNT_NAME,
-                base_url=settings.SEPAY_QR_BASE_URL,
-            ),
-        }
+        return self.get_gateway_payment_info("sepay_qr", payment)
 
-    @staticmethod
-    def ensure_sepay_configured() -> None:
-        if not all((settings.SEPAY_BANK_ACCOUNT, settings.SEPAY_BANK_CODE, settings.SEPAY_WEBHOOK_API_KEY)):
-            raise DomainError(503, "Chuyển khoản SePay chưa được cấu hình đầy đủ.")
+    @classmethod
+    def ensure_sepay_configured(cls) -> None:
+        # Preserve both PaymentService.ensure_sepay_configured() and instance calls.
+        cls().check_gateway_configuration("sepay_qr")
 
     def create_sepay_payment(self, db: Session, payload: Any, current_user: NguoiDung, *, commit: bool = True) -> dict:
-        self.ensure_sepay_configured()
+        provider = self.provider_for("sepay_qr")
+        provider.check_configuration()
         order = self._get_order_or_404(db, payload.donhang_id, lock=True)
-        self._ensure_order_access(order, current_user, "Bạn chỉ có thể thanh toán đơn hàng của mình")
-        if order.trang_thai not in _PAYMENT_ACCEPTING_ORDER_STATUSES:
-            raise DomainError(400, "Đơn hàng không còn nhận thanh toán QR.")
-
-        total_paid = self._total_paid(db, order.donhang_id)
-        remaining = (order.tien_thanh_toan or Decimal("0")) - total_paid
-        if remaining <= 0:
-            raise DomainError(400, "Đơn hàng đã được thanh toán đủ")
-        if remaining != remaining.to_integral_value():
-            raise DomainError(400, "Số tiền VietQR phải là số nguyên VNĐ.")
-
-        existing = (
-            db.query(ThanhToan)
-            .filter(
-                ThanhToan.donhang_id == order.donhang_id,
-                ThanhToan.phuong_thuc == "chuyen_khoan",
-                ThanhToan.trang_thai == "dang_xu_ly",
-            )
-            .order_by(desc(ThanhToan.ngay_tao))
-            .first()
-        )
-        if existing:
-            raw = (existing.thong_tin_giao_dich or {}).get("chi_tiet_raw") or {}
-            if raw.get("provider") == "sepay" and existing.so_tien == remaining:
-                return self._sepay_payment_info(existing)
-            if raw.get("provider") == "sepay":
-                existing.trang_thai = "that_bai"
-
-        payment = ThanhToan(
-            donhang_id=order.donhang_id,
-            phuong_thuc="chuyen_khoan",
-            so_tien=remaining,
-            trang_thai="dang_xu_ly",
-        )
-        db.add(payment)
-        db.flush()
-
-        payment_code = f"LC{payment.thanhtoan_id}"
-        payment.thong_tin_giao_dich = validate_thong_tin_giao_dich(
-            {
-                "ma_giao_dich_ben_thu_3": None,
-                "thoi_gian_giao_dich": None,
-                "chi_tiet_raw": {
-                    "provider": "sepay",
-                    "payment_code": payment_code,
-                    "bank_code": settings.SEPAY_BANK_CODE,
-                },
-            }
-        )
-        db.flush()
-        if commit:
-            db.commit()
-            db.refresh(payment)
-        return self._sepay_payment_info(payment)
+        return self.create_gateway_payment(db, "sepay_qr", order, current_user, commit=commit)
 
     def handle_sepay_webhook(self, db: Session, body: dict) -> dict:
-        """Persist each receipt once; cancelled orders require manual reconciliation."""
-        transaction_id = body.get("id")
-        if transaction_id is None:
-            raise DomainError(400, "Missing transaction id")
-        gateway_transaction = f"SEPAY-{transaction_id}"
-        # Serialize deliveries of the same transaction before acquiring order locks.
-        db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"), {"key": gateway_transaction})
-        if db.get(SePayTransaction, gateway_transaction) or db.query(ThanhToan).filter(ThanhToan.ma_giao_dich == gateway_transaction).first():
-            return {"success": True, "message": "Transaction already processed"}
-        if str(body.get("transferType", "")).lower() != "in":
-            return {"success": True, "message": "Outgoing transaction ignored"}
-        if str(body.get("accountNumber") or "").strip() != settings.SEPAY_BANK_ACCOUNT:
-            return {"success": True, "message": "Receiving account mismatch"}
-        try:
-            received_amount = Decimal(str(body.get("transferAmount")))
-            if not received_amount.is_finite() or received_amount <= 0:
-                raise ValueError("Invalid amount")
-        except Exception:
-            raise DomainError(400, "Invalid transfer amount")
-
-        searchable = f"{body.get('code') or ''} {body.get('content') or ''}".upper()
-        code_match = re.search(r"(?<![A-Z0-9])LC([0-9]+)(?![A-Z0-9])", searchable)
-        payment = db.get(ThanhToan, int(code_match.group(1))) if code_match else None
-        order = None
-        if payment:
-            # Always lock the order before its payment, like cancellation/sweeping.
-            order = self._get_order_or_404(db, payment.donhang_id, lock=True)
-            db.refresh(payment, with_for_update=True)
-        raw = ((payment.thong_tin_giao_dich or {}).get("chi_tiet_raw") or {}) if payment else {}
-        valid_provider = payment and (
-            (raw.get("provider") == "sepay" and raw.get("payment_code") == f"LC{payment.thanhtoan_id}")
-            or (payment.phuong_thuc == "chuyen_khoan" and str(payment.ma_giao_dich or "").startswith("SEPAY-"))
-        )
-        if not payment:
-            reason = "Payment not found" if code_match else "No Leaf Creme payment code"
-            receipt_status = "unmatched"
-        elif not valid_provider:
-            reason, receipt_status = "Payment provider mismatch", "unmatched"
-        elif order.trang_thai == "da_huy":
-            reason, receipt_status = "Cancelled order requires refund", "refund_required"
-        elif payment.trang_thai == "thanh_cong":
-            reason, receipt_status = "Additional transfer requires refund", "refund_required"
-        elif received_amount != payment.so_tien:
-            reason, receipt_status = "Transfer amount mismatch", "refund_required"
-        elif payment.trang_thai != "dang_xu_ly" or order.trang_thai not in _PAYMENT_ACCEPTING_ORDER_STATUSES:
-            reason, receipt_status = "Inactive payment requires refund", "refund_required"
-        elif received_amount > max(
-            (order.tien_thanh_toan or Decimal("0")) - self._total_paid(db, order.donhang_id),
-            Decimal("0"),
-        ):
-            reason, receipt_status = "Transfer exceeds remaining order balance", "refund_required"
-        else:
-            reason, receipt_status = "Payment confirmed", "confirmed"
-            payment.trang_thai = "thanh_cong"
-            payment.ma_giao_dich = gateway_transaction
-            payment.ngay_thanh_toan = utc_now()
-            payment.thong_tin_giao_dich = validate_thong_tin_giao_dich({
-                "ma_giao_dich_ben_thu_3": gateway_transaction,
-                "thoi_gian_giao_dich": str(body.get("transactionDate") or ""),
-                "chi_tiet_raw": {**raw, "webhook": body},
-            })
-            db.flush()
-            if order.loai_don == "dat_truoc" and order.trang_thai == "cho":
-                if self._total_paid(db, order.donhang_id) >= (order.tien_thanh_toan or Decimal("0")):
-                    order.trang_thai = "dang_xu_ly"
-        receipt = SePayTransaction(
-            transaction_id=gateway_transaction,
-            thanhtoan_id=payment.thanhtoan_id if payment else None,
-            donhang_id=order.donhang_id if order else None,
-            so_tien=received_amount, payload=body, status=receipt_status, reason=reason,
-        )
-        db.add(receipt)
-        db.commit()
-        if receipt_status != "confirmed":
-            import logging
-            logging.getLogger(__name__).warning("SePay reconciliation transaction=%s status=%s reason=%s", gateway_transaction, receipt_status, reason)
-        return {"success": True, "message": reason, "payment_id": payment.thanhtoan_id if payment else None}
+        return self.verify_gateway_webhook(db, "sepay_qr", body)
 
     def list_reconciliation(self, db: Session, current_user: NguoiDung, skip: int, limit: int, status: Optional[str]) -> dict:
         if self._role(current_user) not in MANAGEMENT_ROLES:
