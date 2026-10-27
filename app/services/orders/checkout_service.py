@@ -59,9 +59,12 @@ class CheckoutService:
         else:
             payment_method = payload.payment_method
         request_body = {**payload.model_dump(mode="json"), "order_type": order_type, "payment_method": payment_method}
+        # A stable SHA-256 fingerprint lets a retry reuse its order while rejecting
+        # the same idempotency key with different items, address, or payment method.
         fingerprint = hashlib.sha256(json.dumps(request_body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
         try:
-            # This also serializes concurrent requests before a checkout row exists.
+            # Lock the customer before looking for CheckoutRequest. Two rapid clicks
+            # otherwise both see no row and can create two separate orders.
             db.query(NguoiDung).filter_by(nguoidung_id=current_user.nguoidung_id).with_for_update().one()
             previous = db.query(CheckoutRequest).filter_by(nguoidung_id=current_user.nguoidung_id, idempotency_key=key).first()
             if previous:
