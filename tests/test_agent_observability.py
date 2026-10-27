@@ -22,6 +22,9 @@ class _Observation:
 def test_flush_does_not_block_caller_and_coalesces_while_exporter_waits(monkeypatch):
     started, release, finished, returned = Event(), Event(), Event(), Event()
     calls = []
+    # Earlier agent tests may still own the module-level export lock; this
+    # scenario must exercise its own worker and coalescing window.
+    monkeypatch.setattr(observability, "_flush_lock", Lock())
 
     class Client:
         def flush(self):
