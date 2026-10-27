@@ -34,17 +34,17 @@ export default function OrderSuccessPage() {
   if (error || !order) return <Section tone="canvas"><Container className="max-w-3xl"><Alert variant="danger" title="Không tải được đơn hàng">{error || 'Đơn hàng không tồn tại.'}</Alert><Button href="/" className="mt-6">Về trang chủ</Button></Container></Section>
 
   const paymentMessage = paymentStatus === 'success'
-    ? 'SePay đã xác nhận thanh toán. Đơn chỉ chuyển sang hoàn thành sau khi hàng được bàn giao và khách nhận.'
+    ? 'Tiệm đã nhận được thanh toán của bạn! Bếp sẽ chuẩn bị bánh thật chu đáo và giao đến bạn đúng hẹn nhé.'
     : paymentStatus === 'failed'
-      ? 'Thanh toán thất bại hoặc bị hủy.'
+      ? 'Giao dịch thanh toán chưa thành công hoặc đã bị hủy. Bạn có thể thử lại hoặc chọn thanh toán khi nhận bánh nhé.'
       : paymentStatus === 'checking' || paymentStatus === 'pending'
-        ? 'Đang chờ SePay xác nhận thanh toán.'
+        ? 'Tiệm đang kiểm tra giao dịch chuyển khoản. Bạn chờ một chút xíu nhé, thông tin sẽ được cập nhật ngay.'
         : paymentStatus === 'unpaid'
-          ? 'Đơn đã tạo và sẽ được thanh toán khi nhận hàng. Đơn chỉ hoàn thành sau khi đã thu đủ tiền và bàn giao.'
+          ? 'Đơn hàng đã được ghi nhận. Bạn có thể thanh toán trực tiếp cho nhân viên giao hàng khi nhận bánh nhé.'
           : paymentStatus === 'paid'
-            ? 'Đơn đã thanh toán đủ. Đơn chỉ hoàn thành sau khi hàng được bàn giao và khách nhận.'
+            ? 'Đơn hàng đã được thanh toán đầy đủ. Tiệm sẽ hoàn tất và giao những chiếc bánh ngọt ngào đến bạn sớm nhất nhé.'
             : Number(order?.tien_thanh_toan || 0) === 0
-              ? 'Đơn không phát sinh tiền thanh toán; trạng thái chỉ hoàn thành sau khi bàn giao.'
+              ? 'Đơn hàng đã được xác nhận thành công. Tiệm sẽ chuẩn bị và giao bánh đến bạn đúng lịch hẹn nhé.'
               : null
 
   return (
@@ -63,7 +63,7 @@ export default function OrderSuccessPage() {
           <dl className="space-y-3 border-t border-border-subtle pt-5 text-sm"><div className="flex justify-between gap-4"><dt className="text-fg-muted">Tạm tính</dt><dd className="font-medium text-fg">{formatPrice(Number(order.tong_tien))}</dd></div>{order.tien_giam_gia > 0 && <div className="flex justify-between gap-4"><dt className="text-fg-muted">Giảm giá</dt><dd className="font-medium text-success">-{formatPrice(Number(order.tien_giam_gia))}</dd></div>}<div className="flex justify-between gap-4 border-t border-border-subtle pt-3 text-base"><dt className="font-semibold text-fg">Tổng cộng</dt><dd className="font-semibold text-fg">{formatPrice(Number(order.tien_thanh_toan))}</dd></div></dl>
         </CardBody></Card>
 
-        <Card className="mb-6"><CardHeader><CardTitle>Trạng thái đơn hàng</CardTitle></CardHeader><CardBody className="gap-3"><div className="flex items-center gap-3"><Badge variant="brand">{statusLabels[order.trang_thai] || order.trang_thai}</Badge><span className="text-sm text-fg-muted">Leaf Creme sẽ liên hệ nếu cần thêm thông tin.</span></div>{order.dia_chi_giao_hang && <dl className="grid gap-2 border-t border-border-subtle pt-4 text-sm sm:grid-cols-2"><div><dt className="text-fg-muted">Người nhận</dt><dd className="font-medium text-fg">{order.ten_khach_hang || '—'}</dd></div><div><dt className="text-fg-muted">Số điện thoại</dt><dd className="font-medium text-fg">{order.so_dien_thoai_khach || '—'}</dd></div><div className="sm:col-span-2"><dt className="text-fg-muted">Địa chỉ giao hàng</dt><dd className="font-medium text-fg">{order.dia_chi_giao_hang}</dd></div></dl>}</CardBody></Card>
+        <Card className="mb-6"><CardHeader><CardTitle>Trạng thái đơn hàng</CardTitle></CardHeader><CardBody className="gap-3"><div className="flex items-center gap-3"><Badge variant="brand">{statusLabels[order.trang_thai] || order.trang_thai}</Badge><span className="text-sm text-fg-muted">Tiệm sẽ liên hệ với bạn nếu cần xác nhận thêm thông tin nhé.</span></div>{order.dia_chi_giao_hang && <dl className="grid gap-2 border-t border-border-subtle pt-4 text-sm sm:grid-cols-2"><div><dt className="text-fg-muted">Người nhận</dt><dd className="font-medium text-fg">{order.ten_khach_hang || '—'}</dd></div><div><dt className="text-fg-muted">Số điện thoại</dt><dd className="font-medium text-fg">{order.so_dien_thoai_khach || '—'}</dd></div><div className="sm:col-span-2"><dt className="text-fg-muted">Địa chỉ giao hàng</dt><dd className="font-medium text-fg">{order.dia_chi_giao_hang}</dd></div></dl>}</CardBody></Card>
 
         <div className="flex flex-wrap gap-3"><Button onClick={() => navigate('/')}><Home className="size-4" />Về trang chủ</Button><Button href={`/orders/${order.donhang_id}`} variant="outline">Xem đơn hàng</Button><Link to="/search" className="inline-flex min-h-11 items-center rounded-md px-4 text-sm font-semibold text-brand-fg hover:bg-brand-subtle focus-visible:ring-2 focus-visible:ring-focus">Tiếp tục mua sắm</Link></div>
       </Container>

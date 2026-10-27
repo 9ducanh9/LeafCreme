@@ -43,7 +43,7 @@ export default function DataDeletionPage() {
         <Card>
           <h2 className="font-heading text-xl font-medium text-text-primary mb-4">Điều gì xảy ra sau đó</h2>
           <div className="space-y-3 text-text-secondary leading-relaxed">
-            <p>Chúng tôi xác minh yêu cầu (đảm bảo đúng bạn là chủ tài khoản), sau đó xoá hoặc vô hiệu hoá tài khoản trong vòng <strong className="text-text-primary">30 ngày</strong> kể từ khi xác minh xong.</p>
+            <p>Chúng mình sẽ xác minh yêu cầu (đảm bảo đúng bạn là chủ tài khoản), sau đó tiến hành xoá hoặc vô hiệu hoá tài khoản trong vòng <strong className="text-text-primary">30 ngày</strong> kể từ khi xác minh xong.</p>
             <p>Dữ liệu bị xoá bao gồm: thông tin tài khoản (họ tên, email, số điện thoại, địa chỉ), mật khẩu, và mọi thông tin liên kết từ Facebook/Google (tên, email, ảnh đại diện đã lưu khi đăng nhập).</p>
             <p className="text-sm text-text-secondary">
               Riêng dữ liệu hoá đơn/giao dịch đã phát sinh có thể được lưu thêm một thời gian theo quy định pháp luật về kế toán và thuế, nhưng sẽ không còn gắn với thông tin định danh cá nhân của bạn cho mục đích nào khác ngoài nghĩa vụ pháp lý này.
