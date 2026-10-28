@@ -6,6 +6,7 @@ import type { OrderStatus } from '../../../types/admin'
 import { ORDER_STATUS_LABEL } from '../../../config/orderLabels'
 import { useDebouncedCallback } from '../../../hooks/admin/useDebouncedCallback'
 import { ADMIN_SEARCH_FIELD_ID } from '../ui/data-table-toolbar'
+import VietnameseDatePicker from '../ui/vietnamese-date-picker'
 
 interface OrdersFiltersProps {
   status: OrderStatus | ''
@@ -70,18 +71,8 @@ export default function OrdersFilters({
         </Select>
       </FormControl>
 
-      <TextField
-        label="Từ ngày" type="date" size="small" value={dateFrom}
-        onChange={(e) => onDateFromChange(e.target.value)}
-        slotProps={{ inputLabel: { shrink: true } }}
-        sx={{ minWidth: 160 }}
-      />
-      <TextField
-        label="Đến ngày" type="date" size="small" value={dateTo}
-        onChange={(e) => onDateToChange(e.target.value)}
-        slotProps={{ inputLabel: { shrink: true } }}
-        sx={{ minWidth: 160 }}
-      />
+      <Box sx={{ minWidth: 180 }}><VietnameseDatePicker label="Từ ngày" size="small" value={dateFrom} onChange={onDateFromChange} /></Box>
+      <Box sx={{ minWidth: 180 }}><VietnameseDatePicker label="Đến ngày" size="small" value={dateTo} onChange={onDateToChange} /></Box>
       <TextField
         label="Từ số tiền" type="number" size="small" value={amountFromField.value}
         onChange={(e) => amountFromField.onChange(e.target.value)}
