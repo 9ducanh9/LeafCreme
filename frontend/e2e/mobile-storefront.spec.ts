@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+const seasonalProducts = ['HAL01', 'HAL02', 'HAL03', 'HAL04'].map((sku, index) => ({ sanpham_id: 201 + index, ten: `Bánh Halloween kiểm thử ${index + 1}`, sku, loai: 'bien_the', gia_co_ban: 240000 + index * 10000, danh_muc: 'Bánh kem', mo_ta: 'Bánh mùa lễ hội từ database.', hinh_anh_url: '/seasonal/halloween-velvet-cake.jpg', dang_hoat_dong: true, ngay_tao: '2026-10-28' }))
+
 for (const width of [360, 390, 430]) {
   test(`mobile storefront at ${width}px keeps navigation and content usable`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
@@ -11,7 +13,7 @@ for (const width of [360, 390, 430]) {
         { product_id: 101, name: 'Bánh kiểm thử', category: 'Bánh kem', base_price: 200000, image_url: '/seasonal/halloween-velvet-cake.jpg' },
         { product_id: 102, name: 'Mousse kiểm thử', category: 'Mousse', base_price: 220000, image_url: '/seasonal/halloween-amber-mousse.jpg' },
       ] })
-      if (path === '/products') return route.fulfill({ json: [] })
+      if (path === '/products') return route.fulfill({ json: seasonalProducts })
       return route.fulfill({ status: 401, json: { detail: 'Local test' } })
     })
     await page.goto('/')
@@ -61,6 +63,7 @@ for (const width of [360, 390, 430]) {
 }
 
 test('desktop retains its header, overlay banner and multiple product columns', async ({ page }) => {
+  await page.route(/^http:\/\/(localhost|127\.0\.0\.1):8000\/products(\?.*)?$/, route => route.fulfill({ json: seasonalProducts }))
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')

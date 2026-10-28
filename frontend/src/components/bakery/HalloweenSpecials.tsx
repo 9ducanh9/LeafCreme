@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
 import { Container, ProductGrid, Section, SectionHeader } from '../layout'
@@ -5,51 +6,44 @@ import Card, { CardBody, CardFooter, CardMedia, CardTitle } from '../ui/Card'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { formatPrice } from '../../utils/formatPrice'
+import { getImageUrl } from '../../utils/getImageUrl'
+import { getProducts, type Product } from '../../services/productService'
+import Alert from '../ui/Alert'
+import Skeleton from '../ui/Skeleton'
 
-const HALLOWEEN_CAKES = [
-  {
-    slug: 'banh-kem-nhung-tim-dem-hoi',
-    name: 'Bánh Kem Nhung Tím Đêm Hội',
-    category: 'Bánh kem · Mẻ mới',
-    price: 320000,
-    image: '/seasonal/halloween-velvet-cake.jpg',
-    description:
-      'Cốt chocolate ẩm mềm phết kem bơ dâu rừng thủ công, phủ ganache đắng nhẹ cùng quả mọng tươi và mảnh chocolate đen.',
-    href: '/categories/Bánh%20kem',
-  },
-  {
-    slug: 'mousse-chocolate-ho-phach',
-    name: 'Mousse Chocolate Hổ Phách',
-    category: 'Mousse · Mẻ mới',
-    price: 265000,
-    image: '/seasonal/halloween-amber-mousse.jpg',
-    description:
-      'Lớp mousse chocolate đen đánh bông xốp nhẹ trên đế bánh quy nghiền, rưới sốt caramel chanh dây vàng óng.',
-    href: '/categories/Mousse',
-  },
-  {
-    slug: 'banh-kem-oreo-anh-trang',
-    name: 'Bánh Kem Oreo Ánh Trăng',
-    category: 'Bánh kem · Mẻ mới',
-    price: 280000,
-    image: '/seasonal/halloween-oreo-moon.jpg',
-    description:
-      'Kem tươi trộn vụn bánh Oreo giòn nhẹ, rắc bột cacao nguyên chất và điểm thêm vầng trăng chocolate trắng.',
-    href: '/categories/Bánh%20kem',
-  },
-  {
-    slug: 'mousse-viet-quat-dem-thu',
-    name: 'Mousse Việt Quất Đêm Thu',
-    category: 'Mousse · Mẻ mới',
-    price: 240000,
-    image: '/seasonal/halloween-berry-mousse.jpg',
-    description:
-      'Kem phô mai đánh bông mềm mịn quyện cùng sốt quả mọng và việt quất nấu chậm chua dịu, thanh mát.',
-    href: '/categories/Mousse',
-  },
-] as const
+const HALLOWEEN_SKUS = ['HAL01', 'HAL02', 'HAL03', 'HAL04']
 
 export default function HalloweenSpecials() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError(false)
+    getProducts({ dang_hoat_dong: true, limit: 200 })
+      .then((rows) => {
+        if (!active) return
+        setProducts(rows.filter((product) => product.dang_hoat_dong && HALLOWEEN_SKUS.includes(product.sku)).sort((a, b) => HALLOWEEN_SKUS.indexOf(a.sku) - HALLOWEEN_SKUS.indexOf(b.sku)))
+      })
+      .catch(() => { if (active) setError(true) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [attempt])
+
+  if (!loading && !error && products.length === 0) return null
+  const cakes = products.map((product) => ({
+    id: product.sanpham_id,
+    name: product.ten,
+    category: `${product.danh_muc || 'Bánh'} · Mẻ mới`,
+    price: Number(product.gia_co_ban),
+    image: getImageUrl(product.hinh_anh_url),
+    description: product.mo_ta || '',
+    href: `/products/${product.sanpham_id}`,
+  }))
+
   return (
     <Section id="halloween-specials" tone="subtle">
       <Container>
@@ -59,9 +53,11 @@ export default function HalloweenSpecials() {
           description="Bánh làm từng mẻ nhỏ tại bếp với lớp kem phết tay tự nhiên, phục vụ giới hạn đến hết mùa lễ hội."
           align="left"
         />
-        <ProductGrid columns="four">
-          {HALLOWEEN_CAKES.map((cake) => (
-            <Card key={cake.slug} interactive className="halloween-product-card group h-full p-0">
+        {error && <Alert variant="danger" title="Chưa tải được bánh Halloween" action={<Button variant="outline" onClick={() => setAttempt((value) => value + 1)}>Thử lại</Button>}>Bạn thử tải lại để xem danh mục mới nhất nhé.</Alert>}
+        {loading && <ProductGrid columns="four">{Array.from({ length: 4 }, (_, index) => <div key={index} className="space-y-3"><Skeleton className="aspect-[4/3]" /><Skeleton className="h-5 w-3/4" /><Skeleton className="h-4 w-full" /></div>)}</ProductGrid>}
+        {!loading && !error && <ProductGrid columns="four">
+          {cakes.map((cake) => (
+            <Card key={cake.id} interactive className="halloween-product-card group h-full p-0">
               <CardMedia ratio="landscape" className="bg-bg-inset">
                 <img
                   src={cake.image}
@@ -96,7 +92,7 @@ export default function HalloweenSpecials() {
               </CardFooter>
             </Card>
           ))}
-        </ProductGrid>
+        </ProductGrid>}
       </Container>
     </Section>
   )
