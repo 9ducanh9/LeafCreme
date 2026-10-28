@@ -4,6 +4,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import AddBusinessIcon from '@mui/icons-material/AddBusiness'
 import { useNavigate } from 'react-router-dom'
 import AdminPage from '../../components/admin/ui/admin-page'
+import VietnameseDatePicker from '../../components/admin/ui/vietnamese-date-picker'
 import DataTable, { type Column } from '../../components/admin/ui/data-table'
 import DataTableToolbar, { ADMIN_SEARCH_FIELD_ID } from '../../components/admin/ui/data-table-toolbar'
 import ExpiryCell from '../../components/admin/ui/expiry-cell'
@@ -226,10 +227,8 @@ export default function AdminInventoryPage() {
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>Lô {dateBatch?.ma_lo}: giữ nguyên mã lô, số lượng và lịch sử kho.</Alert>
           {dateError && <Alert severity="error" sx={{ mb: 2 }}>{dateError}</Alert>}
-          <TextField fullWidth required type="date" label="Ngày sản xuất" value={producedDate} disabled={saving || dateLoading}
-            onChange={(event) => setProducedDate(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ mb: 2 }} />
-          <TextField fullWidth required type="date" label="Ngày hết hạn" value={expiryDate} disabled={saving || dateLoading}
-            onChange={(event) => setExpiryDate(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+          <div className="mb-4"><VietnameseDatePicker required label="Ngày sản xuất" value={producedDate} disabled={saving || dateLoading} onChange={setProducedDate} /></div>
+          <VietnameseDatePicker required label="Ngày hết hạn" value={expiryDate} disabled={saving || dateLoading} onChange={setExpiryDate} />
           {dateBatch?.trang_thai === 'tamdung' && <FormControlLabel control={<Checkbox checked={restoreBatch} disabled={saving || dateLoading}
             onChange={(event) => setRestoreBatch(event.target.checked)} />} label="Khôi phục lô hoạt động sau khi sửa ngày" />}
         </DialogContent>
