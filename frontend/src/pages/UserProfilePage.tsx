@@ -501,7 +501,7 @@ export default function UserProfilePage() {
                         minLength={name === 'mat_khau_cu' ? undefined : (cognitoEnabled ? 10 : 6)}
                         required
                         disabled={loading}
-                        className="h-12 w-full rounded-lg border border-border bg-white px-4 text-text-primary outline-none transition-colors focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/20 disabled:opacity-60"
+                        className="h-12 w-full rounded-lg border border-border bg-bg-surface px-4 text-text-primary outline-none transition-colors focus:border-accent-brown focus:ring-2 focus:ring-accent-brown/20 disabled:opacity-60"
                       />
                     </label>
                   ))}
