@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { useLocation } from 'react-router-dom'
 import { Candy } from 'lucide-react'
 import Header from '../bakery/Header'
+import MobileBottomNav from '../bakery/MobileBottomNav'
 import Footer from '../bakery/Footer'
 import { useLeafieContext } from '../../contexts/LeafieContext'
 import { useCart } from '../../contexts/CartContext'
@@ -44,6 +45,7 @@ export default function MainLayout({ children, showFooter = true }: MainLayoutPr
     <div className="sr-only" aria-live="polite" aria-atomic="true">Đã chuyển đến {location.pathname === '/' ? 'trang chủ' : location.pathname.replace(/\//g, ' ')}</div>
     <main id="main-content" ref={mainRef} tabIndex={-1} className={`min-w-0 flex-1 outline-none ${location.pathname.startsWith('/products/') ? 'halloween-product' : ''}`}>{children}</main>
     {showFooter && <Footer />}
+    <MobileBottomNav />
     {!isAccountEntry && !isOpen && !isCartDrawerOpen && <button type="button" onClick={openChat} aria-label="Mở Leafie" className="halloween-leafie-launcher">
       <img src="/branding/liceria.png" alt="" aria-hidden="true" />
       <span>Hỏi Leafie nhé?</span><Candy className="size-4" aria-hidden="true" />
