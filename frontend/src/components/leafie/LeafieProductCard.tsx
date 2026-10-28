@@ -24,19 +24,19 @@ export default function LeafieProductCard({ product }: { product: LeafieProduct 
     return () => { active = false }
   }, [href])
 
-  return <article className="overflow-hidden rounded-[8px] border border-[#dfe6df] bg-[#fff]">
+  return <article className="overflow-hidden rounded-[10px] border border-border bg-bg-surface shadow-sm">
     <div className="flex gap-3 p-3">
-      <div className="grid h-[76px] w-[72px] shrink-0 place-items-center overflow-hidden rounded bg-[#f3f6f1] text-[#85917f]">
+      <div className="grid h-[76px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-md bg-bg-inset text-fg-subtle">
         {image ? <img src={image} alt={product.name} className="size-full object-cover" loading="lazy" onError={() => setImage('')} /> : <CakeSlice className="size-6" aria-hidden="true" />}
       </div>
       <div className="min-w-0 flex-1">
-        <Link to={href} className="text-xs font-semibold leading-5 text-[#28362c] hover:underline">{product.name}</Link>
-        <p className={`mt-1 text-[11px] ${available === true ? 'text-[#337449]' : available === false ? 'text-[#985146]' : 'text-[#697469]'}`}>
+        <Link to={href} className="text-xs font-semibold leading-5 text-fg-strong hover:text-brand-fg hover:underline">{product.name}</Link>
+        <p className={`mt-1 text-[11px] ${available === true ? 'text-success' : available === false ? 'text-danger' : 'text-fg-muted'}`}>
           {available === true ? 'Còn hàng' : available === false ? 'Hết hàng' : 'Cần xác nhận tình trạng hàng'}
         </p>
         <p className="mt-2 text-[13px] font-semibold text-brand-fg">
           {!selected && product.variants.length > 1 ? 'Từ ' : ''}{money(selected?.price ?? product.price)}
-          {selected?.size && <span className="ml-1 text-[10px] font-normal text-[#758071]">/ {selected.size}</span>}
+          {selected?.size && <span className="ml-1 text-[10px] font-normal text-fg-muted">/ {selected.size}</span>}
         </p>
       </div>
     </div>
@@ -44,11 +44,11 @@ export default function LeafieProductCard({ product }: { product: LeafieProduct 
       {product.variants.map(variant => <button key={variant.id} type="button" aria-pressed={selectedId === variant.id}
         title={`${money(variant.price)} · ${variant.available ? 'Còn hàng' : 'Hết hàng'}`}
         onClick={() => setSelectedId(variant.id)}
-        className={`rounded border px-2.5 py-1 text-[11px] focus-visible:ring-2 focus-visible:ring-focus ${selectedId === variant.id ? 'border-brand bg-brand-subtle text-brand-fg' : 'border-[#dfe6df] bg-[#fff] text-[#687366] hover:border-brand'}`}>
+        className={`rounded border px-2.5 py-1 text-[11px] transition-colors focus-visible:ring-2 focus-visible:ring-focus ${selectedId === variant.id ? 'border-brand bg-brand-subtle text-brand-fg' : 'border-border bg-bg-inset text-fg-muted hover:border-brand hover:text-fg'}`}>
         {variant.size || 'Tiêu chuẩn'}
       </button>)}
     </div>}
-    <Link to={href} className="flex items-center justify-between gap-2 border-t border-[#edf0ed] px-3 py-2.5 text-[11px] text-[#48564b] hover:bg-[#f6f9f5]">
+    <Link to={href} className="flex items-center justify-between gap-2 border-t border-border-subtle px-3 py-2.5 text-[11px] text-fg-muted transition-colors hover:bg-bg-surface-hover hover:text-brand-fg">
       Xem chi tiết bánh <ArrowUpRight className="size-3.5" aria-hidden="true" />
     </Link>
   </article>

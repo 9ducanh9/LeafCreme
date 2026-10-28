@@ -15,6 +15,16 @@ export function getImageUrl(path: string | null | undefined): string {
     return path
   }
 
+  // Frontend static assets in public/ should be served directly by the web app.
+  if (
+    path.startsWith('/seasonal/') ||
+    path.startsWith('/banners/') ||
+    path.startsWith('/branding/') ||
+    path.startsWith('/halloween-demo/')
+  ) {
+    return path
+  }
+
   // API resources such as database-backed avatars can live outside /uploads.
   if (path.startsWith('/')) {
     return `${API_BASE_URL}${path}`

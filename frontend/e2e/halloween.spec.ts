@@ -9,7 +9,7 @@ const product = {
 async function mockApi(page: Page, admin = false) {
   if (admin) await page.addInitScript(() => localStorage.setItem('access_token', `test.${btoa(JSON.stringify({ sub: '7' }))}.test`))
   const chatMessages: string[] = []
-  await page.route('http://localhost:8000/**', async route => {
+  await page.route(/^http:\/\/(localhost|127\.0\.0\.1):8000\//, async route => {
     const path = new URL(route.request().url()).pathname
     if (path === '/auth/me') return admin
       ? route.fulfill({ json: { nguoidung_id: 7, ho_ten: 'Test admin', dang_hoat_dong: true, capabilities: ['admin.access', 'orders.read.own_created', 'orders.read.all'], vaitro: { ten_vai_tro: 'admin' } } })
@@ -37,8 +37,7 @@ test('seasonal storefront preserves API prices, variant stock and cart behavior'
   await mockApi(page)
   await page.goto('/')
   await expect(page.getByRole('region', { name: 'Câu chuyện Leaf Creme' })).toBeVisible()
-  await expect(page.locator('picture img').first()).toHaveAttribute('src', '/banners/leaf-creme-01.jpg')
-  await expect(page.locator('.halloween-hero-image')).toHaveCount(0)
+  await expect(page.locator('.halloween-hero-image')).toHaveAttribute('src', '/seasonal/halloween-dark-hero.jpg')
   await expect(page.getByText('246.000 ₫', { exact: true })).toBeVisible()
   await page.goto('/products/101')
   await expect(page.getByRole('heading', { name: product.ten, exact: true })).toBeVisible()

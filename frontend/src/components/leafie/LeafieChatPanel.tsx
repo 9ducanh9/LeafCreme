@@ -189,14 +189,14 @@ export default function LeafieChatPanel({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`halloween-leafie-panel fixed right-0 top-0 h-[100dvh] w-full max-w-[400px] bg-[#fff] z-modal flex flex-col border-l border-[#dce1dd] shadow-xl outline-none transition-[transform,visibility] duration-slow sm:right-4 sm:top-4 sm:h-[min(650px,calc(100dvh-32px))] sm:rounded-[8px] sm:border ${
+        className={`halloween-leafie-panel fixed right-0 top-0 h-[100dvh] w-full max-w-[400px] bg-bg-surface z-modal flex flex-col border-l border-border shadow-xl outline-none transition-[transform,visibility] duration-slow sm:right-4 sm:top-4 sm:h-[min(650px,calc(100dvh-32px))] sm:rounded-[8px] sm:border ${
           isOpen ? 'visible translate-x-0' : 'invisible translate-x-full'
         }`}
       >
         {/* Header - Discord style */}
-        <div className="halloween-leafie-header flex-shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-[#edf0ed] bg-[#fff]">
+        <div className="halloween-leafie-header flex-shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-border-subtle bg-bg-surface">
           <div className="flex items-center gap-2.5">
-            <div className="size-9 rounded-full bg-brand-subtle overflow-hidden">
+            <div className="size-9 rounded-full bg-brand-subtle overflow-hidden ring-1 ring-brand-border-subtle">
               <img
                 src="/branding/liceria.png"
                 alt="Leafie"
@@ -204,8 +204,8 @@ export default function LeafieChatPanel({
               />
             </div>
             <div>
-              <h3 id={titleId} className="font-semibold text-[#28362c] text-[15px]">Leafie</h3>
-              <p className="mt-0.5 text-[11px] text-[#727b75]">Một chút phép màu từ căn bếp</p>
+              <h3 id={titleId} className="font-semibold text-fg-strong text-[15px]">Leafie</h3>
+              <p className="mt-0.5 text-[11px] text-fg-muted">Một chút phép màu từ căn bếp</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -245,7 +245,7 @@ export default function LeafieChatPanel({
         </div>
 
         {/* Messages - Discord style container */}
-        <div className="min-h-0 flex-1 overflow-hidden bg-[#fafbf9]">
+        <div className="min-h-0 flex-1 overflow-hidden bg-bg-subtle">
           <div 
             className="h-full overflow-y-auto overscroll-contain px-4"
             ref={scrollContainerRef}
@@ -256,7 +256,7 @@ export default function LeafieChatPanel({
               loading={loading}
               onSuggestionSelect={onSuggestionSelect}
             />
-            {error && <div role="alert" className="mb-4 rounded-md border border-[#efcfca] bg-[#fff7f5] p-3 text-xs leading-5 text-[#985146]">
+            {error && <div role="alert" className="mb-4 rounded-md border border-danger bg-danger-bg p-3 text-xs leading-5 text-danger">
               <p>{error}</p>
               <button type="button" onClick={onRetry} disabled={loading} className="mt-2 rounded-md border border-current px-3 py-1.5 font-medium disabled:opacity-50">Thử lại</button>
             </div>}
@@ -265,7 +265,7 @@ export default function LeafieChatPanel({
         </div>
 
         {/* Input - Discord style */}
-        <div className="flex-shrink-0 border-t border-[#e9eee8] bg-[#fff] px-3.5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="flex-shrink-0 border-t border-border-subtle bg-bg-surface px-3.5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <input
               ref={inputRef}
@@ -277,7 +277,7 @@ export default function LeafieChatPanel({
               maxLength={2000}
               disabled={loading}
               readOnly={voice.recording}
-              className="min-w-0 flex-1 rounded-md border border-[#e6ebe4] bg-[#f6f8f5] px-3 py-2.5 text-base text-[#344236] placeholder:text-[#8a938b] outline-none transition-colors focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
+              className="min-w-0 flex-1 rounded-md border border-border bg-bg-inset px-3 py-2.5 text-base text-fg placeholder:text-fg-subtle outline-none transition-colors focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
             />
             <button
               type="button"
