@@ -54,6 +54,8 @@ for (const width of [360, 390, 430]) {
       await expect(page).toHaveURL(new RegExp(`${path}$`))
       await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('aria-current', 'page')
     }
+    await page.getByRole('link', { name: 'Tài khoản', exact: true }).click()
+    await expect(page).toHaveURL(/\/login$/)
   })
 }
 
