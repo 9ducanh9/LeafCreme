@@ -51,9 +51,19 @@ async function fillCheckout(page: Page, sepay: boolean) {
   await page.goto('/checkout')
   await expect(page.getByRole('heading', { name: 'Hoàn tất đơn hàng' })).toBeVisible()
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-  await page.locator('#ngay_giao_du_kien').fill(`${tomorrow}T12:00`)
+  await page.locator('#ngay_giao_du_kien').fill(tomorrow.split('-').reverse().join('/'))
+  await page.getByRole('textbox', { name: 'Giờ giao, định dạng 24 giờ' }).fill('12:00')
   if (sepay) await page.getByRole('radio', { name: /Chuyển khoản QR/ }).check()
 }
+
+test('invalid calendar dates are rejected before checkout', async ({ page }) => {
+  const state = await setup(page)
+  await fillCheckout(page, false)
+  await page.locator('#ngay_giao_du_kien').fill('31/02/2027')
+  await page.getByRole('button', { name: 'Đặt hàng', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'dd/mm/yyyy' })).toBeVisible()
+  expect(state.attempts).toHaveLength(0)
+})
 
 test('COD checkout creates one order and clears the cart after confirmation', async ({ page }) => {
   const state = await setup(page)

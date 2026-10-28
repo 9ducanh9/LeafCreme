@@ -12,6 +12,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs, { type Dayjs } from 'dayjs'
+import 'dayjs/locale/vi'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { getProductVariants } from '../../../services/admin/productService'
 import { parseAdminEntityId } from '../../../types/admin'
@@ -218,7 +219,7 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
       disableEscapeKeyDown={isDirty}
       maxWidth="sm" fullWidth
     >
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
         <DialogTitle>Tạo đơn thủ công</DialogTitle>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -249,6 +250,8 @@ export default function ManualOrderForm({ open, onClose, onCreated }: ManualOrde
 
             <DateTimePicker
               label="Ngày giao / lấy dự kiến"
+              format="DD/MM/YYYY HH:mm"
+              ampm={false}
               value={expectedDate}
               onChange={setExpectedDate}
               minDateTime={dayjs()}
