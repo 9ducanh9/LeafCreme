@@ -26,7 +26,8 @@ for (const width of [360, 390, 430]) {
     expect(media).not.toBeNull()
     expect(copy!.y).toBeGreaterThanOrEqual(media!.y + media!.height - 1)
     expect(media!.width / media!.height).toBeCloseTo(16 / 9, 1)
-    expect(await page.locator('.halloween-hero-video').evaluate(el => getComputedStyle(el).objectFit)).toBe('contain')
+    // Bundled Chromium may lack H.264; the same uncropped layout must work for the poster fallback.
+    expect(await page.locator('.halloween-hero-media').evaluate(el => [...el.querySelectorAll('img, video')].every(media => getComputedStyle(media).objectFit === 'contain'))).toBe(true)
     for (const id of ['halloween-specials', 'best-sellers']) {
       const cards = page.locator(`#${id} .halloween-product-card`)
       await expect(cards.first()).toBeVisible()
@@ -71,4 +72,17 @@ test('desktop retains its header, overlay banner and multiple product columns', 
   const second = await cards.nth(1).boundingBox()
   expect(second!.y).toBeCloseTo(first!.y, 0)
   expect(second!.x).toBeGreaterThan(first!.x)
+})
+
+
+test('mobile banner retains its poster and content when video cannot load', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.route('**/halloween-cake-commercial.mp4', route => route.abort())
+  await page.goto('/')
+  await expect(page.locator('.halloween-hero-video')).toHaveCount(0)
+  await expect(page.locator('.halloween-hero-media img')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Đêm nay, vị ngọt thức giấc.' })).toBeVisible()
+  await expect(page.locator('.halloween-video-controls')).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Điều hướng điện thoại' })).toBeVisible()
 })
