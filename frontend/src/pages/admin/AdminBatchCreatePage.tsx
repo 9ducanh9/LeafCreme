@@ -26,6 +26,7 @@ import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined
 import PriceCheckOutlinedIcon from '@mui/icons-material/PriceCheckOutlined'
 import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
 import AdminPage from '../../components/admin/ui/admin-page'
+import VietnameseDatePicker from '../../components/admin/ui/vietnamese-date-picker'
 import { useUnsavedChanges } from '../../hooks/admin/useUnsavedChanges'
 import { batchCalendarDateTime, validateBatch, validateBatchSoft } from '../../utils/admin/validateBatch'
 import { getProductVariants } from '../../services/admin/productService'
@@ -385,12 +386,12 @@ export default function AdminBatchCreatePage() {
                 <Stack spacing={2}>
                   <Box><Typography variant="subtitle1" fontWeight={700}>3. Thông tin lô</Typography><Typography variant="body2" color="text.secondary">Mã lô dùng để truy vết xuất xứ, hạn dùng và lịch sử tồn kho.</Typography></Box>
                   <TextField fullWidth required label="Mã lô" value={values.ma_lo} onChange={(event) => { setLotCodeManuallyEdited(true); setValues((current) => ({ ...current, ma_lo: event.target.value })) }} error={Boolean(fieldErrors.ma_lo)} helperText={fieldErrors.ma_lo || (lotCodeManuallyEdited ? 'Mã lô chỉnh tay.' : 'Tự sinh theo SKU + ngày; vẫn có thể sửa.')} />
-                  {kind === 'product' && <TextField fullWidth required type="date" label="Ngày sản xuất" InputLabelProps={{ shrink: true }} value={values.ngay_san_xuat} onChange={(event) => setValues((current) => ({ ...current, ngay_san_xuat: event.target.value }))} error={Boolean(fieldErrors.ngay_san_xuat)} helperText={fieldErrors.ngay_san_xuat || 'Ngày hết hạn sẽ tính tự động theo HSD của sản phẩm.'} />}
+                  {kind === 'product' && <VietnameseDatePicker required label="Ngày sản xuất" value={values.ngay_san_xuat} onChange={(value) => setValues((current) => ({ ...current, ngay_san_xuat: value }))} error={Boolean(fieldErrors.ngay_san_xuat)} helperText={fieldErrors.ngay_san_xuat || 'Ngày hết hạn sẽ tính tự động theo HSD của sản phẩm.'} />}
                   <Box>
-                    <TextField
-                      fullWidth required type="date" label="Ngày hết hạn" InputLabelProps={{ shrink: true }} value={values.ngay_het_han}
+                    <VietnameseDatePicker
+                      required label="Ngày hết hạn" value={values.ngay_het_han}
                       disabled={kind === 'product' && Boolean(selectedOption?.shelfLifeDays) && !manualExpiry}
-                      onChange={(event) => { setManualExpiry(true); setValues((current) => ({ ...current, ngay_het_han: event.target.value })) }}
+                      onChange={(value) => { setManualExpiry(true); setValues((current) => ({ ...current, ngay_het_han: value })) }}
                       error={Boolean(fieldErrors.ngay_het_han)}
                       helperText={fieldErrors.ngay_het_han || (kind === 'product' ? selectedOption?.shelfLifeDays ? `Tự tính từ HSD ${selectedOption.shelfLifeDays} ngày${manualExpiry ? ' · đang chỉnh tay' : ''}.` : 'Sản phẩm chưa có HSD mặc định; cần nhập thủ công.' : 'Nhập hạn dùng theo thông tin từ nhà cung cấp.')}
                     />
