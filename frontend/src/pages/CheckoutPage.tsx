@@ -45,13 +45,12 @@ function minDeliveryValue() {
   const open = now.hour(STORE_OPEN_HOUR).minute(0).second(0).millisecond(0)
   const close = now.hour(STORE_CLOSE_HOUR).minute(0).second(0).millisecond(0)
   if (minimum.isBefore(open)) minimum = open
-  if (minimum.isAfter(close))
-    minimum = now.add(1, 'day').hour(STORE_OPEN_HOUR).minute(0).second(0).millisecond(0)
+  if (minimum.isAfter(close)) minimum = now.add(1, 'day').hour(STORE_OPEN_HOUR).minute(0).second(0).millisecond(0)
   return minimum.format('YYYY-MM-DDTHH:mm')
 }
 
 function validateDelivery(value: string) {
-  if (!value) return 'Vui lòng chọn ngày và giờ giao dự kiến.'
+  if (!value) return 'Vui lòng nhập ngày hợp lệ theo dd/mm/yyyy và giờ theo hh:mm.'
   const selected = toStoreTime(value)
   const now = dayjs().tz(STORE_TIMEZONE)
   if (selected.hour() < STORE_OPEN_HOUR || selected.hour() >= STORE_CLOSE_HOUR)
@@ -267,6 +266,11 @@ export default function CheckoutPage() {
                 errors={errors}
                 updateShipping={updateShipping}
                 minDelivery={minDelivery}
+                updateDelivery={(value) => {
+                  setShippingInfo((current) => ({ ...current, ngay_giao_du_kien: value }))
+                  setErrors((current) => ({ ...current, ngay_giao_du_kien: undefined }))
+                  setError(null)
+                }}
                 disabled={loading || Boolean(pendingAttempt)}
               />
               <PaymentMethodSelector
