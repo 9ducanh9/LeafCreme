@@ -37,7 +37,8 @@ test('isolated customer logs in, selects a product and completes COD purchase', 
   await page.locator('#so_dien_thoai_khach').fill('0901234567')
   await page.locator('#dia_chi_giao_hang').fill('Disposable journey address')
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-  await page.locator('#ngay_giao_du_kien').fill(`${tomorrow}T12:00`)
+  await page.locator('#ngay_giao_du_kien').fill(tomorrow.split('-').reverse().join('/'))
+  await page.getByRole('textbox', { name: 'Giờ giao, định dạng 24 giờ' }).fill('12:00')
   const checkout = page.waitForResponse(response =>
     response.url() === 'http://127.0.0.1:58081/orders/checkout' && response.request().method() === 'POST')
   await page.getByRole('button', { name: 'Đặt hàng', exact: true }).click()
@@ -74,7 +75,8 @@ async function prepareCheckout(page: Page, variantId: number) {
   await page.locator('#so_dien_thoai_khach').fill('0901234567')
   await page.locator('#dia_chi_giao_hang').fill('Disposable test address')
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-  await page.locator('#ngay_giao_du_kien').fill(`${tomorrow}T12:00`)
+  await page.locator('#ngay_giao_du_kien').fill(tomorrow.split('-').reverse().join('/'))
+  await page.getByRole('textbox', { name: 'Giờ giao, định dạng 24 giờ' }).fill('12:00')
   return userId
 }
 
