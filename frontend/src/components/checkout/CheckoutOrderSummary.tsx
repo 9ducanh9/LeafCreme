@@ -71,12 +71,15 @@ export default function CheckoutOrderSummary({ cart, appliedVoucher }: Props) {
         )}
         <div className="flex justify-between text-fg-muted">
           <span>Phí vận chuyển</span>
-          <span className="text-fg">Miễn phí</span>
+          <span className="text-fg">Tính theo khoảng cách</span>
         </div>
         <div className="flex justify-between border-t border-border-subtle pt-3 text-base font-semibold text-fg-strong">
-          <span>Tổng cộng</span>
+          <span>Tạm tính tiền bánh</span>
           <span>{formatPrice(cart.total - (appliedVoucher?.discountAmount || 0))}</span>
         </div>
+        <p className="text-xs text-fg-muted">
+          Tiệm sẽ báo phí giao hàng trước khi xác nhận đơn.
+        </p>
       </div>
     </Card>
   )
