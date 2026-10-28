@@ -18,7 +18,7 @@ export default function GiftBoxCard({ giftBox }: GiftBoxCardProps) {
       : FALLBACK_IMAGE.giftBox
 
   return (
-    <Card interactive className="group relative overflow-hidden p-0">
+    <Card interactive className="halloween-glass-card group relative overflow-hidden p-0">
       <CardMedia className="aspect-product">
         <img
           src={image}
