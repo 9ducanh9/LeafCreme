@@ -1,5 +1,6 @@
-import type { ChangeEvent, ReactNode } from 'react'
-import { MapPin } from 'lucide-react'
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import dayjs from 'dayjs'
+import { CalendarDays, MapPin } from 'lucide-react'
 
 export type ShippingInfo = {
   ten_khach_hang: string
@@ -13,8 +14,19 @@ type Props = {
   shippingInfo: ShippingInfo
   errors: Partial<Record<keyof ShippingInfo, string>>
   updateShipping: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
+  updateDelivery: (value: string) => void
   minDelivery: string
   disabled: boolean
+}
+
+function formatDateInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('/')
+}
+
+function formatTimeInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 4)
+  return [digits.slice(0, 2), digits.slice(2, 4)].filter(Boolean).join(':')
 }
 
 function Field({
@@ -54,9 +66,20 @@ export default function ShippingAddressForm({
   shippingInfo,
   errors,
   updateShipping,
+  updateDelivery,
   minDelivery,
   disabled,
 }: Props) {
+  const datePickerRef = useRef<HTMLInputElement>(null)
+  const [deliveryDate, setDeliveryDate] = useState(() => shippingInfo.ngay_giao_du_kien ? dayjs(shippingInfo.ngay_giao_du_kien).format('DD/MM/YYYY') : '')
+  const [deliveryTime, setDeliveryTime] = useState(() => shippingInfo.ngay_giao_du_kien ? dayjs(shippingInfo.ngay_giao_du_kien).format('HH:mm') : '')
+  const setDelivery = (date: string, time: string) => {
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(date)
+    const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(time)
+    const isoDate = match ? `${match[3]}-${match[2]}-${match[1]}` : ''
+    const parsed = dayjs(`${isoDate}T${time}`)
+    updateDelivery(match && validTime && parsed.isValid() && parsed.format('YYYY-MM-DD') === isoDate ? `${isoDate}T${time}` : '')
+  }
   const inputClass = (name: keyof ShippingInfo) =>
     `w-full rounded-md border bg-bg-surface px-4 py-3 text-base text-fg placeholder:text-fg-subtle outline-none transition-[border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-focus ${errors[name] ? 'border-danger focus-visible:ring-danger' : 'border-interactive'}`
   return (
@@ -123,19 +146,17 @@ export default function ShippingAddressForm({
           required
           error={errors.ngay_giao_du_kien}
         >
-          <input
-            id="ngay_giao_du_kien"
-            name="ngay_giao_du_kien"
-            type="datetime-local"
-            min={minDelivery}
-            value={shippingInfo.ngay_giao_du_kien}
-            onChange={updateShipping}
-            disabled={disabled}
-            className={inputClass('ngay_giao_du_kien')}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="relative min-w-0">
+              <input id="ngay_giao_du_kien" type="text" inputMode="numeric" placeholder="dd/mm/yyyy" aria-label="Ngày giao, định dạng ngày/tháng/năm" aria-describedby={errors.ngay_giao_du_kien ? 'ngay_giao_du_kien-error' : undefined} maxLength={10} value={deliveryDate} onChange={(event) => { const value = formatDateInput(event.target.value); setDeliveryDate(value); setDelivery(value, deliveryTime) }} disabled={disabled} className={`${inputClass('ngay_giao_du_kien')} pr-12`} />
+              <button type="button" aria-label="Chọn ngày giao từ lịch" disabled={disabled} className="absolute inset-y-0 right-0 px-3 text-fg-muted focus-visible:ring-2 focus-visible:ring-focus" onClick={() => { const picker = datePickerRef.current; if (!picker) return; if (typeof picker.showPicker === 'function') picker.showPicker(); else picker.focus() }}><CalendarDays className="size-5" aria-hidden /></button>
+              <input ref={datePickerRef} type="date" tabIndex={-1} aria-hidden="true" min={minDelivery.slice(0, 10)} disabled={disabled} className="pointer-events-none absolute bottom-0 right-0 h-0 w-0 opacity-0" onChange={(event) => { const value = event.target.value ? dayjs(event.target.value).format('DD/MM/YYYY') : ''; setDeliveryDate(value); setDelivery(value, deliveryTime) }} />
+            </div>
+            <input type="text" inputMode="numeric" placeholder="hh:mm" aria-label="Giờ giao, định dạng 24 giờ" maxLength={5} value={deliveryTime} onChange={(event) => { const value = formatTimeInput(event.target.value); setDeliveryTime(value); setDelivery(deliveryDate, value) }} disabled={disabled} className={inputClass('ngay_giao_du_kien')} />
+          </div>
         </Field>
         <p className="mt-2 text-sm text-fg-subtle">
-          Giờ mở cửa của tiệm: 8:00 — 20:00 · Vui lòng đặt trước tối thiểu 2 giờ để bếp chuẩn bị chu
+          Nhập ngày theo dạng dd/mm/yyyy và giờ theo dạng 24 giờ (ví dụ: 14:30). Giờ mở cửa của tiệm: 8:00 — 20:00 · Vui lòng đặt trước tối thiểu 2 giờ để bếp chuẩn bị chu
           đáo nhé.
         </p>
       </div>
