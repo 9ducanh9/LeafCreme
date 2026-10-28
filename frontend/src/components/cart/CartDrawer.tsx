@@ -35,7 +35,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5">
         {cartItems.length === 0 ? <div className="flex h-full flex-col items-center justify-center py-16 text-center"><ShoppingBag className="size-12 text-brand-fg" aria-hidden /><h3 className="mt-4 font-heading text-lg font-semibold text-fg-strong">Giỏ hàng đang trống</h3><p className="mt-2 max-w-xs text-sm text-fg-muted">Chọn một món bánh nhỏ để bắt đầu ngày ngọt ngào hơn.</p></div> : <div>{cartItems.map((item) => <CartItem key={`${item.productId}-${item.variantId || 'none'}`} item={item} onQuantityChange={updateQuantity} onRemove={removeFromCart} compact />)}</div>}
       </div>
-      {cartItems.length > 0 && <div className="safe-area-bottom shrink-0 border-t border-border-subtle bg-bg-surface p-5"><CartSummary subtotal={cartSubtotal} discount={appliedVoucher?.discountAmount || 0} onCheckout={() => go('/checkout')} onContinueShopping={() => go('/cart')} onApplyVoucher={handleApplyVoucher} checkoutLabel="Thanh toán" continueShoppingLabel="Xem giỏ hàng" compact /></div>}
+      {cartItems.length > 0 && <div className="safe-area-bottom shrink-0 border-t border-border-subtle bg-bg-surface p-5"><CartSummary subtotal={cartSubtotal} discount={appliedVoucher?.discountAmount || 0} showShipping onCheckout={() => go('/checkout')} onContinueShopping={() => go('/cart')} onApplyVoucher={handleApplyVoucher} checkoutLabel="Thanh toán" continueShoppingLabel="Xem giỏ hàng" compact /></div>}
     </aside>
   </>
 }
